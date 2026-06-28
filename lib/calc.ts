@@ -1,0 +1,299 @@
+/* ============================================================
+   İş mantığı / hesaplamalar — orijinal uygulamadan birebir.
+   Global DB yerine saf fonksiyonlara `db` parametre olarak verilir.
+   ============================================================ */
+import type { DB, Talep, Teklif, Lokasyon, Anlasma, Firma } from './types';
+import { hasCoord, haversine } from './geo';
+
+export function lokById(db: DB, id: string): Lokasyon | undefined {
+  return db.lokasyonlar.find((l) => l.id === id);
+}
+
+/** Tutarı TRY'ye çevirir (kur DB'den). */
+export function toTRY(db: DB, amount: number, cur: string): number {
+  if (cur === 'TRY') return amount;
+  if (cur === 'USD') return amount * (db.kur.USD || 1);
+  if (cur === 'EUR') return amount * (db.kur.EUR || 1);
+  return amount;
+}
+
+export function firmName(db: DB, id: string): string {
+  const f = db.firmalar.find((x) => x.id === id);
+  return f ? f.ad : '(silinmiş firma)';
+}
+
+export function lokName(db: DB, id: string): string {
+  const l = db.lokasyonlar.find((x) => x.id === id);
+  return l ? l.ad : '';
+}
+
+export function defaultTeslimId(db: DB): string {
+  const f = db.lokasyonlar.find((l) => l.fabrika);
+  return f ? f.id : db.lokasyonlar[0] ? db.lokasyonlar[0].id : '';
+}
+
+/** Bir talebin en uygun (en düşük TRY) teklif kimliği. */
+export function bestQuoteId(db: DB, talep: Talep): string | null {
+  let best: string | null = null;
+  let min = Infinity;
+  talep.teklifler.forEach((q) => {
+    const v = toTRY(db, q.fiyat, q.paraBirimi);
+    if (v < min) {
+      min = v;
+      best = q.id;
+    }
+  });
+  return best;
+}
+
+export function qTotal(db: DB, q: Teklif, t: Talep): number {
+  return toTRY(db, q.fiyat, q.paraBirimi) * (Number(t.miktar) || 0);
+}
+
+export function selectedQuote(t: Talep): Teklif | null {
+  return t.teklifler.find((x) => x.id === t.secilenTeklifId) || null;
+}
+
+export interface GerceklesenBirim {
+  firmaId: string;
+  birimFiyat: number;
+  paraBirimi: string;
+  indirimli: boolean;
+  orijinal: number;
+  orijinalPara: string;
+}
+
+export function gerceklesenBirim(t: Talep): GerceklesenBirim | null {
+  const q = selectedQuote(t);
+  if (!q) return null;
+  if (
+    t.gerceklesen &&
+    t.gerceklesen.birimFiyat != null &&
+    isFinite(+t.gerceklesen.birimFiyat)
+  ) {
+    return {
+      firmaId: q.firmaId,
+      birimFiyat: +t.gerceklesen.birimFiyat,
+      paraBirimi: t.gerceklesen.paraBirimi || q.paraBirimi,
+      indirimli: true,
+      orijinal: q.fiyat,
+      orijinalPara: q.paraBirimi,
+    };
+  }
+  return {
+    firmaId: q.firmaId,
+    birimFiyat: q.fiyat,
+    paraBirimi: q.paraBirimi,
+    indirimli: false,
+    orijinal: q.fiyat,
+    orijinalPara: q.paraBirimi,
+  };
+}
+
+export function gercTotalTRY(db: DB, t: Talep): number {
+  const g = gerceklesenBirim(t);
+  return g ? toTRY(db, g.birimFiyat, g.paraBirimi) * (Number(t.miktar) || 0) : 0;
+}
+
+export function indirimYuzde(db: DB, t: Talep): number | null {
+  const g = gerceklesenBirim(t);
+  if (!g || !g.indirimli) return null;
+  const o = toTRY(db, g.orijinal, g.orijinalPara);
+  const y = toTRY(db, g.birimFiyat, g.paraBirimi);
+  if (!o) return null;
+  return ((o - y) / o) * 100;
+}
+
+export interface LokasyonStats {
+  sefer: number;
+  fiyatli: number;
+  avg: number;
+  min: number;
+  max: number;
+  son: number;
+}
+
+export function lokasyonStats(db: DB, locId: string): LokasyonStats {
+  const ts = [...db.talepler.filter((t) => t.yuklemeLokasyonId === locId)].sort(
+    (a, b) => new Date(a.createdAt || 0).getTime() - new Date(b.createdAt || 0).getTime(),
+  );
+  const prices: number[] = [];
+  ts.forEach((t) => {
+    const q =
+      t.teklifler.find((q) => q.id === t.secilenTeklifId) ||
+      t.teklifler.find((q) => q.id === bestQuoteId(db, t));
+    if (q) prices.push(toTRY(db, q.fiyat, q.paraBirimi));
+  });
+  return {
+    sefer: ts.length,
+    fiyatli: prices.length,
+    avg: prices.length ? prices.reduce((a, b) => a + b, 0) / prices.length : 0,
+    min: prices.length ? Math.min(...prices) : 0,
+    max: prices.length ? Math.max(...prices) : 0,
+    son: prices.length ? prices[prices.length - 1] : 0,
+  };
+}
+
+export interface UrunStat {
+  urun: string;
+  sefer: number;
+  fiyatli: number;
+  avg: number;
+  son: number;
+}
+
+export function lokasyonStatsByProduct(db: DB, locId: string): UrunStat[] {
+  const m: Record<string, { prices: number[]; sefer: number; son: number }> = {};
+  [...db.talepler.filter((t) => t.yuklemeLokasyonId === locId)]
+    .sort((a, b) => new Date(a.createdAt || 0).getTime() - new Date(b.createdAt || 0).getTime())
+    .forEach((t) => {
+      const k = (t.yukTipi || 'Diğer').trim() || 'Diğer';
+      if (!m[k]) m[k] = { prices: [], sefer: 0, son: 0 };
+      m[k].sefer++;
+      let v: number | null = null;
+      if (t.secilenTeklifId) {
+        const g = gerceklesenBirim(t);
+        if (g) v = toTRY(db, g.birimFiyat, g.paraBirimi);
+      } else {
+        const q = t.teklifler.find((q) => q.id === bestQuoteId(db, t));
+        if (q) v = toTRY(db, q.fiyat, q.paraBirimi);
+      }
+      if (v != null) {
+        m[k].prices.push(v);
+        m[k].son = v;
+      }
+    });
+  return Object.keys(m)
+    .map((k) => ({
+      urun: k,
+      sefer: m[k].sefer,
+      fiyatli: m[k].prices.length,
+      avg: m[k].prices.length ? m[k].prices.reduce((a, b) => a + b, 0) / m[k].prices.length : 0,
+      son: m[k].son,
+    }))
+    .sort((a, b) => b.sefer - a.sefer);
+}
+
+export interface AnlasmaMatch {
+  firma: Firma;
+  anlasma: Anlasma;
+}
+
+export function findAnlasmalar(
+  db: DB,
+  yukId: string,
+  tesId: string,
+  urun?: string,
+): AnlasmaMatch[] {
+  const out: AnlasmaMatch[] = [];
+  db.firmalar.forEach((f) =>
+    (f.anlasmalar || []).forEach((a) => {
+      if (
+        a.yuklemeLokasyonId === yukId &&
+        a.teslimLokasyonId === tesId &&
+        (!a.yukTipi || !urun || a.yukTipi === urun) &&
+        a.birimFiyat != null &&
+        (a.birimFiyat as unknown) !== ''
+      ) {
+        out.push({ firma: f, anlasma: a });
+      }
+    }),
+  );
+  return out;
+}
+
+export interface SonIslem {
+  firmaId: string;
+  birimFiyat: number;
+  paraBirimi: string;
+  tarih?: string;
+  durum?: string;
+  yukTipi?: string;
+  indirimli: boolean;
+}
+
+export function sonIslem(
+  db: DB,
+  yukId: string,
+  tesId: string,
+  exId?: string,
+): SonIslem | null {
+  const ts = db.talepler
+    .filter(
+      (t) =>
+        t.id !== exId &&
+        t.yuklemeLokasyonId === yukId &&
+        t.teslimLokasyonId === tesId &&
+        t.secilenTeklifId,
+    )
+    .sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
+  if (!ts.length) return null;
+  const t = ts[0];
+  const g = gerceklesenBirim(t);
+  return g
+    ? {
+        firmaId: g.firmaId,
+        birimFiyat: g.birimFiyat,
+        paraBirimi: g.paraBirimi,
+        tarih: t.createdAt,
+        durum: t.durum,
+        yukTipi: t.yukTipi,
+        indirimli: g.indirimli,
+      }
+    : null;
+}
+
+export interface FirmaSonFiyat {
+  birimFiyat: number;
+  paraBirimi: string;
+  tarih?: string;
+  indirimli: boolean;
+}
+
+export function firmaSonFiyat(
+  db: DB,
+  firmaId: string,
+  yukId: string,
+  tesId: string,
+  exId?: string,
+): FirmaSonFiyat | null {
+  let best: FirmaSonFiyat | null = null;
+  db.talepler.forEach((t) => {
+    if (t.id === exId) return;
+    if (t.yuklemeLokasyonId !== yukId || t.teslimLokasyonId !== tesId) return;
+    t.teklifler
+      .filter((q) => q.firmaId === firmaId)
+      .forEach((q) => {
+        let bf = q.fiyat;
+        let bp = q.paraBirimi;
+        let ind = false;
+        if (
+          t.secilenTeklifId === q.id &&
+          t.gerceklesen &&
+          t.gerceklesen.birimFiyat != null
+        ) {
+          bf = +t.gerceklesen.birimFiyat;
+          bp = t.gerceklesen.paraBirimi || q.paraBirimi;
+          ind = true;
+        }
+        if (!best || new Date(q.createdAt || 0) > new Date(best.tarih || 0)) {
+          best = { birimFiyat: bf, paraBirimi: bp, tarih: q.createdAt, indirimli: ind };
+        }
+      });
+  });
+  return best;
+}
+
+export interface RouteKm {
+  km: number;
+  approx: boolean;
+}
+
+export function routeKmInfo(db: DB, t: Talep): RouteKm | null {
+  if (t.mesafeKm) return { km: t.mesafeKm, approx: false };
+  const yL = lokById(db, t.yuklemeLokasyonId);
+  const tL = lokById(db, t.teslimLokasyonId);
+  if (yL && tL && hasCoord(yL) && hasCoord(tL))
+    return { km: Math.round(haversine(yL, tL) * 1.3 * 10) / 10, approx: true };
+  return null;
+}
