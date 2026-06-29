@@ -3,10 +3,9 @@ import React, { useState } from 'react';
 import { useStore } from '@/lib/store';
 
 export function LoginScreen() {
-  const { needsSetup, login, setupCredential, toast } = useStore();
-  const [user, setUser] = useState(needsSetup ? '' : '');
+  const { login, toast } = useStore();
+  const [user, setUser] = useState('');
   const [pass, setPass] = useState('');
-  const [pass2, setPass2] = useState('');
   const [err, setErr] = useState('');
   const [busy, setBusy] = useState(false);
 
@@ -16,29 +15,12 @@ export function LoginScreen() {
     if (busy) return;
     setBusy(true);
     try {
-      if (needsSetup) {
-        if (!user.trim()) {
-          setErr('Bir kullanıcı adı belirleyin.');
-          return;
-        }
-        if (!pass || pass.length < 4) {
-          setErr('Şifre en az 4 karakter olmalı.');
-          return;
-        }
-        if (pass !== pass2) {
-          setErr('Şifreler eşleşmiyor.');
-          return;
-        }
-        await setupCredential(user, pass);
-        toast('Hesap oluşturuldu — hoş geldiniz', 'ok');
-      } else {
-        const res = await login(user, pass);
-        if (!res.ok) {
-          setErr(res.error || 'Giriş başarısız.');
-          return;
-        }
-        toast('Giriş yapıldı', 'ok');
+      const res = await login(user, pass);
+      if (!res.ok) {
+        setErr(res.error || 'Giriş başarısız.');
+        return;
       }
+      toast('Giriş yapıldı', 'ok');
     } catch {
       setErr('Beklenmeyen bir hata oluştu. Tarayıcının güvenli bağlamda (https) olduğundan emin olun.');
     } finally {
@@ -57,12 +39,8 @@ export function LoginScreen() {
           </div>
         </div>
 
-        <h2 className="login-h">{needsSetup ? 'İlk Kurulum — Hesap Oluşturun' : 'Sisteme Giriş'}</h2>
-        <p className="login-desc">
-          {needsSetup
-            ? 'Bu cihazda sisteme erişimi korumak için bir kullanıcı adı ve şifre belirleyin.'
-            : 'Devam etmek için kullanıcı adı ve şifrenizi girin.'}
-        </p>
+        <h2 className="login-h">Sisteme Giriş</h2>
+        <p className="login-desc">Devam etmek için kullanıcı adı ve şifrenizi girin.</p>
 
         <div className="field">
           <label>Kullanıcı Adı</label>
@@ -78,29 +56,17 @@ export function LoginScreen() {
           <label>Şifre</label>
           <input
             type="password"
-            autoComplete={needsSetup ? 'new-password' : 'current-password'}
+            autoComplete="current-password"
             value={pass}
             onChange={(e) => setPass(e.target.value)}
             placeholder="••••••••"
           />
         </div>
-        {needsSetup && (
-          <div className="field">
-            <label>Şifre (Tekrar)</label>
-            <input
-              type="password"
-              autoComplete="new-password"
-              value={pass2}
-              onChange={(e) => setPass2(e.target.value)}
-              placeholder="••••••••"
-            />
-          </div>
-        )}
 
         {err && <div className="login-err">{err}</div>}
 
         <button className="btn primary login-btn" type="submit" disabled={busy}>
-          {busy ? 'Lütfen bekleyin…' : needsSetup ? 'Hesabı Oluştur ve Gir' : 'Giriş Yap'}
+          {busy ? 'Lütfen bekleyin…' : 'Giriş Yap'}
         </button>
 
         <div className="login-foot">

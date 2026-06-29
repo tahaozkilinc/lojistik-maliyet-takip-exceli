@@ -9,6 +9,8 @@
    bir arka uç (örn. Supabase Auth) gerekir.
    ============================================================ */
 
+import { DEFAULT_USERNAME, DEFAULT_PASSWORD } from './authConfig';
+
 const AUTH_KEY = 'nfy_auth_v1';
 const SESSION_KEY = 'nfy_session_v1';
 const LOCK_KEY = 'nfy_auth_lock_v1';
@@ -79,6 +81,16 @@ export async function setCredential(user: string, password: string): Promise<voi
     AUTH_KEY,
     JSON.stringify({ user: user.trim(), salt, hash, iter: ITERATIONS, displayName: prev?.displayName || '' }),
   );
+}
+
+/**
+ * Kayıt/hesap oluşturma ekranı yok: henüz kimlik bilgisi yoksa
+ * authConfig.ts'de tanımlı sabit kullanıcı adı/şifre ile otomatik
+ * olarak oluşturulur (yalnızca PBKDF2 özeti saklanır).
+ */
+export async function ensureDefaultCredential(): Promise<void> {
+  if (hasCredential()) return;
+  await setCredential(DEFAULT_USERNAME, DEFAULT_PASSWORD);
 }
 
 /** Görünen adı günceller (şifre/hash'e dokunmaz). */

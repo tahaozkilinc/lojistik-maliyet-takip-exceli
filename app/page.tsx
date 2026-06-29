@@ -10,7 +10,7 @@ import { PrintHost } from '@/components/print/PrintHost';
 import { LoginScreen } from '@/components/LoginScreen';
 
 export default function Page() {
-  const { ready, authed, needsSetup } = useStore();
+  const { ready, authed } = useStore();
   const [menuOpen, setMenuOpen] = useState(false);
 
   if (!ready) {
@@ -21,8 +21,8 @@ export default function Page() {
     );
   }
 
-  // Giriş kapısı: oturum yoksa (veya ilk kurulum gerekiyorsa) giriş ekranı.
-  if (!authed || needsSetup) {
+  // Giriş kapısı: oturum yoksa giriş ekranı (kayıt/hesap oluşturma ekranı yok).
+  if (!authed) {
     return (
       <>
         <LoginScreen />

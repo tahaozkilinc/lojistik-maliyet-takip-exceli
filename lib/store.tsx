@@ -29,6 +29,7 @@ import {
   clearLock,
   getDisplayName,
   setDisplayName,
+  ensureDefaultCredential,
 } from './auth';
 
 /* ---------- modal & print türleri ---------- */
@@ -79,12 +80,8 @@ export interface StoreValue {
   ready: boolean;
   /** Oturum açık mı. */
   authed: boolean;
-  /** Henüz hiç şifre belirlenmemiş (ilk kurulum). */
-  needsSetup: boolean;
   /** Kullanıcı adı/şifre ile giriş. */
   login: (user: string, password: string) => Promise<{ ok: boolean; error?: string }>;
-  /** İlk kurulumda kimlik bilgisi oluşturup oturum açar. */
-  setupCredential: (user: string, password: string) => Promise<void>;
   /** Oturumu kapatır. */
   logout: () => void;
   /** Şifre değiştirir (mevcut şifre doğrulanır). */
@@ -166,7 +163,6 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   const [bulkSel, setBulkSel] = useState<Set<string>>(new Set());
   const [talepSel, setTalepSel] = useState<Set<string>>(new Set());
   const [authed, setAuthed] = useState(false);
-  const [needsSetup, setNeedsSetup] = useState(false);
   const [displayName, setDisplayNameState] = useState('');
   const toastId = useRef(0);
 
@@ -186,17 +182,18 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
 
   // İlk istemci yüklemesi (localStorage yalnızca tarayıcıda).
   useEffect(() => {
-    const loaded = initialLoad();
-    setDb(loaded);
-    const t = localStorage.getItem(THEME_KEY) === 'dark' ? 'dark' : 'light';
-    setTheme(t);
-    document.documentElement.setAttribute('data-theme', t);
-    // Giriş durumu
-    const credSet = hasCredential();
-    setNeedsSetup(!credSet);
-    setAuthed(credSet && hasSession());
-    if (credSet) setDisplayNameState(getDisplayName());
-    setReady(true);
+    (async () => {
+      const loaded = initialLoad();
+      setDb(loaded);
+      const t = localStorage.getItem(THEME_KEY) === 'dark' ? 'dark' : 'light';
+      setTheme(t);
+      document.documentElement.setAttribute('data-theme', t);
+      // Kayıt ekranı yok: kimlik bilgisi yoksa authConfig.ts'deki varsayılanla oluştur.
+      await ensureDefaultCredential();
+      setAuthed(hasSession());
+      setDisplayNameState(getDisplayName());
+      setReady(true);
+    })();
   }, []);
 
   const login = useCallback(async (user: string, password: string): Promise<{ ok: boolean; error?: string }> => {
@@ -215,15 +212,6 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       ok: false,
       error: locked > 0 ? `Çok fazla hatalı deneme. ${Math.ceil(locked / 1000)} sn kilitlendi.` : 'Kullanıcı adı veya şifre hatalı.',
     };
-  }, []);
-
-  const setupCredential = useCallback(async (user: string, password: string) => {
-    await setCredential(user, password);
-    clearLock();
-    startSession();
-    setNeedsSetup(false);
-    setAuthed(true);
-    setDisplayNameState(getDisplayName());
   }, []);
 
   const logout = useCallback(() => {
@@ -320,9 +308,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       db,
       ready,
       authed,
-      needsSetup,
       login,
-      setupCredential,
       logout,
       changePassword,
       displayName,
@@ -350,9 +336,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       db,
       ready,
       authed,
-      needsSetup,
       login,
-      setupCredential,
       logout,
       changePassword,
       displayName,
