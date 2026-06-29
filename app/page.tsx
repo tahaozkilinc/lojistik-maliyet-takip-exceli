@@ -7,9 +7,10 @@ import { ViewRouter } from '@/components/ViewRouter';
 import { ModalHost } from '@/components/ModalHost';
 import { Toasts } from '@/components/Toasts';
 import { PrintHost } from '@/components/print/PrintHost';
+import { LoginScreen } from '@/components/LoginScreen';
 
 export default function Page() {
-  const { ready } = useStore();
+  const { ready, authed, needsSetup } = useStore();
   const [menuOpen, setMenuOpen] = useState(false);
 
   if (!ready) {
@@ -17,6 +18,16 @@ export default function Page() {
       <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--muted)', fontSize: 14 }}>
         Yükleniyor…
       </div>
+    );
+  }
+
+  // Giriş kapısı: oturum yoksa (veya ilk kurulum gerekiyorsa) giriş ekranı.
+  if (!authed || needsSetup) {
+    return (
+      <>
+        <LoginScreen />
+        <Toasts />
+      </>
     );
   }
 

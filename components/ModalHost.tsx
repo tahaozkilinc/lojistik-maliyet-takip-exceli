@@ -10,6 +10,7 @@ import { LokasyonModal } from './modals/LokasyonModal';
 import { AnlasmaModal } from './modals/AnlasmaModal';
 import { NavlunModal } from './modals/NavlunModal';
 import { KurModal } from './modals/KurModal';
+import { SifreModal } from './modals/SifreModal';
 
 export function ModalHost() {
   const { modal } = useStore();
@@ -41,6 +42,8 @@ export function ModalHost() {
       return <NavlunModal id={modal.id} />;
     case 'kur':
       return <KurModal />;
+    case 'sifre':
+      return <SifreModal />;
     default:
       return null;
   }

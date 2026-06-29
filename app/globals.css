@@ -54,7 +54,8 @@ a{color:var(--navy-3);text-decoration:none}
 .nav a.active::before{content:"";position:absolute;left:-10px;top:50%;transform:translateY(-50%);width:3px;height:20px;background:var(--gold);border-radius:0 3px 3px 0}
 .nav a .ico{width:18px;height:18px;flex-shrink:0;opacity:.9}
 .nav a .badge{margin-left:auto;background:var(--gold);color:var(--navy);font-size:11px;font-weight:700;min-width:19px;height:19px;border-radius:10px;display:flex;align-items:center;justify-content:center;padding:0 5px}
-.side-foot{padding:12px;border-top:1px solid rgba(255,255,255,.08);display:flex;gap:8px}
+.side-foot{padding:12px;border-top:1px solid rgba(255,255,255,.08);display:flex;gap:8px;flex-wrap:wrap}
+.side-foot button.icon-only{flex:0 0 auto;min-width:36px}
 .side-foot button{flex:1;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.1);color:#cfe0f0;padding:8px;border-radius:7px;font-size:12px;display:flex;align-items:center;justify-content:center;gap:6px;transition:.13s}
 .side-foot button:hover{background:rgba(255,255,255,.14)}
 
@@ -319,3 +320,16 @@ tbody tr:last-child td{border-bottom:none}
   .grid-2{grid-template-columns:1fr}
   .emp-row{grid-template-columns:1fr 1fr;gap:6px}
 }
+
+/* ===== Giriş ekranı ===== */
+.login-wrap{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;background:linear-gradient(135deg,var(--navy),var(--navy-2) 60%,var(--navy-3));}
+.login-card{width:100%;max-width:400px;background:var(--surface);border:1px solid var(--line);border-radius:16px;box-shadow:var(--shadow-lg);padding:30px 28px}
+.login-brand{display:flex;align-items:center;gap:12px;margin-bottom:22px}
+.login-brand .mark{width:46px;height:46px;border-radius:11px;background:linear-gradient(135deg,var(--gold),var(--gold-2));display:flex;align-items:center;justify-content:center;font-weight:800;color:var(--navy);font-size:22px;flex-shrink:0;box-shadow:0 2px 10px rgba(201,162,39,.35)}
+.login-title{font-weight:800;font-size:17px;color:var(--text)}
+.login-sub{font-size:12px;color:var(--muted);margin-top:1px}
+.login-h{font-size:18px;font-weight:700;margin-bottom:6px}
+.login-desc{font-size:13px;color:var(--muted);margin-bottom:18px;line-height:1.5}
+.login-btn{width:100%;justify-content:center;margin-top:6px;padding:11px}
+.login-err{background:var(--red-bg);border:1px solid var(--red);color:var(--red);font-size:12.5px;font-weight:600;padding:9px 12px;border-radius:8px;margin-bottom:6px}
+.login-foot{margin-top:16px;padding-top:14px;border-top:1px solid var(--line-2);font-size:11.5px;color:var(--faint);line-height:1.5}

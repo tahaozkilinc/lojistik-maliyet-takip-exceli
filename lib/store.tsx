@@ -16,6 +16,18 @@ import type { DB } from './types';
 import { LS_KEY, THEME_KEY, EMBED_FLAG_KEY, type ViewKey } from './constants';
 import { emptyDB, migrate, normalizeDB, seedIfEmpty } from './seed';
 import { embeddedData, EMBED_VERSION } from './seedData';
+import {
+  hasCredential,
+  hasSession,
+  getCredential,
+  setCredential,
+  verifyCredential,
+  startSession,
+  endSession,
+  lockRemainingMs,
+  registerFail,
+  clearLock,
+} from './auth';
 
 /* ---------- modal & print türleri ---------- */
 export type ModalState =
@@ -35,6 +47,7 @@ export type ModalState =
   | { type: 'anlasma'; firmaId: string; anlId?: string }
   | { type: 'navlun'; id?: string }
   | { type: 'kur' }
+  | { type: 'sifre' }
   | null;
 
 export type PrintJob =
@@ -59,6 +72,18 @@ export interface UIState {
 export interface StoreValue {
   db: DB;
   ready: boolean;
+  /** Oturum açık mı. */
+  authed: boolean;
+  /** Henüz hiç şifre belirlenmemiş (ilk kurulum). */
+  needsSetup: boolean;
+  /** Kullanıcı adı/şifre ile giriş. */
+  login: (user: string, password: string) => Promise<{ ok: boolean; error?: string }>;
+  /** İlk kurulumda kimlik bilgisi oluşturup oturum açar. */
+  setupCredential: (user: string, password: string) => Promise<void>;
+  /** Oturumu kapatır. */
+  logout: () => void;
+  /** Şifre değiştirir (mevcut şifre doğrulanır). */
+  changePassword: (current: string, next: string) => Promise<{ ok: boolean; error?: string }>;
   ui: UIState;
   setUi: (p: Partial<UIState>) => void;
   go: (view: ViewKey, id?: string) => void;
@@ -131,6 +156,8 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   const [printJob, setPrintJob] = useState<PrintJob>(null);
   const [bulkSel, setBulkSel] = useState<Set<string>>(new Set());
   const [talepSel, setTalepSel] = useState<Set<string>>(new Set());
+  const [authed, setAuthed] = useState(false);
+  const [needsSetup, setNeedsSetup] = useState(false);
   const toastId = useRef(0);
 
   const [ui, setUiState] = useState<UIState>({
@@ -152,8 +179,58 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     const t = localStorage.getItem(THEME_KEY) === 'dark' ? 'dark' : 'light';
     setTheme(t);
     document.documentElement.setAttribute('data-theme', t);
+    // Giriş durumu
+    const credSet = hasCredential();
+    setNeedsSetup(!credSet);
+    setAuthed(credSet && hasSession());
     setReady(true);
   }, []);
+
+  const login = useCallback(async (user: string, password: string): Promise<{ ok: boolean; error?: string }> => {
+    const lock = lockRemainingMs();
+    if (lock > 0) return { ok: false, error: `Çok fazla hatalı deneme. ${Math.ceil(lock / 1000)} sn sonra tekrar deneyin.` };
+    if (!user.trim() || !password) return { ok: false, error: 'Kullanıcı adı ve şifre girin.' };
+    const ok = await verifyCredential(user, password);
+    if (ok) {
+      clearLock();
+      startSession();
+      setAuthed(true);
+      return { ok: true };
+    }
+    const locked = registerFail();
+    return {
+      ok: false,
+      error: locked > 0 ? `Çok fazla hatalı deneme. ${Math.ceil(locked / 1000)} sn kilitlendi.` : 'Kullanıcı adı veya şifre hatalı.',
+    };
+  }, []);
+
+  const setupCredential = useCallback(async (user: string, password: string) => {
+    await setCredential(user, password);
+    clearLock();
+    startSession();
+    setNeedsSetup(false);
+    setAuthed(true);
+  }, []);
+
+  const logout = useCallback(() => {
+    endSession();
+    setAuthed(false);
+    setModal(null);
+    setUiState((prev) => ({ ...prev, view: 'dashboard', detailId: null }));
+  }, []);
+
+  const changePassword = useCallback(
+    async (current: string, next: string): Promise<{ ok: boolean; error?: string }> => {
+      if (!hasCredential()) return { ok: false, error: 'Önce bir şifre belirleyin.' };
+      const me = getCredential();
+      const ok = await verifyCredential(me?.user || '', current);
+      if (!ok) return { ok: false, error: 'Mevcut şifre hatalı.' };
+      if (!next || next.length < 4) return { ok: false, error: 'Yeni şifre en az 4 karakter olmalı.' };
+      await setCredential(me?.user || '', next);
+      return { ok: true };
+    },
+    [],
+  );
 
   const setUi = useCallback((p: Partial<UIState>) => {
     setUiState((prev) => ({ ...prev, ...p }));
@@ -223,6 +300,12 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     () => ({
       db,
       ready,
+      authed,
+      needsSetup,
+      login,
+      setupCredential,
+      logout,
+      changePassword,
       ui,
       setUi,
       go,
@@ -245,6 +328,12 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     [
       db,
       ready,
+      authed,
+      needsSetup,
+      login,
+      setupCredential,
+      logout,
+      changePassword,
       ui,
       setUi,
       go,

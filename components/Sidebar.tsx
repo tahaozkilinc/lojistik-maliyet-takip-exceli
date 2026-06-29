@@ -31,7 +31,7 @@ const NAV: { group: string; items: { view: ViewKey; label: string; icon: IconNam
 ];
 
 export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void }) {
-  const { db, ui, go, toast, replaceDB, toggleTheme } = useStore();
+  const { db, ui, go, toast, replaceDB, toggleTheme, openModal, logout } = useStore();
   const fileRef = useRef<HTMLInputElement>(null);
 
   const navTalep = db.talepler.length;
@@ -107,8 +107,20 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
           <Icon name="upload" size={14} />
           Geri Yükle
         </button>
-        <button onClick={toggleTheme} title="Tema">
+        <button className="icon-only" onClick={toggleTheme} title="Tema">
           <Icon name="sun" size={14} />
+        </button>
+        <button className="icon-only" onClick={() => openModal({ type: 'sifre' })} title="Şifre Değiştir">
+          <Icon name="lock" size={14} />
+        </button>
+        <button
+          className="icon-only"
+          onClick={() => {
+            if (confirm('Oturumu kapatmak istiyor musunuz?')) logout();
+          }}
+          title="Çıkış"
+        >
+          <Icon name="logout" size={14} />
         </button>
       </div>
       <input ref={fileRef} type="file" accept=".json" style={{ display: 'none' }} onChange={handleImport} />

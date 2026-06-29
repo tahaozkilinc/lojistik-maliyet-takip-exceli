@@ -29,7 +29,9 @@ export type IconName =
   | 'warning'
   | 'check'
   | 'save'
-  | 'building';
+  | 'building'
+  | 'logout'
+  | 'lock';
 
 const PATHS: Record<IconName, React.ReactNode> = {
   panel: (
@@ -174,6 +176,19 @@ const PATHS: Record<IconName, React.ReactNode> = {
     <>
       <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" />
       <path d="M17 21v-8H7v8M7 3v5h8" />
+    </>
+  ),
+  logout: (
+    <>
+      <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+      <path d="M16 17l5-5-5-5" />
+      <path d="M21 12H9" />
+    </>
+  ),
+  lock: (
+    <>
+      <rect x="3" y="11" width="18" height="11" rx="2" />
+      <path d="M7 11V7a5 5 0 0 1 10 0v4" />
     </>
   ),
 };
