@@ -63,7 +63,8 @@ export type ViewKey =
   | 'lokasyonlar'
   | 'haritalar'
   | 'analiz'
-  | 'denizNavlun';
+  | 'denizNavlun'
+  | 'karaNavlun';
 
 export const TITLES: Record<string, [string, string]> = {
   dashboard: ['Panel', 'Genel bakış ve özet'],
@@ -75,5 +76,6 @@ export const TITLES: Record<string, [string, string]> = {
   haritalar: ['Haritalar', 'Tüm lokasyonlar harita üzerinde'],
   analiz: ['Fiyat Analizi', 'Güzergah ve firma performansı'],
   denizNavlun: ['Deniz Navlun Takibi', "20′ ve 40′ konteyner navlunları — aylık & yıllık"],
+  karaNavlun: ['Kara Navlun Takibi', 'Kara nakliyesi fiyat karşılaştırması — aylık & yıllık'],
   detail: ['Talep Detayı', ''],
 };

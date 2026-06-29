@@ -1,0 +1,144 @@
+'use client';
+import React, { useRef, useState } from 'react';
+import { useStore } from '@/lib/store';
+import { ModalShell, ModalHead } from '@/components/Modal';
+import { Icon } from '@/components/Icon';
+import { exportData } from '@/lib/export';
+import { normalizeDB } from '@/lib/seed';
+
+export function ProfilModal() {
+  const { db, replaceDB, go, closeModal, toast, displayName, updateDisplayName, changePassword } = useStore();
+  const fileRef = useRef<HTMLInputElement>(null);
+
+  const [name, setName] = useState(displayName);
+
+  const [cur, setCur] = useState('');
+  const [next, setNext] = useState('');
+  const [next2, setNext2] = useState('');
+  const [pwErr, setPwErr] = useState('');
+  const [pwBusy, setPwBusy] = useState(false);
+
+  function saveName() {
+    updateDisplayName(name);
+    toast('Profil güncellendi', 'ok');
+  }
+
+  async function savePassword() {
+    setPwErr('');
+    if (pwBusy) return;
+    if (next !== next2) {
+      setPwErr('Yeni şifreler eşleşmiyor.');
+      return;
+    }
+    setPwBusy(true);
+    try {
+      const res = await changePassword(cur, next);
+      if (!res.ok) {
+        setPwErr(res.error || 'Şifre değiştirilemedi.');
+        return;
+      }
+      setCur('');
+      setNext('');
+      setNext2('');
+      toast('Şifre güncellendi', 'ok');
+    } finally {
+      setPwBusy(false);
+    }
+  }
+
+  function handleExport() {
+    const ts = exportData(db);
+    toast('Yedek indirildi: ' + ts + ' itibarıyla', 'ok');
+  }
+
+  function handleImport(ev: React.ChangeEvent<HTMLInputElement>) {
+    const f = ev.target.files?.[0];
+    if (!f) return;
+    const r = new FileReader();
+    r.onload = () => {
+      try {
+        const parsed = JSON.parse(String(r.result));
+        if (!parsed || !parsed.talepler || !parsed.firmalar) throw new Error('invalid');
+        if (!confirm('Mevcut veriler bu yedekle değiştirilecek. Devam edilsin mi?')) return;
+        // Güvenlik: dış JSON prototip kirlenmesine ve tehlikeli belgelere karşı temizlenir.
+        const clean = normalizeDB(parsed, db.meta);
+        replaceDB(clean);
+        go('dashboard');
+        closeModal();
+        toast('Yedek geri yüklendi', 'ok');
+      } catch {
+        toast('Geçersiz yedek dosyası', 'err');
+      }
+    };
+    r.readAsText(f);
+    ev.target.value = '';
+  }
+
+  return (
+    <ModalShell onClose={closeModal} style={{ maxWidth: 480 }}>
+      <ModalHead title="Profil" onClose={closeModal} />
+      <div className="modal-body">
+        <div className="section-divider">
+          <Icon name="user" size={14} />
+          Profil Bilgileri
+        </div>
+        <div className="field">
+          <label>Ad Soyad</label>
+          <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Adınızı girin" />
+        </div>
+        <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 4 }}>
+          <button className="btn sm primary" onClick={saveName}>
+            Kaydet
+          </button>
+        </div>
+
+        <div className="section-divider">
+          <Icon name="lock" size={14} />
+          Şifre Değiştir
+        </div>
+        <div className="field">
+          <label>Mevcut Şifre</label>
+          <input type="password" autoComplete="current-password" value={cur} onChange={(e) => setCur(e.target.value)} />
+        </div>
+        <div className="field">
+          <label>Yeni Şifre</label>
+          <input type="password" autoComplete="new-password" value={next} onChange={(e) => setNext(e.target.value)} />
+        </div>
+        <div className="field">
+          <label>Yeni Şifre (Tekrar)</label>
+          <input type="password" autoComplete="new-password" value={next2} onChange={(e) => setNext2(e.target.value)} />
+        </div>
+        {pwErr && <div className="login-err">{pwErr}</div>}
+        <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 4 }}>
+          <button className="btn sm primary" onClick={savePassword} disabled={pwBusy}>
+            {pwBusy ? 'Kaydediliyor…' : 'Şifreyi Güncelle'}
+          </button>
+        </div>
+
+        <div className="section-divider">
+          <Icon name="save" size={14} />
+          Veri Yönetimi
+        </div>
+        <div className="hint" style={{ marginBottom: 10 }}>
+          Tüm verilerinizi (talepler, firmalar, lokasyonlar…) JSON olarak yedekleyin veya önceki bir yedeği geri yükleyin.
+        </div>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button className="btn" onClick={handleExport}>
+            <Icon name="download" size={14} />
+            Yedek İndir
+          </button>
+          <button className="btn" onClick={() => fileRef.current?.click()}>
+            <Icon name="upload" size={14} />
+            Yedek Geri Yükle
+          </button>
+        </div>
+        <input ref={fileRef} type="file" accept=".json" style={{ display: 'none' }} onChange={handleImport} />
+      </div>
+      <div className="modal-foot">
+        <button className="btn" onClick={closeModal}>
+          Kapat
+        </button>
+      </div>
+    </ModalShell>
+  );
+}

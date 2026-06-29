@@ -20,6 +20,9 @@ export function Topbar({ onMenu }: { onMenu: () => void }) {
     case 'denizNavlun':
       primary = { label: 'Yeni Navlun Kaydı', onClick: () => openModal({ type: 'navlun' }) };
       break;
+    case 'karaNavlun':
+      primary = { label: 'Yeni Kara Navlun Kaydı', onClick: () => openModal({ type: 'karaNavlun' }) };
+      break;
     case 'analiz':
     case 'haritalar':
     case 'firmaDetay':

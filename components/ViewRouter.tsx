@@ -11,6 +11,7 @@ import { Lokasyonlar } from './views/Lokasyonlar';
 import { Haritalar } from './views/Haritalar';
 import { Analiz } from './views/Analiz';
 import { DenizNavlun } from './views/DenizNavlun';
+import { KaraNavlun } from './views/KaraNavlun';
 
 export function ViewRouter() {
   const { ui } = useStore();
@@ -35,6 +36,8 @@ export function ViewRouter() {
       return <Analiz />;
     case 'denizNavlun':
       return <DenizNavlun />;
+    case 'karaNavlun':
+      return <KaraNavlun />;
     default:
       return <Dashboard />;
   }

@@ -11,6 +11,7 @@ export function emptyDB(): DB {
     lokasyonlar: [],
     talepler: [],
     denizNavlun: [],
+    karaNavlun: [],
     kur: { USD: 34.5, EUR: 37.2 },
     meta: { firma: 'Sunar Yatırım A.Ş.', departman: 'Dış Ticaret & Lojistik' },
   };
@@ -64,6 +65,7 @@ export function normalizeDB(raw: unknown, fallbackMeta?: DB['meta']): DB {
     lokasyonlar: Array.isArray(clean.lokasyonlar) ? clean.lokasyonlar : base.lokasyonlar,
     talepler: Array.isArray(clean.talepler) ? clean.talepler : base.talepler,
     denizNavlun: Array.isArray(clean.denizNavlun) ? clean.denizNavlun : base.denizNavlun,
+    karaNavlun: Array.isArray(clean.karaNavlun) ? clean.karaNavlun : base.karaNavlun,
     kur: clean.kur && typeof clean.kur === 'object' ? { ...base.kur, ...clean.kur } : base.kur,
     meta: clean.meta && typeof clean.meta === 'object' ? { ...base.meta, ...clean.meta } : base.meta,
   };
@@ -226,6 +228,7 @@ export function seedIfEmpty(db: DB): void {
 export function migrate(db: DB): boolean {
   if (!Array.isArray(db.lokasyonlar)) db.lokasyonlar = [];
   if (!Array.isArray(db.denizNavlun)) db.denizNavlun = [];
+  if (!Array.isArray(db.karaNavlun)) db.karaNavlun = [];
   if (!(db.talepler.length || db.firmalar.length || db.lokasyonlar.length)) return false;
   let dirty = false;
   let fab = db.lokasyonlar.find((l) => l.fabrika);

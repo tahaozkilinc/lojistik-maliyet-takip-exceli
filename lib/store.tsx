@@ -27,6 +27,8 @@ import {
   lockRemainingMs,
   registerFail,
   clearLock,
+  getDisplayName,
+  setDisplayName,
 } from './auth';
 
 /* ---------- modal & print türleri ---------- */
@@ -46,8 +48,9 @@ export type ModalState =
   | { type: 'lokasyon'; id?: string }
   | { type: 'anlasma'; firmaId: string; anlId?: string }
   | { type: 'navlun'; id?: string }
+  | { type: 'karaNavlun'; id?: string }
   | { type: 'kur' }
-  | { type: 'sifre' }
+  | { type: 'profil' }
   | null;
 
 export type PrintJob =
@@ -66,6 +69,8 @@ export interface UIState {
   haritaFilter: string;
   navlunYil: number;
   navlunHat: string;
+  karaNavlunYil: number;
+  karaNavlunHat: string;
   search: string;
 }
 
@@ -84,6 +89,10 @@ export interface StoreValue {
   logout: () => void;
   /** Şifre değiştirir (mevcut şifre doğrulanır). */
   changePassword: (current: string, next: string) => Promise<{ ok: boolean; error?: string }>;
+  /** Profilde görünen ad. */
+  displayName: string;
+  /** Görünen adı günceller. */
+  updateDisplayName: (name: string) => void;
   ui: UIState;
   setUi: (p: Partial<UIState>) => void;
   go: (view: ViewKey, id?: string) => void;
@@ -158,6 +167,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   const [talepSel, setTalepSel] = useState<Set<string>>(new Set());
   const [authed, setAuthed] = useState(false);
   const [needsSetup, setNeedsSetup] = useState(false);
+  const [displayName, setDisplayNameState] = useState('');
   const toastId = useRef(0);
 
   const [ui, setUiState] = useState<UIState>({
@@ -169,6 +179,8 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     haritaFilter: 'all',
     navlunYil: new Date().getFullYear(),
     navlunHat: '__all',
+    karaNavlunYil: new Date().getFullYear(),
+    karaNavlunHat: '__all',
     search: '',
   });
 
@@ -183,6 +195,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     const credSet = hasCredential();
     setNeedsSetup(!credSet);
     setAuthed(credSet && hasSession());
+    if (credSet) setDisplayNameState(getDisplayName());
     setReady(true);
   }, []);
 
@@ -210,6 +223,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     startSession();
     setNeedsSetup(false);
     setAuthed(true);
+    setDisplayNameState(getDisplayName());
   }, []);
 
   const logout = useCallback(() => {
@@ -231,6 +245,11 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     },
     [],
   );
+
+  const updateDisplayName = useCallback((name: string) => {
+    setDisplayName(name);
+    setDisplayNameState(getDisplayName());
+  }, []);
 
   const setUi = useCallback((p: Partial<UIState>) => {
     setUiState((prev) => ({ ...prev, ...p }));
@@ -306,6 +325,8 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       setupCredential,
       logout,
       changePassword,
+      displayName,
+      updateDisplayName,
       ui,
       setUi,
       go,
@@ -334,6 +355,8 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       setupCredential,
       logout,
       changePassword,
+      displayName,
+      updateDisplayName,
       ui,
       setUi,
       go,

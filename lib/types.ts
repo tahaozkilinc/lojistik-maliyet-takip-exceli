@@ -133,6 +133,20 @@ export interface NavlunKayit {
   createdAt?: string;
 }
 
+export interface KaraNavlunKayit {
+  id: string;
+  donem: string; // YYYY-MM
+  tarih?: string;
+  hat?: string;
+  tasiyici?: string;
+  aracTipi?: string;
+  fiyat?: number | null;
+  birim?: string;
+  paraBirimi?: ParaBirimi;
+  notlar?: string;
+  createdAt?: string;
+}
+
 export interface Kur {
   USD: number;
   EUR: number;
@@ -149,6 +163,7 @@ export interface DB {
   lokasyonlar: Lokasyon[];
   talepler: Talep[];
   denizNavlun: NavlunKayit[];
+  karaNavlun: KaraNavlunKayit[];
   kur: Kur;
   meta: Meta;
 }

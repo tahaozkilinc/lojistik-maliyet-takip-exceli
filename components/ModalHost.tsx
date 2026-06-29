@@ -9,8 +9,9 @@ import { FirmaModal } from './modals/FirmaModal';
 import { LokasyonModal } from './modals/LokasyonModal';
 import { AnlasmaModal } from './modals/AnlasmaModal';
 import { NavlunModal } from './modals/NavlunModal';
+import { KaraNavlunModal } from './modals/KaraNavlunModal';
 import { KurModal } from './modals/KurModal';
-import { SifreModal } from './modals/SifreModal';
+import { ProfilModal } from './modals/ProfilModal';
 
 export function ModalHost() {
   const { modal } = useStore();
@@ -40,10 +41,12 @@ export function ModalHost() {
       return <AnlasmaModal firmaId={modal.firmaId} anlId={modal.anlId} />;
     case 'navlun':
       return <NavlunModal id={modal.id} />;
+    case 'karaNavlun':
+      return <KaraNavlunModal id={modal.id} />;
     case 'kur':
       return <KurModal />;
-    case 'sifre':
-      return <SifreModal />;
+    case 'profil':
+      return <ProfilModal />;
     default:
       return null;
   }

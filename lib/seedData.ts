@@ -2782,6 +2782,7 @@ export const embeddedData: DB = {
     }
   ],
   "denizNavlun": [],
+  "karaNavlun": [],
   "kur": {
     "USD": 46.52,
     "EUR": 52.85

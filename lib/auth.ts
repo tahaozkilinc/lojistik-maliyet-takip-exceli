@@ -21,6 +21,7 @@ export interface Cred {
   salt: string;
   hash: string;
   iter: number;
+  displayName?: string;
 }
 
 function buf2hex(buf: ArrayBuffer): string {
@@ -73,7 +74,22 @@ export function hasCredential(): boolean {
 export async function setCredential(user: string, password: string): Promise<void> {
   const salt = randomSaltHex();
   const hash = await derive(password, salt, ITERATIONS);
-  localStorage.setItem(AUTH_KEY, JSON.stringify({ user: user.trim(), salt, hash, iter: ITERATIONS }));
+  const prev = getCredential();
+  localStorage.setItem(
+    AUTH_KEY,
+    JSON.stringify({ user: user.trim(), salt, hash, iter: ITERATIONS, displayName: prev?.displayName || '' }),
+  );
+}
+
+/** Görünen adı günceller (şifre/hash'e dokunmaz). */
+export function getDisplayName(): string {
+  const c = getCredential();
+  return (c && c.displayName) || (c && c.user) || '';
+}
+export function setDisplayName(name: string): void {
+  const c = getCredential();
+  if (!c) return;
+  localStorage.setItem(AUTH_KEY, JSON.stringify({ ...c, displayName: name.trim() }));
 }
 
 export async function verifyCredential(user: string, password: string): Promise<boolean> {

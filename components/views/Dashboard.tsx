@@ -2,7 +2,7 @@
 import React from 'react';
 import { useStore } from '@/lib/store';
 import { money, fmt, fmtTon, dt } from '@/lib/format';
-import { qTotal, toTRY, bestQuoteId, firmName } from '@/lib/calc';
+import { qTotal, bestQuoteId, firmName } from '@/lib/calc';
 import { StatusBadge } from '@/components/StatusBadge';
 import { Icon } from '@/components/Icon';
 import { EmptyTalep } from './EmptyTalep';
@@ -20,19 +20,12 @@ export function Dashboard() {
     if (q) onayTutar += qTotal(db, q, x);
   });
 
-  let tasarruf = 0;
-  T.filter((x) => x.secilenTeklifId && x.teklifler.length > 1).forEach((x) => {
-    const vals = x.teklifler.map((q) => toTRY(db, q.fiyat, q.paraBirimi));
-    const sel = x.teklifler.find((q) => q.id === x.secilenTeklifId);
-    if (sel) tasarruf += (Math.max(...vals) - toTRY(db, sel.fiyat, sel.paraBirimi)) * (Number(x.miktar) || 0);
-  });
-
   const son = [...T].sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime()).slice(0, 6);
   const bekleyen = T.filter((x) => x.durum === 'onayda');
 
   return (
     <>
-      <div className="stat-grid">
+      <div className="stat-grid" style={{ gridTemplateColumns: 'repeat(3,1fr)' }}>
         <div className="stat s1">
           <div className="k">Fiyat Toplanıyor</div>
           <div className="v">{toplama}</div>
@@ -49,13 +42,6 @@ export function Dashboard() {
             {money(onayTutar, 'TRY')}
           </div>
           <div className="d">{onaylandi} onaylı talep</div>
-        </div>
-        <div className="stat s4">
-          <div className="k">Sağlanan Tasarruf</div>
-          <div className="v" style={{ fontSize: 23 }}>
-            {money(tasarruf, 'TRY')}
-          </div>
-          <div className="d">en yüksek tekliflere göre</div>
         </div>
       </div>
 

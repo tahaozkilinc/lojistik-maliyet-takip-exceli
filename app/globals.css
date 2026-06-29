@@ -254,6 +254,10 @@ tbody tr:last-child td{border-bottom:none}
   #printArea,#printArea *{visibility:visible}
   #printArea{display:block !important;position:absolute;left:0;top:0;width:100%;padding:0}
   .no-print{display:none !important}
+  /* visibility:hidden tek başına .app/.overlay/.toast-wrap'i akıştan çıkarmaz;
+     bu kutular (örn. .app{min-height:100vh}) görünmez halde yer kaplamaya
+     devam ederek fazladan boş sayfa basılmasına yol açar. */
+  .app,.overlay,.toast-wrap{display:none !important}
   .report-sheet.wideform{max-width:none !important;width:100% !important;padding:0 !important;font-size:10px}
   .report-sheet.wideform h1{font-size:17px}
   .report-sheet table.grid{table-layout:fixed;width:100%}
