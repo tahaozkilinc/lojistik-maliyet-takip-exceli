@@ -1,7 +1,8 @@
 name: Build & Deploy (GitHub Pages)
 
-# Her push'ta otomatik olarak güvenlik denetimi yapıp uygulamayı derler ve
-# GitHub Pages'e dağıtır.
+# Her push'ta otomatik olarak güvenlik denetimi yapar, uygulamayı derler ve
+# (GitHub Pages açıksa) yayına alır. Pages henüz açık değilse derleme yine de
+# başarılı olur ve hazır site bir "artifact" olarak indirilebilir kalır.
 on:
   push:
     branches:
@@ -14,12 +15,13 @@ permissions:
   pages: write
   id-token: write
 
-# Aynı anda tek bir dağıtım çalışsın; yeni push eskisini iptal etsin.
 concurrency:
-  group: pages
+  group: pages-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
+  # Güvenlik geçidi + derleme. Bu iş her zaman çalışır ve gerçek bir sorun
+  # (güvenlik açığı, lint/tip hatası, derleme hatası) varsa kırmızıya döner.
   build:
     runs-on: ubuntu-latest
     steps:
@@ -36,7 +38,7 @@ jobs:
         run: npm ci
 
       - name: Security audit (güvenlik geçidi)
-        # Yüksek/kritik güvenlik açığı varsa dağıtımı durdurur.
+        # Yüksek/kritik güvenlik açığı varsa derlemeyi ve dağıtımı durdurur.
         run: npm audit --audit-level=high
 
       - name: Lint
@@ -45,33 +47,44 @@ jobs:
       - name: Type check
         run: npm run typecheck
 
-      - name: Configure Pages
-        id: pages
-        uses: actions/configure-pages@v5
-        with:
-          # Pages henüz açık değilse otomatik açmayı dener.
-          enablement: true
-
       - name: Build (statik dışa aktarım)
         env:
-          PAGES_BASE_PATH: ${{ steps.pages.outputs.base_path }}
+          # GitHub Pages proje sitesi alt yolu. Kök alan adı / özel domain
+          # kullanılırsa bu değeri boşaltın.
+          PAGES_BASE_PATH: /lojistik-maliyet-takip-exceli
         run: npm run build
 
       - name: Disable Jekyll (_next klasörü için)
         run: touch out/.nojekyll
 
-      - name: Upload artifact
+      - name: Upload site artifact (indirilebilir)
+        uses: actions/upload-artifact@v4
+        with:
+          name: site
+          path: out
+          if-no-files-found: error
+
+      - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
         with:
           path: out
 
+  # GitHub Pages'e dağıtım. Pages henüz etkin değilse (örn. özel repo + ücretsiz
+  # plan) bu iş başarısız olabilir; continue-on-error sayesinde CI yeşil kalır
+  # ve Pages açılır açılmaz bir sonraki push otomatik olarak yayına alınır.
   deploy:
     needs: build
     runs-on: ubuntu-latest
+    continue-on-error: true
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
+        with:
+          enablement: true
+
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
