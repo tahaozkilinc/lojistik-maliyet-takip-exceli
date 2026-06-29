@@ -1,0 +1,77 @@
+name: Build & Deploy (GitHub Pages)
+
+# Her push'ta otomatik olarak güvenlik denetimi yapıp uygulamayı derler ve
+# GitHub Pages'e dağıtır.
+on:
+  push:
+    branches:
+      - main
+      - claude/confident-babbage-ow7f7l
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Aynı anda tek bir dağıtım çalışsın; yeni push eskisini iptal etsin.
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Security audit (güvenlik geçidi)
+        # Yüksek/kritik güvenlik açığı varsa dağıtımı durdurur.
+        run: npm audit --audit-level=high
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Type check
+        run: npm run typecheck
+
+      - name: Configure Pages
+        id: pages
+        uses: actions/configure-pages@v5
+        with:
+          # Pages henüz açık değilse otomatik açmayı dener.
+          enablement: true
+
+      - name: Build (statik dışa aktarım)
+        env:
+          PAGES_BASE_PATH: ${{ steps.pages.outputs.base_path }}
+        run: npm run build
+
+      - name: Disable Jekyll (_next klasörü için)
+        run: touch out/.nojekyll
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: out
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
