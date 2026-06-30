@@ -1,180 +1,77 @@
 /* ============================================================
-   İstemci tarafı giriş kapısı (auth gate).
+   Kimlik doğrulama — Supabase Auth (gerçek, sunucu taraflı çoklu
+   kullanıcı kimlik doğrulaması).
 
-   NOT: Bu, statik/çevrimdışı bir uygulama için bir ERİŞİM KAPISIDIR;
-   sunucu düzeyinde kırılamaz bir kimlik doğrulama değildir (arka uç yoktur).
-   Yine de şifre düz metin saklanmaz: PBKDF2 (SHA-256, 150k yineleme, rastgele
-   tuz) ile türetilmiş özet saklanır, sabit-zamanlı karşılaştırma ve kaba
-   kuvvet denemelerine karşı kilitleme uygulanır. Gerçek kimlik doğrulama için
-   bir arka uç (örn. Supabase Auth) gerekir.
+   Şifreler Supabase tarafında güvenli biçimde (bcrypt) saklanır ve
+   doğrulanır; oturum belirteçleri (JWT) Supabase istemcisinin kendi
+   güvenli depolama anahtarı altında tutulur ve otomatik yenilenir.
+   Kaba kuvvet denemelerine karşı hız sınırlaması Supabase'in sunucu
+   tarafında uygulanır (istemci tarafından atlatılamaz).
+
+   Yeni kullanıcı oluşturma: Supabase Dashboard → Authentication →
+   Users → Add user. Uygulama içinde kayıt ekranı yoktur ve OLMAYACAKTIR.
    ============================================================ */
+import { supabase } from './supabaseClient';
 
-import { DEFAULT_USERNAME, DEFAULT_PASSWORD } from './authConfig';
-
-const AUTH_KEY = 'nfy_auth_v1';
-const SESSION_KEY = 'nfy_session_v1';
-const LOCK_KEY = 'nfy_auth_lock_v1';
-const ITERATIONS = 150000;
-const MAX_FAILS = 5;
-const LOCK_MS = 30000;
-
-export interface Cred {
-  user: string;
-  salt: string;
-  hash: string;
-  iter: number;
-  displayName?: string;
+export interface AuthUser {
+  id: string;
+  email: string;
+  displayName: string;
 }
 
-function buf2hex(buf: ArrayBuffer): string {
-  return [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, '0')).join('');
-}
-function hex2buf(hex: string): Uint8Array {
-  const a = new Uint8Array(hex.length / 2);
-  for (let i = 0; i < a.length; i++) a[i] = parseInt(hex.substr(i * 2, 2), 16);
-  return a;
-}
-function randomSaltHex(): string {
-  const a = new Uint8Array(16);
-  crypto.getRandomValues(a);
-  return buf2hex(a.buffer);
+function toAuthUser(u: { id: string; email?: string; user_metadata?: Record<string, unknown> } | null | undefined): AuthUser | null {
+  if (!u) return null;
+  const meta = u.user_metadata || {};
+  const displayName = typeof meta.displayName === 'string' && meta.displayName.trim() ? meta.displayName : u.email || '';
+  return { id: u.id, email: u.email || '', displayName };
 }
 
-async function derive(password: string, saltHex: string, iterations: number): Promise<string> {
-  const enc = new TextEncoder();
-  const key = await crypto.subtle.importKey('raw', enc.encode(password), 'PBKDF2', false, ['deriveBits']);
-  const bits = await crypto.subtle.deriveBits(
-    { name: 'PBKDF2', salt: hex2buf(saltHex), iterations, hash: 'SHA-256' },
-    key,
-    256,
-  );
-  return buf2hex(bits);
+/** Geçerli oturumdaki kullanıcıyı döndürür (yoksa null). */
+export async function getCurrentUser(): Promise<AuthUser | null> {
+  const { data } = await supabase.auth.getUser();
+  return toAuthUser(data.user);
 }
 
-/** Sabit zamanlı hex karşılaştırma (zamanlama sızıntısını azaltır). */
-function timingSafeEqualHex(a: string, b: string): boolean {
-  if (a.length !== b.length) return false;
-  let r = 0;
-  for (let i = 0; i < a.length; i++) r |= a.charCodeAt(i) ^ b.charCodeAt(i);
-  return r === 0;
+/** Oturum durumu değişikliklerini dinler; abonelikten çıkma fonksiyonu döndürür. */
+export function onAuthChange(cb: (user: AuthUser | null) => void): () => void {
+  const { data } = supabase.auth.onAuthStateChange((_event, session) => {
+    cb(toAuthUser(session?.user));
+  });
+  return () => data.subscription.unsubscribe();
 }
 
-export function getCredential(): Cred | null {
-  try {
-    const r = localStorage.getItem(AUTH_KEY);
-    return r ? (JSON.parse(r) as Cred) : null;
-  } catch {
-    return null;
-  }
+/** Ağ/bağlantı hatasını (sunucuya hiç ulaşılamadı) yanlış kimlik bilgisinden ayırt eder. */
+function describeAuthError(error: { status?: number; message?: string }, invalidCredsMsg: string): string {
+  const isNetworkError = !error.status || /fetch|network/i.test(error.message || '');
+  if (isNetworkError) return 'Bağlantı hatası. İnternet bağlantınızı kontrol edip tekrar deneyin.';
+  return invalidCredsMsg;
 }
 
-export function hasCredential(): boolean {
-  const c = getCredential();
-  return !!(c && c.user && c.hash && c.salt);
+export async function login(email: string, password: string): Promise<{ ok: boolean; error?: string }> {
+  if (!email.trim() || !password) return { ok: false, error: 'E-posta ve şifre girin.' };
+  const { error } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
+  if (error) return { ok: false, error: describeAuthError(error, 'E-posta veya şifre hatalı.') };
+  return { ok: true };
 }
 
-export async function setCredential(user: string, password: string): Promise<void> {
-  const salt = randomSaltHex();
-  const hash = await derive(password, salt, ITERATIONS);
-  const prev = getCredential();
-  localStorage.setItem(
-    AUTH_KEY,
-    JSON.stringify({ user: user.trim(), salt, hash, iter: ITERATIONS, displayName: prev?.displayName || '' }),
-  );
+export async function logout(): Promise<void> {
+  await supabase.auth.signOut();
 }
 
-/**
- * Kayıt/hesap oluşturma ekranı yok: henüz kimlik bilgisi yoksa
- * authConfig.ts'de tanımlı sabit kullanıcı adı/şifre ile otomatik
- * olarak oluşturulur (yalnızca PBKDF2 özeti saklanır).
- */
-export async function ensureDefaultCredential(): Promise<void> {
-  if (hasCredential()) return;
-  await setCredential(DEFAULT_USERNAME, DEFAULT_PASSWORD);
+/** Şifre değiştirir; önce mevcut şifre yeniden giriş denenerek doğrulanır. */
+export async function changePassword(current: string, next: string): Promise<{ ok: boolean; error?: string }> {
+  const { data } = await supabase.auth.getUser();
+  const email = data.user?.email;
+  if (!email) return { ok: false, error: 'Oturum bulunamadı.' };
+  if (!next || next.length < 6) return { ok: false, error: 'Yeni şifre en az 6 karakter olmalı.' };
+  const { error: verifyErr } = await supabase.auth.signInWithPassword({ email, password: current });
+  if (verifyErr) return { ok: false, error: describeAuthError(verifyErr, 'Mevcut şifre hatalı.') };
+  const { error } = await supabase.auth.updateUser({ password: next });
+  if (error) return { ok: false, error: describeAuthError(error, error.message || 'Şifre güncellenemedi.') };
+  return { ok: true };
 }
 
-/** Görünen adı günceller (şifre/hash'e dokunmaz). */
-export function getDisplayName(): string {
-  const c = getCredential();
-  return (c && c.displayName) || (c && c.user) || '';
-}
-export function setDisplayName(name: string): void {
-  const c = getCredential();
-  if (!c) return;
-  localStorage.setItem(AUTH_KEY, JSON.stringify({ ...c, displayName: name.trim() }));
-}
-
-export async function verifyCredential(user: string, password: string): Promise<boolean> {
-  const c = getCredential();
-  if (!c) return false;
-  if (user.trim().toLowerCase() !== (c.user || '').toLowerCase()) return false;
-  const h = await derive(password, c.salt, c.iter || ITERATIONS);
-  return timingSafeEqualHex(h, c.hash);
-}
-
-/* ---------- oturum (sekme kapanınca biter) ---------- */
-export function hasSession(): boolean {
-  try {
-    return sessionStorage.getItem(SESSION_KEY) === '1';
-  } catch {
-    return false;
-  }
-}
-export function startSession(): void {
-  try {
-    sessionStorage.setItem(SESSION_KEY, '1');
-  } catch {
-    /* yok say */
-  }
-}
-export function endSession(): void {
-  try {
-    sessionStorage.removeItem(SESSION_KEY);
-  } catch {
-    /* yok say */
-  }
-}
-
-/* ---------- kaba kuvvet kilidi ---------- */
-interface Lock {
-  fails: number;
-  until: number;
-}
-function getLock(): Lock {
-  try {
-    const r = localStorage.getItem(LOCK_KEY);
-    return r ? (JSON.parse(r) as Lock) : { fails: 0, until: 0 };
-  } catch {
-    return { fails: 0, until: 0 };
-  }
-}
-function setLock(l: Lock): void {
-  try {
-    localStorage.setItem(LOCK_KEY, JSON.stringify(l));
-  } catch {
-    /* yok say */
-  }
-}
-/** Kalan kilit süresi (ms). 0 ise kilit yok. */
-export function lockRemainingMs(): number {
-  return Math.max(0, getLock().until - Date.now());
-}
-/** Başarısız denemeyi kaydeder; kilitlenirse kalan süreyi (ms) döndürür. */
-export function registerFail(): number {
-  const l = getLock();
-  const fails = l.fails + 1;
-  if (fails >= MAX_FAILS) {
-    const until = Date.now() + LOCK_MS;
-    setLock({ fails: 0, until });
-    return LOCK_MS;
-  }
-  setLock({ fails, until: 0 });
-  return 0;
-}
-export function clearLock(): void {
-  try {
-    localStorage.removeItem(LOCK_KEY);
-  } catch {
-    /* yok say */
-  }
+/** Görünen adı günceller (Supabase kullanıcı meta verisinde tutulur). */
+export async function updateDisplayName(name: string): Promise<void> {
+  await supabase.auth.updateUser({ data: { displayName: name.trim() } });
 }

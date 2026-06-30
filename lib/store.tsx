@@ -1,6 +1,7 @@
 'use client';
 /* ============================================================
-   Merkezi durum (state) yönetimi — localStorage kalıcılığı,
+   Merkezi durum (state) yönetimi — Supabase ile merkezi kalıcılık
+   (gerçek çoklu kullanıcı), localStorage çevrimdışı önbellek olarak,
    bildirimler (toast), tema, gezinme, modal ve yazdırma.
    ============================================================ */
 import React, {
@@ -16,21 +17,17 @@ import type { DB } from './types';
 import { LS_KEY, THEME_KEY, EMBED_FLAG_KEY, type ViewKey } from './constants';
 import { emptyDB, migrate, normalizeDB, seedIfEmpty } from './seed';
 import { embeddedData, EMBED_VERSION } from './seedData';
+import { supabase } from './supabaseClient';
 import {
-  hasCredential,
-  hasSession,
-  getCredential,
-  setCredential,
-  verifyCredential,
-  startSession,
-  endSession,
-  lockRemainingMs,
-  registerFail,
-  clearLock,
-  getDisplayName,
-  setDisplayName,
-  ensureDefaultCredential,
+  login as authLogin,
+  logout as authLogout,
+  changePassword as authChangePassword,
+  updateDisplayName as authUpdateDisplayName,
+  getCurrentUser,
+  onAuthChange,
 } from './auth';
+
+const REMOTE_ROW_ID = 1;
 
 /* ---------- modal & print türleri ---------- */
 export type ModalState =
@@ -80,8 +77,8 @@ export interface StoreValue {
   ready: boolean;
   /** Oturum açık mı. */
   authed: boolean;
-  /** Kullanıcı adı/şifre ile giriş. */
-  login: (user: string, password: string) => Promise<{ ok: boolean; error?: string }>;
+  /** E-posta/şifre ile giriş (Supabase Auth). */
+  login: (email: string, password: string) => Promise<{ ok: boolean; error?: string }>;
   /** Oturumu kapatır. */
   logout: () => void;
   /** Şifre değiştirir (mevcut şifre doğrulanır). */
@@ -89,7 +86,7 @@ export interface StoreValue {
   /** Profilde görünen ad. */
   displayName: string;
   /** Görünen adı günceller. */
-  updateDisplayName: (name: string) => void;
+  updateDisplayName: (name: string) => Promise<void>;
   ui: UIState;
   setUi: (p: Partial<UIState>) => void;
   go: (view: ViewKey, id?: string) => void;
@@ -120,7 +117,7 @@ export function useStore(): StoreValue {
   return ctx;
 }
 
-function save(db: DB) {
+function saveLocalCache(db: DB) {
   try {
     localStorage.setItem(LS_KEY, JSON.stringify(db));
   } catch {
@@ -129,7 +126,7 @@ function save(db: DB) {
 }
 
 /** Orijinal yükleme akışı: load → applyEmbedded → (yoksa) seedIfEmpty → migrate. */
-function initialLoad(): DB {
+function loadLocalCache(): DB {
   let db = emptyDB();
   try {
     const r = localStorage.getItem(LS_KEY);
@@ -149,8 +146,22 @@ function initialLoad(): DB {
   }
   if (!applied) seedIfEmpty(db);
   migrate(db);
-  save(db);
+  saveLocalCache(db);
   return db;
+}
+
+/** Merkezi (Supabase) veriyi okur; satır henüz yoksa null döner. */
+async function fetchRemoteDB(): Promise<DB | null> {
+  const { data, error } = await supabase.from('app_db').select('data').eq('id', REMOTE_ROW_ID).maybeSingle();
+  if (error) throw error;
+  if (!data) return null;
+  return normalizeDB(data.data);
+}
+
+/** Merkezi (Supabase) veriyi yazar (upsert). */
+async function pushRemoteDB(db: DB): Promise<void> {
+  const { error } = await supabase.from('app_db').upsert({ id: REMOTE_ROW_ID, data: db });
+  if (error) throw error;
 }
 
 export function StoreProvider({ children }: { children: React.ReactNode }) {
@@ -165,6 +176,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   const [authed, setAuthed] = useState(false);
   const [displayName, setDisplayNameState] = useState('');
   const toastId = useRef(0);
+  const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const [ui, setUiState] = useState<UIState>({
     view: 'dashboard',
@@ -180,63 +192,113 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     search: '',
   });
 
-  // İlk istemci yüklemesi (localStorage yalnızca tarayıcıda).
+  // Tema (auth'tan bağımsız, anında uygulanır).
   useEffect(() => {
-    (async () => {
-      const loaded = initialLoad();
-      setDb(loaded);
-      const t = localStorage.getItem(THEME_KEY) === 'dark' ? 'dark' : 'light';
-      setTheme(t);
-      document.documentElement.setAttribute('data-theme', t);
-      // Kayıt ekranı yok: kimlik bilgisi yoksa authConfig.ts'deki varsayılanla oluştur.
-      await ensureDefaultCredential();
-      setAuthed(hasSession());
-      setDisplayNameState(getDisplayName());
-      setReady(true);
-    })();
+    const t = localStorage.getItem(THEME_KEY) === 'dark' ? 'dark' : 'light';
+    setTheme(t);
+    document.documentElement.setAttribute('data-theme', t);
   }, []);
 
-  const login = useCallback(async (user: string, password: string): Promise<{ ok: boolean; error?: string }> => {
-    const lock = lockRemainingMs();
-    if (lock > 0) return { ok: false, error: `Çok fazla hatalı deneme. ${Math.ceil(lock / 1000)} sn sonra tekrar deneyin.` };
-    if (!user.trim() || !password) return { ok: false, error: 'Kullanıcı adı ve şifre girin.' };
-    const ok = await verifyCredential(user, password);
-    if (ok) {
-      clearLock();
-      startSession();
-      setAuthed(true);
-      return { ok: true };
-    }
-    const locked = registerFail();
-    return {
-      ok: false,
-      error: locked > 0 ? `Çok fazla hatalı deneme. ${Math.ceil(locked / 1000)} sn kilitlendi.` : 'Kullanıcı adı veya şifre hatalı.',
+  // Supabase oturum durumu: ilk yükleme + canlı değişiklik dinleyicisi.
+  useEffect(() => {
+    let active = true;
+    (async () => {
+      let user = null;
+      try {
+        user = await getCurrentUser();
+      } catch {
+        // Ağ hatası: oturumsuz kabul edilir, giriş ekranı gösterilir.
+      }
+      if (!active) return;
+      setAuthed(!!user);
+      setDisplayNameState(user?.displayName || '');
+      if (!user) setReady(true);
+    })();
+    const unsubscribe = onAuthChange((user) => {
+      setAuthed(!!user);
+      setDisplayNameState(user?.displayName || '');
+      if (!user) {
+        setDb(emptyDB());
+        setReady(true);
+      }
+    });
+    return () => {
+      active = false;
+      unsubscribe();
     };
   }, []);
 
+  // Oturum açıldığında: merkezi veriyi yükle; ilk kurulumda yerel önbellekten taşı.
+  useEffect(() => {
+    if (!authed) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const remote = await fetchRemoteDB();
+        if (cancelled) return;
+        if (remote) {
+          setDb(remote);
+          saveLocalCache(remote);
+        } else {
+          const local = loadLocalCache();
+          setDb(local);
+          await pushRemoteDB(local);
+        }
+      } catch {
+        // Ağ/izin hatası: yerel önbellekle devam et (çevrimdışı erişim kaybolmaz).
+        const local = loadLocalCache();
+        if (!cancelled) setDb(local);
+      } finally {
+        if (!cancelled) setReady(true);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [authed]);
+
+  // Canlı eşitleme: başka bir kullanıcı/sekme veriyi değiştirirse anında yansıt.
+  useEffect(() => {
+    if (!authed) return;
+    const channel = supabase
+      .channel('app_db_changes')
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'app_db', filter: `id=eq.${REMOTE_ROW_ID}` },
+        (payload) => {
+          const incoming = normalizeDB((payload.new as { data: unknown }).data);
+          setDb(incoming);
+          saveLocalCache(incoming);
+        },
+      )
+      .subscribe();
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [authed]);
+
+  const login = useCallback(async (email: string, password: string): Promise<{ ok: boolean; error?: string }> => {
+    return authLogin(email, password);
+  }, []);
+
   const logout = useCallback(() => {
-    endSession();
-    setAuthed(false);
+    authLogout().catch(() => {
+      /* ağ hatası — yerel oturum durumu yine de temizlenir (onAuthChange ile) */
+    });
     setModal(null);
     setUiState((prev) => ({ ...prev, view: 'dashboard', detailId: null }));
   }, []);
 
   const changePassword = useCallback(
     async (current: string, next: string): Promise<{ ok: boolean; error?: string }> => {
-      if (!hasCredential()) return { ok: false, error: 'Önce bir şifre belirleyin.' };
-      const me = getCredential();
-      const ok = await verifyCredential(me?.user || '', current);
-      if (!ok) return { ok: false, error: 'Mevcut şifre hatalı.' };
-      if (!next || next.length < 4) return { ok: false, error: 'Yeni şifre en az 4 karakter olmalı.' };
-      await setCredential(me?.user || '', next);
-      return { ok: true };
+      return authChangePassword(current, next);
     },
     [],
   );
 
-  const updateDisplayName = useCallback((name: string) => {
-    setDisplayName(name);
-    setDisplayNameState(getDisplayName());
+  const updateDisplayName = useCallback(async (name: string) => {
+    await authUpdateDisplayName(name);
+    setDisplayNameState(name.trim());
   }, []);
 
   const setUi = useCallback((p: Partial<UIState>) => {
@@ -252,23 +314,40 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     setModal(null);
   }, []);
 
-  const mutate = useCallback((fn: (db: DB) => void): DB => {
-    let next!: DB;
-    setDb((prev) => {
-      next = structuredClone(prev);
-      fn(next);
-      save(next);
-      return next;
-    });
-    return next;
+  const scheduleRemoteSave = useCallback((next: DB) => {
+    if (saveTimer.current) clearTimeout(saveTimer.current);
+    saveTimer.current = setTimeout(() => {
+      pushRemoteDB(next).catch(() => {
+        /* ağ hatası — yerel önbellek korunur, bir sonraki değişiklikte yeniden denenir */
+      });
+    }, 600);
   }, []);
 
-  const replaceDB = useCallback((newDb: DB) => {
-    const cloned = structuredClone(newDb);
-    migrate(cloned);
-    save(cloned);
-    setDb(cloned);
-  }, []);
+  const mutate = useCallback(
+    (fn: (db: DB) => void): DB => {
+      let next!: DB;
+      setDb((prev) => {
+        next = structuredClone(prev);
+        fn(next);
+        saveLocalCache(next);
+        return next;
+      });
+      scheduleRemoteSave(next);
+      return next;
+    },
+    [scheduleRemoteSave],
+  );
+
+  const replaceDB = useCallback(
+    (newDb: DB) => {
+      const cloned = structuredClone(newDb);
+      migrate(cloned);
+      saveLocalCache(cloned);
+      setDb(cloned);
+      scheduleRemoteSave(cloned);
+    },
+    [scheduleRemoteSave],
+  );
 
   const toast = useCallback((msg: string, type: '' | 'ok' | 'err' = '') => {
     const id = ++toastId.current;

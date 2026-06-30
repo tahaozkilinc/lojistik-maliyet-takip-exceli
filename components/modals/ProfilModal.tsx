@@ -18,8 +18,8 @@ export function ProfilModal() {
   const [pwErr, setPwErr] = useState('');
   const [pwBusy, setPwBusy] = useState(false);
 
-  function saveName() {
-    updateDisplayName(name);
+  async function saveName() {
+    await updateDisplayName(name);
     toast('Profil güncellendi', 'ok');
   }
 

@@ -40,16 +40,17 @@ export function LoginScreen() {
         </div>
 
         <h2 className="login-h">Sisteme Giriş</h2>
-        <p className="login-desc">Devam etmek için kullanıcı adı ve şifrenizi girin.</p>
+        <p className="login-desc">Devam etmek için e-posta adresinizi ve şifrenizi girin.</p>
 
         <div className="field">
-          <label>Kullanıcı Adı</label>
+          <label>E-posta</label>
           <input
             autoFocus
-            autoComplete="username"
+            type="email"
+            autoComplete="email"
             value={user}
             onChange={(e) => setUser(e.target.value)}
-            placeholder="kullanıcı adı"
+            placeholder="ornek@sirket.com"
           />
         </div>
         <div className="field">
@@ -70,7 +71,7 @@ export function LoginScreen() {
         </button>
 
         <div className="login-foot">
-          Veriler ve giriş bilgileri yalnızca bu tarayıcıda saklanır. Şifreniz düz metin olarak değil, güvenli özet (PBKDF2) biçiminde tutulur.
+          Veriler tüm kullanıcılar arasında merkezi olarak paylaşılır. Giriş bilgileriniz Supabase tarafından güvenli biçimde saklanır ve doğrulanır.
         </div>
       </form>
     </div>
