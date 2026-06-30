@@ -216,6 +216,14 @@ export function Talepler() {
                 </div>
               )}
             </>
+          ) : db.talepler.length ? (
+            <div className="empty" style={{ padding: 40 }}>
+              <h3>Bu filtrede/aramada talep bulunamadı</h3>
+              <p>Verileriniz kaybolmadı — yalnızca aktif filtre veya arama kutusu hiçbir talebe uymuyor.</p>
+              <button className="btn" onClick={() => setUi({ talepFilter: 'all', search: '' })}>
+                Filtreyi ve Aramayı Temizle
+              </button>
+            </div>
           ) : (
             <EmptyTalep onNew={() => openModal({ type: 'talep' })} />
           )}

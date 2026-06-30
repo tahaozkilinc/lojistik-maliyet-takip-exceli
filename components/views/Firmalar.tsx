@@ -50,6 +50,15 @@ export function Firmalar() {
           Tüm Fiyat Listesi (Excel)
         </button>
       </div>
+      {!list.length && (
+        <div className="empty" style={{ padding: 40 }}>
+          <h3>Bu aramada firma bulunamadı</h3>
+          <p>Verileriniz kaybolmadı — yalnızca arama kutusu hiçbir firmaya uymuyor.</p>
+          <button className="btn" onClick={() => setUi({ search: '' })}>
+            Aramayı Temizle
+          </button>
+        </div>
+      )}
       <div className="firm-grid">
         {list.map((f) => {
           const teklifSay = db.talepler.reduce((s, t) => s + t.teklifler.filter((q) => q.firmaId === f.id).length, 0);
