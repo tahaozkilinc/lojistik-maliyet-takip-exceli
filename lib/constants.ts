@@ -5,6 +5,8 @@
 export const LS_KEY = 'nakliye_fiyat_yonetim_v1';
 export const THEME_KEY = 'nfy_theme';
 export const EMBED_FLAG_KEY = 'nfy_embed';
+/** Henüz merkezi veritabanına kaydedilmemiş yerel değişiklik var mı (senkronizasyon kaybını önlemek için). */
+export const DIRTY_KEY = 'nfy_unsynced';
 
 export const PARA: Record<string, string> = { TRY: '₺', USD: '$', EUR: '€' };
 export const PARA_KODLARI = ['TRY', 'USD', 'EUR'];

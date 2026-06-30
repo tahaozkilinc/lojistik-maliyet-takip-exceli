@@ -14,7 +14,7 @@ import React, {
   useState,
 } from 'react';
 import type { DB } from './types';
-import { LS_KEY, THEME_KEY, EMBED_FLAG_KEY, type ViewKey } from './constants';
+import { LS_KEY, THEME_KEY, EMBED_FLAG_KEY, DIRTY_KEY, type ViewKey } from './constants';
 import { emptyDB, migrate, normalizeDB, seedIfEmpty } from './seed';
 import { embeddedData, EMBED_VERSION } from './seedData';
 import { supabase } from './supabaseClient';
@@ -127,6 +127,16 @@ function saveLocalCache(db: DB) {
   }
 }
 
+/** Merkezi veritabanına henüz kaydedilmemiş yerel değişiklik olduğunu işaretler/temizler. */
+function markDirty(isDirty: boolean) {
+  try {
+    if (isDirty) localStorage.setItem(DIRTY_KEY, '1');
+    else localStorage.removeItem(DIRTY_KEY);
+  } catch {
+    /* yok say */
+  }
+}
+
 /** Orijinal yükleme akışı: load → applyEmbedded → (yoksa) seedIfEmpty → migrate. */
 function loadLocalCache(): DB {
   let db = emptyDB();
@@ -179,6 +189,9 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   const [displayName, setDisplayNameState] = useState('');
   const toastId = useRef(0);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  /** Henüz merkezi veritabanına onaylanmış şekilde kaydedilmemiş yerel değişiklik var mı. */
+  const dirtyRef = useRef(false);
+  const saveFailNotified = useRef(false);
 
   const [ui, setUiState] = useState<UIState>({
     view: 'dashboard',
@@ -236,6 +249,32 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     let cancelled = false;
     (async () => {
       try {
+        // Önceki oturumda bir değişiklik merkeze hiç kaydedilememiş olabilir (ör. ağ
+        // hatası, beklenmedik kapanma). Böyle bir durumda sunucudaki (eski) veriyi
+        // körlemesine kabul edip yerel değişikliği kaybetmemek için önce yerel
+        // önbelleği merkeze göndermeyi dener, ardından merkezi veriyi kullanır.
+        let unsynced = false;
+        try {
+          unsynced = localStorage.getItem(DIRTY_KEY) === '1';
+        } catch {
+          /* yok say */
+        }
+        if (unsynced) {
+          const local = loadLocalCache();
+          if (cancelled) return;
+          dirtyRef.current = true;
+          setDb(local);
+          try {
+            await pushRemoteDB(local);
+            dirtyRef.current = false;
+            markDirty(false);
+          } catch {
+            // Yine kaydedilemedi: yerel veriyle devam, bir sonraki değişiklikte tekrar denenecek
+            // (dirtyRef true kalır — canlı eşitleme bu eski veriyi üzerine yazmaz).
+          }
+          if (!cancelled) setReady(true);
+          return;
+        }
         const remote = await fetchRemoteDB();
         if (cancelled) return;
         if (remote) {
@@ -268,6 +307,11 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         'postgres_changes',
         { event: 'UPDATE', schema: 'public', table: 'app_db', filter: `id=eq.${REMOTE_ROW_ID}` },
         (payload) => {
+          // Henüz merkeze kaydedilmemiş yerel bir değişiklik varsa, gelen (muhtemelen
+          // eski/sıraya girmiş) güncellemeyi uygulamak o değişikliği üzerine yazıp
+          // kaybedebilir (talebin "kapanması"na yol açan tam da bu yarış durumuydu).
+          // Yerel değişiklik kaydı onaylanana kadar gelen olayı atla.
+          if (dirtyRef.current) return;
           const incoming = normalizeDB((payload.new as { data: unknown }).data);
           setDb(incoming);
           saveLocalCache(incoming);
@@ -316,14 +360,42 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     setModal(null);
   }, []);
 
-  const scheduleRemoteSave = useCallback((next: DB) => {
-    if (saveTimer.current) clearTimeout(saveTimer.current);
-    saveTimer.current = setTimeout(() => {
-      pushRemoteDB(next).catch(() => {
-        /* ağ hatası — yerel önbellek korunur, bir sonraki değişiklikte yeniden denenir */
-      });
-    }, 600);
+  const toast = useCallback((msg: string, type: '' | 'ok' | 'err' = '') => {
+    const id = ++toastId.current;
+    setToasts((prev) => [...prev, { id, msg, type }]);
+    setTimeout(() => {
+      setToasts((prev) => prev.filter((t) => t.id !== id));
+    }, 3050);
   }, []);
+
+  const scheduleRemoteSave = useCallback(
+    (next: DB) => {
+      dirtyRef.current = true;
+      markDirty(true);
+      if (saveTimer.current) clearTimeout(saveTimer.current);
+      saveTimer.current = setTimeout(() => {
+        pushRemoteDB(next)
+          .then(() => {
+            dirtyRef.current = false;
+            markDirty(false);
+            saveFailNotified.current = false;
+          })
+          .catch(() => {
+            // Kaydedilemedi: yerel veri (ve dirty işareti) korunur, kısa süre sonra
+            // otomatik tekrar denenir; kullanıcı yalnızca bir kez uyarılır.
+            if (!saveFailNotified.current) {
+              saveFailNotified.current = true;
+              toast(
+                'Değişiklik sunucuya kaydedilemedi. Yerel verileriniz korunuyor, bağlantı sağlanınca otomatik olarak yeniden denenecek.',
+                'err',
+              );
+            }
+            saveTimer.current = setTimeout(() => scheduleRemoteSave(next), 4000);
+          });
+      }, 600);
+    },
+    [toast],
+  );
 
   const mutate = useCallback(
     (fn: (db: DB) => void): DB => {
@@ -350,14 +422,6 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     },
     [scheduleRemoteSave],
   );
-
-  const toast = useCallback((msg: string, type: '' | 'ok' | 'err' = '') => {
-    const id = ++toastId.current;
-    setToasts((prev) => [...prev, { id, msg, type }]);
-    setTimeout(() => {
-      setToasts((prev) => prev.filter((t) => t.id !== id));
-    }, 3050);
-  }, []);
 
   const toggleTheme = useCallback(() => {
     setTheme((prev) => {
