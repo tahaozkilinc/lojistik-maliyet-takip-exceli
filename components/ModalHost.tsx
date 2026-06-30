@@ -10,6 +10,7 @@ import { LokasyonModal } from './modals/LokasyonModal';
 import { AnlasmaModal } from './modals/AnlasmaModal';
 import { NavlunModal } from './modals/NavlunModal';
 import { KaraNavlunModal } from './modals/KaraNavlunModal';
+import { NavlunFirmaModal } from './modals/NavlunFirmaModal';
 import { KurModal } from './modals/KurModal';
 import { ProfilModal } from './modals/ProfilModal';
 
@@ -43,6 +44,8 @@ export function ModalHost() {
       return <NavlunModal id={modal.id} />;
     case 'karaNavlun':
       return <KaraNavlunModal id={modal.id} />;
+    case 'navlunFirma':
+      return <NavlunFirmaModal id={modal.id} />;
     case 'kur':
       return <KurModal />;
     case 'profil':

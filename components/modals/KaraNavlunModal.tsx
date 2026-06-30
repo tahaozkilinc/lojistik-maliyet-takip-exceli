@@ -5,7 +5,7 @@ import { ModalShell, ModalHead } from '@/components/Modal';
 import { karaNavlunHatlar } from '@/lib/karaNavlun';
 import { PARA_KODLARI, ARAC, BIRIMLER, SAFE_FILE_MIME } from '@/lib/constants';
 import { uid, money } from '@/lib/format';
-import { toTRY, firmName } from '@/lib/calc';
+import { toTRY, navlunFirmName } from '@/lib/calc';
 import { StatusBadge } from '@/components/StatusBadge';
 import { Icon } from '@/components/Icon';
 import type { ImzaliBelge, KaraNavlunTeklif, Durum } from '@/lib/types';
@@ -31,7 +31,8 @@ export function KaraNavlunModal({ id }: { id?: string }) {
   const [selId, setSelId] = useState<string | null>(r?.secilenTeklifId || null);
   const [durum, setDurum] = useState<Durum>(r?.durum || 'toplama');
 
-  const [tFirma, setTFirma] = useState(db.firmalar[0]?.id || '');
+  const [tFirma, setTFirma] = useState(db.navlunFirmalari[0]?.id || '');
+  const [tSiparisKodu, setTSiparisKodu] = useState('');
   const [tFiyat, setTFiyat] = useState('');
   const [tPara, setTPara] = useState('TRY');
   const [tNot, setTNot] = useState('');
@@ -39,6 +40,7 @@ export function KaraNavlunModal({ id }: { id?: string }) {
   const [yonetici, setYonetici] = useState((r?.onay && r.onay.yonetici) || '');
   const [kararTarih, setKararTarih] = useState((r?.onay && r.onay.tarih && r.onay.tarih.slice(0, 10)) || new Date().toISOString().slice(0, 10));
   const [onayNot, setOnayNot] = useState((r?.onay && r.onay.not) || '');
+  const [atandi, setAtandi] = useState((r?.onay && r.onay.atandi) || '');
   const [pendingFile, setPendingFile] = useState<ImzaliBelge | null>(null);
   const [existingBelge, setExistingBelge] = useState<ImzaliBelge | null>((r?.onay && r.onay.imzaliBelge) || null);
 
@@ -89,7 +91,7 @@ export function KaraNavlunModal({ id }: { id?: string }) {
 
   function addTeklif() {
     if (!tFirma) {
-      toast('Önce Firmalar bölümünden bir nakliye firması ekleyin', 'err');
+      toast('Önce Navlun Firmaları bölümünden bir firma ekleyin', 'err');
       return;
     }
     const fv = tFiyat.trim();
@@ -100,12 +102,14 @@ export function KaraNavlunModal({ id }: { id?: string }) {
     const nt: KaraNavlunTeklif = {
       id: uid('knt'),
       firmaId: tFirma,
+      siparisKodu: tSiparisKodu.trim(),
       fiyat: Number(fv),
       paraBirimi: tPara,
       notlar: tNot.trim(),
       createdAt: new Date().toISOString(),
     };
     setTeklifler((prev) => [...prev, nt]);
+    setTSiparisKodu('');
     setTFiyat('');
     setTNot('');
   }
@@ -120,7 +124,7 @@ export function KaraNavlunModal({ id }: { id?: string }) {
   }
 
   /** Mevcut teklif/seçim durumunu kalıcılaştırır, gerekirse durum ve onay bilgisini günceller. */
-  function persist(newDurum: Durum, onayPatch?: { yonetici?: string; tarih?: string; not?: string; imzaliBelge?: ImzaliBelge | null; gonderim?: string | null }) {
+  function persist(newDurum: Durum, onayPatch?: { yonetici?: string; tarih?: string; not?: string; atandi?: string; imzaliBelge?: ImzaliBelge | null; gonderim?: string | null }) {
     mutate((d) => {
       const rec = d.karaNavlun.find((x) => x.id === id);
       if (!rec) return;
@@ -135,7 +139,7 @@ export function KaraNavlunModal({ id }: { id?: string }) {
       if (newDurum === 'onaylandi' && selId) {
         const q = teklifler.find((t) => t.id === selId);
         if (q) {
-          rec.tasiyici = firmName(db, q.firmaId);
+          rec.tasiyici = navlunFirmName(db, q.firmaId);
           if (q.fiyat != null) rec.fiyat = q.fiyat;
           if (q.paraBirimi) rec.paraBirimi = q.paraBirimi;
         }
@@ -203,6 +207,7 @@ export function KaraNavlunModal({ id }: { id?: string }) {
       yonetici: yon,
       tarih: new Date(kararTarih || Date.now()).toISOString(),
       not: onayNot.trim(),
+      atandi: atandi.trim(),
       imzaliBelge: pendingFile || existingBelge,
     });
     closeModal();
@@ -291,6 +296,7 @@ export function KaraNavlunModal({ id }: { id?: string }) {
                   <tr style={{ textAlign: 'left' }}>
                     {durum === 'onayda' ? <th style={{ width: 42 }}>Seç</th> : null}
                     <th>Firma</th>
+                    <th>Sipariş Kodu</th>
                     <th style={{ textAlign: 'right' }}>Fiyat</th>
                     <th>Para</th>
                     <th style={{ textAlign: 'right' }}>TRY</th>
@@ -310,7 +316,18 @@ export function KaraNavlunModal({ id }: { id?: string }) {
                               <input type="radio" name="knt_sel" checked={t.id === selId} onChange={() => setSelId(t.id)} />
                             </td>
                           ) : null}
-                          <td style={{ fontWeight: 600 }}>{firmName(db, t.firmaId)}</td>
+                          <td style={{ fontWeight: 600 }}>{navlunFirmName(db, t.firmaId)}</td>
+                          <td>
+                            {editable ? (
+                              <input
+                                style={{ width: 100, padding: '5px 7px' }}
+                                value={t.siparisKodu || ''}
+                                onChange={(e) => setTeklifField(t.id, { siparisKodu: e.target.value })}
+                              />
+                            ) : (
+                              t.siparisKodu || '—'
+                            )}
+                          </td>
                           <td style={{ textAlign: 'right' }}>
                             {editable ? (
                               <input
@@ -350,7 +367,7 @@ export function KaraNavlunModal({ id }: { id?: string }) {
                     })
                   ) : (
                     <tr>
-                      <td colSpan={6} style={{ padding: 12, color: 'var(--faint)' }}>
+                      <td colSpan={7} style={{ padding: 12, color: 'var(--faint)' }}>
                         Henüz firma teklifi eklenmedi.
                       </td>
                     </tr>
@@ -364,8 +381,8 @@ export function KaraNavlunModal({ id }: { id?: string }) {
                 <div className="field" style={{ marginBottom: 0, minWidth: 160 }}>
                   <label style={{ fontSize: 11 }}>Firma</label>
                   <select value={tFirma} onChange={(e) => setTFirma(e.target.value)}>
-                    {db.firmalar.length ? (
-                      db.firmalar.map((f) => (
+                    {db.navlunFirmalari.length ? (
+                      db.navlunFirmalari.map((f) => (
                         <option key={f.id} value={f.id}>
                           {f.ad}
                         </option>
@@ -374,6 +391,10 @@ export function KaraNavlunModal({ id }: { id?: string }) {
                       <option value="">Önce firma ekleyin</option>
                     )}
                   </select>
+                </div>
+                <div className="field" style={{ marginBottom: 0, width: 120 }}>
+                  <label style={{ fontSize: 11 }}>Sipariş Kodu</label>
+                  <input placeholder="opsiyonel" value={tSiparisKodu} onChange={(e) => setTSiparisKodu(e.target.value)} />
                 </div>
                 <div className="field" style={{ marginBottom: 0, width: 100 }}>
                   <label style={{ fontSize: 11 }}>Fiyat</label>
@@ -414,7 +435,7 @@ export function KaraNavlunModal({ id }: { id?: string }) {
                 <div style={{ fontSize: 12.5, color: 'var(--muted)', marginBottom: 8 }}>
                   {selId ? (
                     <>
-                      Seçilen: <b>{firmName(db, teklifler.find((t) => t.id === selId)?.firmaId || '')}</b>
+                      Seçilen: <b>{navlunFirmName(db, teklifler.find((t) => t.id === selId)?.firmaId || '')}</b>
                     </>
                   ) : (
                     <span style={{ color: 'var(--amber)' }}>Henüz teklif seçilmedi — yukarıdan bir satırı işaretleyin.</span>
@@ -435,6 +456,11 @@ export function KaraNavlunModal({ id }: { id?: string }) {
                 <div className="field">
                   <label>Not / Gerekçe</label>
                   <textarea placeholder="Onay/red ile ilgili açıklama…" value={onayNot} onChange={(e) => setOnayNot(e.target.value)} />
+                </div>
+                <div className="field">
+                  <label>Atandı (kişi / departman)</label>
+                  <input placeholder="örn. Operasyon - Ahmet Yılmaz" value={atandi} onChange={(e) => setAtandi(e.target.value)} />
+                  <div className="hint">Onaylanan taşıma kime/hangi departmana devredildi</div>
                 </div>
                 <div className="section-divider">Islak imzalı belge (opsiyonel)</div>
                 <div id="fileZone">
@@ -507,6 +533,11 @@ export function KaraNavlunModal({ id }: { id?: string }) {
                 {r.onay.not ? (
                   <div>
                     <b>Not:</b> {r.onay.not}
+                  </div>
+                ) : null}
+                {r.onay.atandi ? (
+                  <div>
+                    <b>Atandı:</b> {r.onay.atandi}
                   </div>
                 ) : null}
                 <button className="btn sm ghost" style={{ marginTop: 8 }} onClick={geriCek}>

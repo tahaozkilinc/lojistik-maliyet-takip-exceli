@@ -22,6 +22,12 @@ export function firmName(db: DB, id: string): string {
   return f ? f.ad : '(silinmiş firma)';
 }
 
+/** Navlun'a özel firma listesinden ad döner — ana Firma listesinden bağımsızdır. */
+export function navlunFirmName(db: DB, id: string): string {
+  const f = db.navlunFirmalari.find((x) => x.id === id);
+  return f ? f.ad : '(silinmiş firma)';
+}
+
 export function lokName(db: DB, id: string): string {
   const l = db.lokasyonlar.find((x) => x.id === id);
   return l ? l.ad : '';

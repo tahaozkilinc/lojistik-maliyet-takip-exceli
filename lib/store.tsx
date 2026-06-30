@@ -47,6 +47,7 @@ export type ModalState =
   | { type: 'anlasma'; firmaId: string; anlId?: string }
   | { type: 'navlun'; id?: string }
   | { type: 'karaNavlun'; id?: string }
+  | { type: 'navlunFirma'; id?: string }
   | { type: 'kur' }
   | { type: 'profil' }
   | null;

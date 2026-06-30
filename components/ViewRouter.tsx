@@ -12,6 +12,7 @@ import { Haritalar } from './views/Haritalar';
 import { Analiz } from './views/Analiz';
 import { DenizNavlun } from './views/DenizNavlun';
 import { KaraNavlun } from './views/KaraNavlun';
+import { NavlunFirmalar } from './views/NavlunFirmalar';
 
 export function ViewRouter() {
   const { ui } = useStore();
@@ -38,6 +39,8 @@ export function ViewRouter() {
       return <DenizNavlun />;
     case 'karaNavlun':
       return <KaraNavlun />;
+    case 'navlunFirmalar':
+      return <NavlunFirmalar />;
     default:
       return <Dashboard />;
   }

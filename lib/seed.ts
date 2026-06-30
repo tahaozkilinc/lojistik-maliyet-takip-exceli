@@ -12,6 +12,7 @@ export function emptyDB(): DB {
     talepler: [],
     denizNavlun: [],
     karaNavlun: [],
+    navlunFirmalari: [],
     kur: { USD: 34.5, EUR: 37.2 },
     meta: { firma: 'Sunar Yatırım A.Ş.', departman: 'Dış Ticaret & Lojistik' },
   };
@@ -78,6 +79,7 @@ export function normalizeDB(raw: unknown, fallbackMeta?: DB['meta']): DB {
     talepler: Array.isArray(clean.talepler) ? clean.talepler : base.talepler,
     denizNavlun: Array.isArray(clean.denizNavlun) ? clean.denizNavlun : base.denizNavlun,
     karaNavlun: Array.isArray(clean.karaNavlun) ? clean.karaNavlun : base.karaNavlun,
+    navlunFirmalari: Array.isArray(clean.navlunFirmalari) ? clean.navlunFirmalari : base.navlunFirmalari,
     kur: clean.kur && typeof clean.kur === 'object' ? { ...base.kur, ...clean.kur } : base.kur,
     meta: clean.meta && typeof clean.meta === 'object' ? { ...base.meta, ...clean.meta } : base.meta,
   };
@@ -241,7 +243,17 @@ export function migrate(db: DB): boolean {
   if (!Array.isArray(db.lokasyonlar)) db.lokasyonlar = [];
   if (!Array.isArray(db.denizNavlun)) db.denizNavlun = [];
   if (!Array.isArray(db.karaNavlun)) db.karaNavlun = [];
-  if (!(db.talepler.length || db.firmalar.length || db.lokasyonlar.length)) return false;
+  if (!Array.isArray(db.navlunFirmalari)) db.navlunFirmalari = [];
+  if (
+    !(
+      db.talepler.length ||
+      db.firmalar.length ||
+      db.lokasyonlar.length ||
+      db.denizNavlun.length ||
+      db.karaNavlun.length
+    )
+  )
+    return false;
   let dirty = false;
   let fab = db.lokasyonlar.find((l) => l.fabrika);
   if (!fab) {
@@ -348,5 +360,24 @@ export function migrate(db: DB): boolean {
       dirty = true;
     }
   });
+  // Navlun firma listesi ana Firma listesinden ayrıldı; daha önce ana listeden
+  // seçilmiş tekliflerin firma adı kaybolmasın diye eksik kayıtları kopyalar.
+  const ensureNavlunFirma = (firmaId: string | undefined) => {
+    if (!firmaId) return;
+    if (db.navlunFirmalari.some((nf) => nf.id === firmaId)) return;
+    const f = db.firmalar.find((x) => x.id === firmaId);
+    if (!f) return;
+    db.navlunFirmalari.push({
+      id: f.id,
+      ad: f.ad,
+      telefon: f.telefon || '',
+      adres: f.adres || '',
+      notlar: f.notlar || '',
+      createdAt: f.createdAt,
+    });
+    dirty = true;
+  };
+  db.denizNavlun.forEach((n) => (n.teklifler || []).forEach((t) => ensureNavlunFirma(t.firmaId)));
+  db.karaNavlun.forEach((n) => (n.teklifler || []).forEach((t) => ensureNavlunFirma(t.firmaId)));
   return dirty;
 }

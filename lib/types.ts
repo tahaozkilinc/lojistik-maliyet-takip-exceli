@@ -88,6 +88,8 @@ export interface Onay {
   tarih?: string;
   not?: string;
   imzaliBelge?: ImzaliBelge | null;
+  /** Yalnızca navlun dönemsel onayında kullanılır: taşıma kime/hangi departmana devredildi. */
+  atandi?: string;
 }
 
 export interface Gerceklesen {
@@ -120,10 +122,28 @@ export interface Talep {
   createdAt?: string;
 }
 
+/**
+ * Navlun (deniz + kara) tekliflerinde kullanılan firma kaydı. Ana sistemin
+ * Firma (Talep modülü, nakliyeci) listesinden tamamen bağımsızdır — kasıtlı
+ * olarak ayrı tutulur, karışmaz.
+ */
+export interface NavlunFirma {
+  id: string;
+  ad: string;
+  telefon?: string;
+  email?: string;
+  adres?: string;
+  notlar?: string;
+  createdAt?: string;
+}
+
 /** Bir deniz navlun kaydı için firmadan alınan fiyat teklifi. */
 export interface NavlunTeklif {
   id: string;
+  /** NavlunFirma.id — Talep modülündeki Firma listesinden bağımsızdır. */
   firmaId: string;
+  /** Kullanıcının kendi sipariş/referans kodu (firma bazında farklı olabilir). */
+  siparisKodu?: string;
   c20?: number | null;
   c40?: number | null;
   paraBirimi?: ParaBirimi;
@@ -153,7 +173,10 @@ export interface NavlunKayit {
 /** Bir kara navlun kaydı için firmadan alınan fiyat teklifi. */
 export interface KaraNavlunTeklif {
   id: string;
+  /** NavlunFirma.id — Talep modülündeki Firma listesinden bağımsızdır. */
   firmaId: string;
+  /** Kullanıcının kendi sipariş/referans kodu (firma bazında farklı olabilir). */
+  siparisKodu?: string;
   fiyat?: number | null;
   paraBirimi?: ParaBirimi;
   notlar?: string;
@@ -195,6 +218,8 @@ export interface DB {
   talepler: Talep[];
   denizNavlun: NavlunKayit[];
   karaNavlun: KaraNavlunKayit[];
+  /** Navlun (deniz + kara) tekliflerinde kullanılan, ana Firma listesinden bağımsız firma kaydı. */
+  navlunFirmalari: NavlunFirma[];
   kur: Kur;
   meta: Meta;
 }
