@@ -4,7 +4,7 @@
    ============================================================ */
 import type { DB } from "./types";
 
-export const EMBED_VERSION = "2026-06-28-1";
+export const EMBED_VERSION = "2026-06-30-1";
 
 export const embeddedData: DB = {
   "firmalar": [
@@ -885,7 +885,7 @@ export const embeddedData: DB = {
       "telefon": "+90",
       "email": "",
       "adres": "",
-      "notlar": "",
+      "notlar": "Kooperatif var, nakliye anlaşmasında orayı araman gerekiyor. +0534 986 8516 GÖKHAN",
       "fabrika": false,
       "il": "Konya",
       "ilce": "",
@@ -1212,9 +1212,13 @@ export const embeddedData: DB = {
         }
       ],
       "secilenTeklifId": "q_mqpai0ttndji",
-      "durum": "onayda",
+      "durum": "onaylandi",
       "onay": {
-        "gonderim": "2026-06-25T15:23:33.226Z"
+        "gonderim": "2026-06-25T15:23:33.226Z",
+        "yonetici": "HAKAN ZONTUL",
+        "tarih": "2026-06-29T00:00:00.000Z",
+        "not": "",
+        "imzaliBelge": null
       },
       "createdAt": "2026-06-22T06:30:43.397Z",
       "yuklemeLokasyonId": "l_mqp8x08ks3il",
@@ -2017,7 +2021,9 @@ export const embeddedData: DB = {
       "birim": "ton",
       "aracTipi": "",
       "yuklemeTarihi": "2026-06-25",
-      "aciklama": ""
+      "aciklama": "",
+      "kusUcusuKm": 91.7,
+      "mesafeKm": 116.4
     },
     {
       "id": "t_mqp9lv7e320s",
@@ -2160,7 +2166,9 @@ export const embeddedData: DB = {
       "birim": "ton",
       "aracTipi": "",
       "yuklemeTarihi": "2026-06-25",
-      "aciklama": ""
+      "aciklama": "",
+      "kusUcusuKm": 492.1,
+      "mesafeKm": 594.4
     },
     {
       "id": "t_mqp9mn1s569b",
