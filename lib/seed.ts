@@ -51,6 +51,18 @@ export function sanitizeBelgeUrls(db: DB): DB {
       if (t.onay) t.onay.imzaliBelge = null;
     }
   });
+  db.denizNavlun.forEach((n) => {
+    const b = n.onay && n.onay.imzaliBelge;
+    if (b && b.data && !SAFE_FILE_DATA_URL.test(b.data)) {
+      if (n.onay) n.onay.imzaliBelge = null;
+    }
+  });
+  db.karaNavlun.forEach((n) => {
+    const b = n.onay && n.onay.imzaliBelge;
+    if (b && b.data && !SAFE_FILE_DATA_URL.test(b.data)) {
+      if (n.onay) n.onay.imzaliBelge = null;
+    }
+  });
   return db;
 }
 
@@ -323,6 +335,18 @@ export function migrate(db: DB): boolean {
     });
     f.anlasmalar = yeni;
     dirty = true;
+  });
+  db.denizNavlun.forEach((n) => {
+    if (!Array.isArray(n.teklifler)) {
+      n.teklifler = [];
+      dirty = true;
+    }
+  });
+  db.karaNavlun.forEach((n) => {
+    if (!Array.isArray(n.teklifler)) {
+      n.teklifler = [];
+      dirty = true;
+    }
   });
   return dirty;
 }

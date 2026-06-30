@@ -5,6 +5,7 @@ import { money, donemLabel } from '@/lib/format';
 import { navlunYillar, navlunHatlar, navlunFiltered, navlunAyData, dominantCur, navlunDelta } from '@/lib/navlun';
 import { AYLAR } from '@/lib/constants';
 import { Icon } from '@/components/Icon';
+import { StatusBadge } from '@/components/StatusBadge';
 import { NavlunChart } from './NavlunChart';
 
 function DeltaCell({ d }: { d: number | null }) {
@@ -209,6 +210,7 @@ export function DenizNavlun() {
                   <th>Taşıyıcı</th>
                   <th style={{ textAlign: 'right' }}>20′</th>
                   <th style={{ textAlign: 'right' }}>40′</th>
+                  <th>Durum</th>
                   <th>Not</th>
                   <th></th>
                 </tr>
@@ -221,6 +223,7 @@ export function DenizNavlun() {
                     <td>{r.tasiyici || '—'}</td>
                     <td style={{ textAlign: 'right' }}>{r.c20 != null ? money(r.c20, r.paraBirimi || 'USD') : '—'}</td>
                     <td style={{ textAlign: 'right' }}>{r.c40 != null ? money(r.c40, r.paraBirimi || 'USD') : '—'}</td>
+                    <td>{r.durum ? <StatusBadge durum={r.durum} /> : '—'}</td>
                     <td>{r.notlar ? r.notlar : ''}</td>
                     <td style={{ whiteSpace: 'nowrap' }}>
                       <button className="btn sm ghost" onClick={() => openModal({ type: 'navlun', id: r.id })}>

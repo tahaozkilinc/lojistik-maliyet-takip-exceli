@@ -1,15 +1,21 @@
 'use client';
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { useStore } from '@/lib/store';
 import { ModalShell, ModalHead } from '@/components/Modal';
 import { karaNavlunHatlar } from '@/lib/karaNavlun';
-import { PARA_KODLARI, ARAC, BIRIMLER } from '@/lib/constants';
-import { uid } from '@/lib/format';
+import { PARA_KODLARI, ARAC, BIRIMLER, SAFE_FILE_MIME } from '@/lib/constants';
+import { uid, money } from '@/lib/format';
+import { toTRY, firmName } from '@/lib/calc';
+import { StatusBadge } from '@/components/StatusBadge';
+import { Icon } from '@/components/Icon';
+import type { ImzaliBelge, KaraNavlunTeklif, Durum } from '@/lib/types';
 
 export function KaraNavlunModal({ id }: { id?: string }) {
   const { db, mutate, closeModal, toast, setUi } = useStore();
   const r = id ? db.karaNavlun.find((x) => x.id === id) : null;
   const hatlar = karaNavlunHatlar(db);
+  const fileInput = useRef<HTMLInputElement>(null);
+  const num = (v: string) => v.replace(',', '.').replace(/[^-0-9.]/g, '');
 
   const [donem, setDonem] = useState(r ? r.donem : new Date().toISOString().slice(0, 7));
   const [hat, setHat] = useState(r ? r.hat || '' : '');
@@ -20,7 +26,21 @@ export function KaraNavlunModal({ id }: { id?: string }) {
   const [para, setPara] = useState(r ? r.paraBirimi || 'TRY' : 'TRY');
   const [not, setNot] = useState(r ? r.notlar || '' : '');
 
-  const num = (v: string) => v.replace(',', '.').replace(/[^-0-9.]/g, '');
+  // Firma teklifleri ve dönemsel onay — yalnızca mevcut bir kayıt düzenlenirken kullanılabilir.
+  const [teklifler, setTeklifler] = useState<KaraNavlunTeklif[]>(r?.teklifler ? r.teklifler.map((t) => ({ ...t })) : []);
+  const [selId, setSelId] = useState<string | null>(r?.secilenTeklifId || null);
+  const [durum, setDurum] = useState<Durum>(r?.durum || 'toplama');
+
+  const [tFirma, setTFirma] = useState(db.firmalar[0]?.id || '');
+  const [tFiyat, setTFiyat] = useState('');
+  const [tPara, setTPara] = useState('TRY');
+  const [tNot, setTNot] = useState('');
+
+  const [yonetici, setYonetici] = useState((r?.onay && r.onay.yonetici) || '');
+  const [kararTarih, setKararTarih] = useState((r?.onay && r.onay.tarih && r.onay.tarih.slice(0, 10)) || new Date().toISOString().slice(0, 10));
+  const [onayNot, setOnayNot] = useState((r?.onay && r.onay.not) || '');
+  const [pendingFile, setPendingFile] = useState<ImzaliBelge | null>(null);
+  const [existingBelge, setExistingBelge] = useState<ImzaliBelge | null>((r?.onay && r.onay.imzaliBelge) || null);
 
   function save() {
     if (!donem) {
@@ -28,8 +48,8 @@ export function KaraNavlunModal({ id }: { id?: string }) {
       return;
     }
     const fiyatT = fiyat.trim();
-    if (!fiyatT) {
-      toast('Fiyat girin', 'err');
+    if (!fiyatT && !teklifler.length) {
+      toast('Fiyat girin ya da firma teklifi ekleyin', 'err');
       return;
     }
     const data = {
@@ -38,17 +58,19 @@ export function KaraNavlunModal({ id }: { id?: string }) {
       hat: hat.trim(),
       tasiyici: tasiyici.trim(),
       aracTipi,
-      fiyat: Number(fiyatT),
+      fiyat: fiyatT ? Number(fiyatT) : null,
       birim,
       paraBirimi: para,
       notlar: not.trim(),
+      teklifler,
+      secilenTeklifId: selId,
     };
     mutate((d) => {
       if (id) {
         const rec = d.karaNavlun.find((x) => x.id === id);
         if (rec) Object.assign(rec, data);
       } else {
-        d.karaNavlun.push({ id: uid('kn'), createdAt: new Date().toISOString(), ...data });
+        d.karaNavlun.push({ id: uid('kn'), createdAt: new Date().toISOString(), durum: 'toplama', ...data });
       }
     });
     setUi({ karaNavlunYil: +donem.slice(0, 4) });
@@ -65,8 +87,137 @@ export function KaraNavlunModal({ id }: { id?: string }) {
     toast('Kayıt silindi', 'ok');
   }
 
+  function addTeklif() {
+    if (!tFirma) {
+      toast('Önce Firmalar bölümünden bir nakliye firması ekleyin', 'err');
+      return;
+    }
+    const fv = tFiyat.trim();
+    if (!fv) {
+      toast('Fiyat girin', 'err');
+      return;
+    }
+    const nt: KaraNavlunTeklif = {
+      id: uid('knt'),
+      firmaId: tFirma,
+      fiyat: Number(fv),
+      paraBirimi: tPara,
+      notlar: tNot.trim(),
+      createdAt: new Date().toISOString(),
+    };
+    setTeklifler((prev) => [...prev, nt]);
+    setTFiyat('');
+    setTNot('');
+  }
+
+  function removeTeklif(tid: string) {
+    setTeklifler((prev) => prev.filter((t) => t.id !== tid));
+    if (selId === tid) setSelId(null);
+  }
+
+  function setTeklifField(tid: string, patch: Partial<KaraNavlunTeklif>) {
+    setTeklifler((prev) => prev.map((t) => (t.id === tid ? { ...t, ...patch } : t)));
+  }
+
+  /** Mevcut teklif/seçim durumunu kalıcılaştırır, gerekirse durum ve onay bilgisini günceller. */
+  function persist(newDurum: Durum, onayPatch?: { yonetici?: string; tarih?: string; not?: string; imzaliBelge?: ImzaliBelge | null; gonderim?: string | null }) {
+    mutate((d) => {
+      const rec = d.karaNavlun.find((x) => x.id === id);
+      if (!rec) return;
+      rec.donem = donem;
+      rec.tarih = donem + '-15';
+      rec.hat = hat.trim();
+      rec.notlar = not.trim();
+      rec.teklifler = teklifler;
+      rec.secilenTeklifId = selId;
+      rec.durum = newDurum;
+      if (onayPatch) rec.onay = { ...(rec.onay || {}), ...onayPatch };
+      if (newDurum === 'onaylandi' && selId) {
+        const q = teklifler.find((t) => t.id === selId);
+        if (q) {
+          rec.tasiyici = firmName(db, q.firmaId);
+          if (q.fiyat != null) rec.fiyat = q.fiyat;
+          if (q.paraBirimi) rec.paraBirimi = q.paraBirimi;
+        }
+      }
+    });
+  }
+
+  function sendOnaya() {
+    if (!teklifler.length) {
+      toast('Önce en az bir firma teklifi ekleyin', 'err');
+      return;
+    }
+    persist('onayda', { gonderim: new Date().toISOString() });
+    setDurum('onayda');
+    if (r) {
+      setTasiyici(r.tasiyici || tasiyici);
+      setFiyat(r.fiyat != null ? String(r.fiyat) : fiyat);
+      setPara(r.paraBirimi || para);
+    }
+    toast('Dönemsel anlaşma onaya gönderildi', 'ok');
+  }
+
+  function geriCek() {
+    if (!confirm('Onay durumu "fiyat toplama"ya geri alınacak. Devam edilsin mi?')) return;
+    persist('toplama', { gonderim: null });
+    setDurum('toplama');
+    toast('Onaydan geri çekildi — teklifleri revize edebilirsiniz', 'ok');
+  }
+
+  function handleFile(ev: React.ChangeEvent<HTMLInputElement>) {
+    const f = ev.target.files?.[0];
+    if (!f) return;
+    // Güvenlik: yalnızca script çalıştıramayan görsel biçimleri ve PDF kabul edilir.
+    if (!SAFE_FILE_MIME.test(f.type)) {
+      toast('Yalnızca görsel (PNG/JPG/GIF/WebP) veya PDF yükleyebilirsiniz', 'err');
+      ev.target.value = '';
+      return;
+    }
+    if (f.size > 4 * 1024 * 1024) {
+      toast("Dosya 4MB'tan büyük olamaz", 'err');
+      ev.target.value = '';
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      setPendingFile({ ad: f.name, tip: f.type, boyut: (f.size / 1024).toFixed(0) + ' KB', data: String(reader.result) });
+      setExistingBelge(null);
+      toast("Belge hazır — Onayla'ya basınca kaydedilir", 'ok');
+    };
+    reader.readAsDataURL(f);
+    ev.target.value = '';
+  }
+
+  function decide(karar: 'onaylandi' | 'reddedildi') {
+    const yon = yonetici.trim();
+    if (!yon) {
+      toast('Onaylayan kişiyi girin', 'err');
+      return;
+    }
+    if (karar === 'onaylandi' && !selId) {
+      toast('Onaylamadan önce bir teklif seçin', 'err');
+      return;
+    }
+    persist(karar, {
+      yonetici: yon,
+      tarih: new Date(kararTarih || Date.now()).toISOString(),
+      not: onayNot.trim(),
+      imzaliBelge: pendingFile || existingBelge,
+    });
+    closeModal();
+    toast(karar === 'onaylandi' ? 'Dönemsel anlaşma onaylandı ✓' : 'Teklif reddedildi', karar === 'onaylandi' ? 'ok' : 'err');
+  }
+
+  const chip = pendingFile || existingBelge;
+  const sorted = [...teklifler].sort((a, b) => {
+    const av = toTRY(db, a.fiyat ?? 0, a.paraBirimi || 'TRY');
+    const bv = toTRY(db, b.fiyat ?? 0, b.paraBirimi || 'TRY');
+    return av - bv;
+  });
+
   return (
-    <ModalShell onClose={closeModal}>
+    <ModalShell onClose={closeModal} size={r ? 'wide' : undefined}>
       <ModalHead title={r ? 'Kara Navlun Kaydını Düzenle' : 'Yeni Kara Navlun Kaydı'} onClose={closeModal} />
       <div className="modal-body">
         <div className="grid-2">
@@ -88,7 +239,7 @@ export function KaraNavlunModal({ id }: { id?: string }) {
         </div>
         <div className="grid-2">
           <div className="field">
-            <label>Taşıyıcı / Firma (opsiyonel)</label>
+            <label>Taşıyıcı / Firma (opsiyonel — özet/hızlı kayıt)</label>
             <input placeholder="örn. Çukurova Lojistik" value={tasiyici} onChange={(e) => setTasiyici(e.target.value)} />
           </div>
           <div className="field">
@@ -128,6 +279,247 @@ export function KaraNavlunModal({ id }: { id?: string }) {
           <label>Notlar</label>
           <textarea placeholder="Mesafe, yükleme/boşaltma koşulu, özel not…" value={not} onChange={(e) => setNot(e.target.value)} />
         </div>
+
+        {r ? (
+          <>
+            <div className="section-divider" style={{ marginTop: 18 }}>
+              Firma Teklifleri {durum !== 'toplama' ? <StatusBadge durum={durum} /> : null}
+            </div>
+            <div style={{ overflowX: 'auto' }}>
+              <table style={{ width: '100%', fontSize: 13 }}>
+                <thead>
+                  <tr style={{ textAlign: 'left' }}>
+                    {durum === 'onayda' ? <th style={{ width: 42 }}>Seç</th> : null}
+                    <th>Firma</th>
+                    <th style={{ textAlign: 'right' }}>Fiyat</th>
+                    <th>Para</th>
+                    <th style={{ textAlign: 'right' }}>TRY</th>
+                    <th>Not</th>
+                    {(durum === 'toplama' || durum === 'onayda') && <th></th>}
+                  </tr>
+                </thead>
+                <tbody>
+                  {sorted.length ? (
+                    sorted.map((t) => {
+                      const tryVal = toTRY(db, t.fiyat ?? 0, t.paraBirimi || 'TRY');
+                      const editable = durum === 'toplama' || durum === 'onayda';
+                      return (
+                        <tr key={t.id} style={t.id === selId ? { background: 'var(--gold-soft)' } : undefined}>
+                          {durum === 'onayda' ? (
+                            <td style={{ textAlign: 'center' }}>
+                              <input type="radio" name="knt_sel" checked={t.id === selId} onChange={() => setSelId(t.id)} />
+                            </td>
+                          ) : null}
+                          <td style={{ fontWeight: 600 }}>{firmName(db, t.firmaId)}</td>
+                          <td style={{ textAlign: 'right' }}>
+                            {editable ? (
+                              <input
+                                inputMode="decimal"
+                                style={{ width: 76, padding: '5px 7px', textAlign: 'right' }}
+                                value={t.fiyat != null ? String(t.fiyat) : ''}
+                                onChange={(e) => setTeklifField(t.id, { fiyat: e.target.value ? Number(num(e.target.value)) : null })}
+                              />
+                            ) : t.fiyat != null ? (
+                              t.fiyat
+                            ) : (
+                              '—'
+                            )}
+                          </td>
+                          <td>
+                            {editable ? (
+                              <select style={{ padding: '5px 5px' }} value={t.paraBirimi || 'TRY'} onChange={(e) => setTeklifField(t.id, { paraBirimi: e.target.value })}>
+                                {PARA_KODLARI.map((p) => (
+                                  <option key={p}>{p}</option>
+                                ))}
+                              </select>
+                            ) : (
+                              t.paraBirimi
+                            )}
+                          </td>
+                          <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>{money(tryVal, 'TRY')}</td>
+                          <td>{t.notlar || ''}</td>
+                          {(durum === 'toplama' || durum === 'onayda') && (
+                            <td>
+                              <button className="btn sm ghost" style={{ color: 'var(--red)' }} onClick={() => removeTeklif(t.id)}>
+                                ×
+                              </button>
+                            </td>
+                          )}
+                        </tr>
+                      );
+                    })
+                  ) : (
+                    <tr>
+                      <td colSpan={6} style={{ padding: 12, color: 'var(--faint)' }}>
+                        Henüz firma teklifi eklenmedi.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+
+            {(durum === 'toplama' || durum === 'onayda') && (
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'flex-end', marginTop: 10, background: 'var(--surface-2)', border: '1px solid var(--line)', borderRadius: 8, padding: 10 }}>
+                <div className="field" style={{ marginBottom: 0, minWidth: 160 }}>
+                  <label style={{ fontSize: 11 }}>Firma</label>
+                  <select value={tFirma} onChange={(e) => setTFirma(e.target.value)}>
+                    {db.firmalar.length ? (
+                      db.firmalar.map((f) => (
+                        <option key={f.id} value={f.id}>
+                          {f.ad}
+                        </option>
+                      ))
+                    ) : (
+                      <option value="">Önce firma ekleyin</option>
+                    )}
+                  </select>
+                </div>
+                <div className="field" style={{ marginBottom: 0, width: 100 }}>
+                  <label style={{ fontSize: 11 }}>Fiyat</label>
+                  <input inputMode="decimal" placeholder="0" value={tFiyat} onChange={(e) => setTFiyat(num(e.target.value))} />
+                </div>
+                <div className="field" style={{ marginBottom: 0, width: 90 }}>
+                  <label style={{ fontSize: 11 }}>Para</label>
+                  <select value={tPara} onChange={(e) => setTPara(e.target.value)}>
+                    {PARA_KODLARI.map((p) => (
+                      <option key={p}>{p}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="field" style={{ marginBottom: 0, flex: 1, minWidth: 140 }}>
+                  <label style={{ fontSize: 11 }}>Not</label>
+                  <input placeholder="opsiyonel" value={tNot} onChange={(e) => setTNot(e.target.value)} />
+                </div>
+                <button className="btn sm primary" onClick={addTeklif}>
+                  <Icon name="plus" size={13} sw={2.4} />
+                  Teklif Ekle
+                </button>
+              </div>
+            )}
+
+            {durum === 'toplama' && (
+              <div style={{ marginTop: 10 }}>
+                <button className="btn sm" disabled={!teklifler.length} onClick={sendOnaya}>
+                  Dönemsel Anlaşmayı Onaya Gönder
+                </button>
+              </div>
+            )}
+
+            {durum === 'onayda' && (
+              <>
+                <div className="section-divider" style={{ marginTop: 18 }}>
+                  Yönetim kararı (dönemsel anlaşma onayı)
+                </div>
+                <div style={{ fontSize: 12.5, color: 'var(--muted)', marginBottom: 8 }}>
+                  {selId ? (
+                    <>
+                      Seçilen: <b>{firmName(db, teklifler.find((t) => t.id === selId)?.firmaId || '')}</b>
+                    </>
+                  ) : (
+                    <span style={{ color: 'var(--amber)' }}>Henüz teklif seçilmedi — yukarıdan bir satırı işaretleyin.</span>
+                  )}
+                </div>
+                <div className="grid-2">
+                  <div className="field">
+                    <label>
+                      Onaylayan / Yönetici <span className="req">*</span>
+                    </label>
+                    <input placeholder="Ad Soyad" value={yonetici} onChange={(e) => setYonetici(e.target.value)} />
+                  </div>
+                  <div className="field">
+                    <label>Karar Tarihi</label>
+                    <input type="date" value={kararTarih} onChange={(e) => setKararTarih(e.target.value)} />
+                  </div>
+                </div>
+                <div className="field">
+                  <label>Not / Gerekçe</label>
+                  <textarea placeholder="Onay/red ile ilgili açıklama…" value={onayNot} onChange={(e) => setOnayNot(e.target.value)} />
+                </div>
+                <div className="section-divider">Islak imzalı belge (opsiyonel)</div>
+                <div id="fileZone">
+                  {chip ? (
+                    <div className="file-chip">
+                      <div className="fi">
+                        <Icon name="file" size={16} />
+                      </div>
+                      <div style={{ flex: 1 }}>
+                        <div className="fn">{chip.ad}</div>
+                        <div className="fs">{(chip.boyut || '') + ' · ' + (pendingFile ? 'yüklendi' : 'arşivli')}</div>
+                      </div>
+                      <button
+                        className="btn sm ghost"
+                        onClick={() => {
+                          setPendingFile(null);
+                          setExistingBelge(null);
+                        }}
+                      >
+                        Kaldır
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="dropzone" onClick={() => fileInput.current?.click()}>
+                      <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.6}>
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                        <path d="M17 8l-5-5-5 5" />
+                        <path d="M12 3v12" />
+                      </svg>
+                      <div style={{ fontWeight: 600, color: 'var(--text)' }}>Islak imzalı anlaşmayı yükleyin</div>
+                      <div style={{ fontSize: 12, marginTop: 3 }}>Taranmış PDF veya fotoğraf · sürükleyin ya da tıklayın</div>
+                    </div>
+                  )}
+                </div>
+                <input
+                  ref={fileInput}
+                  type="file"
+                  accept="image/png,image/jpeg,image/gif,image/webp,image/bmp,image/avif,application/pdf"
+                  style={{ display: 'none' }}
+                  onChange={handleFile}
+                />
+                <div style={{ display: 'flex', gap: 8, marginTop: 10, flexWrap: 'wrap' }}>
+                  <button className="btn sm ghost" onClick={geriCek}>
+                    Fiyat Toplamaya Geri Dön
+                  </button>
+                  <div style={{ flex: 1 }} />
+                  <button className="btn sm danger" onClick={() => decide('reddedildi')}>
+                    Reddet
+                  </button>
+                  <button className="btn sm green" onClick={() => decide('onaylandi')}>
+                    <Icon name="check" size={14} sw={2.5} />
+                    Onayla
+                  </button>
+                </div>
+              </>
+            )}
+
+            {(durum === 'onaylandi' || durum === 'reddedildi') && r.onay ? (
+              <div style={{ marginTop: 14, background: 'var(--surface-2)', border: '1px solid var(--line)', borderRadius: 8, padding: '11px 13px', fontSize: 12.5 }}>
+                {r.onay.yonetici ? (
+                  <div>
+                    <b>Onaylayan:</b> {r.onay.yonetici}
+                  </div>
+                ) : null}
+                {r.onay.tarih ? (
+                  <div>
+                    <b>Tarih:</b> {new Date(r.onay.tarih).toLocaleDateString('tr-TR')}
+                  </div>
+                ) : null}
+                {r.onay.not ? (
+                  <div>
+                    <b>Not:</b> {r.onay.not}
+                  </div>
+                ) : null}
+                <button className="btn sm ghost" style={{ marginTop: 8 }} onClick={geriCek}>
+                  Onaydan Geri Çek (revize et)
+                </button>
+              </div>
+            ) : null}
+          </>
+        ) : (
+          <div className="hint" style={{ marginTop: 4 }}>
+            Firma teklifleri kıyaslama ve dönemsel onay, kayıt eklendikten sonra düzenleme ekranında kullanılabilir.
+          </div>
+        )}
       </div>
       <div className="modal-foot">
         {r && (

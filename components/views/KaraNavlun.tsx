@@ -6,6 +6,7 @@ import { karaNavlunYillar, karaNavlunHatlar, karaNavlunFiltered, karaNavlunAyDat
 import { navlunDelta } from '@/lib/navlun';
 import { AYLAR } from '@/lib/constants';
 import { Icon } from '@/components/Icon';
+import { StatusBadge } from '@/components/StatusBadge';
 import { KaraNavlunChart } from './KaraNavlunChart';
 
 function DeltaCell({ d }: { d: number | null }) {
@@ -187,6 +188,7 @@ export function KaraNavlun() {
                   <th>Taşıyıcı</th>
                   <th>Araç Tipi</th>
                   <th style={{ textAlign: 'right' }}>Fiyat</th>
+                  <th>Durum</th>
                   <th>Not</th>
                   <th></th>
                 </tr>
@@ -201,6 +203,7 @@ export function KaraNavlun() {
                     <td style={{ textAlign: 'right' }}>
                       {r.fiyat != null ? money(r.fiyat, r.paraBirimi || 'TRY') + (r.birim ? ' / ' + r.birim : '') : '—'}
                     </td>
+                    <td>{r.durum ? <StatusBadge durum={r.durum} /> : '—'}</td>
                     <td>{r.notlar ? r.notlar : ''}</td>
                     <td style={{ whiteSpace: 'nowrap' }}>
                       <button className="btn sm ghost" onClick={() => openModal({ type: 'karaNavlun', id: r.id })}>

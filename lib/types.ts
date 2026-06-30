@@ -120,6 +120,17 @@ export interface Talep {
   createdAt?: string;
 }
 
+/** Bir deniz navlun kaydı için firmadan alınan fiyat teklifi. */
+export interface NavlunTeklif {
+  id: string;
+  firmaId: string;
+  c20?: number | null;
+  c40?: number | null;
+  paraBirimi?: ParaBirimi;
+  notlar?: string;
+  createdAt?: string;
+}
+
 export interface NavlunKayit {
   id: string;
   donem: string; // YYYY-MM
@@ -128,6 +139,22 @@ export interface NavlunKayit {
   tasiyici?: string;
   c20?: number | null;
   c40?: number | null;
+  paraBirimi?: ParaBirimi;
+  notlar?: string;
+  createdAt?: string;
+  /** Firmalardan alınan teklifler (kıyaslama için); Talep'in teklif sistemine benzer ama ayrıdır. */
+  teklifler?: NavlunTeklif[];
+  secilenTeklifId?: string | null;
+  /** Dönemsel anlaşma onay durumu — Talep'in sevkiyat bazlı onayından bağımsızdır. */
+  durum?: Durum;
+  onay?: Onay | null;
+}
+
+/** Bir kara navlun kaydı için firmadan alınan fiyat teklifi. */
+export interface KaraNavlunTeklif {
+  id: string;
+  firmaId: string;
+  fiyat?: number | null;
   paraBirimi?: ParaBirimi;
   notlar?: string;
   createdAt?: string;
@@ -145,6 +172,10 @@ export interface KaraNavlunKayit {
   paraBirimi?: ParaBirimi;
   notlar?: string;
   createdAt?: string;
+  teklifler?: KaraNavlunTeklif[];
+  secilenTeklifId?: string | null;
+  durum?: Durum;
+  onay?: Onay | null;
 }
 
 export interface Kur {
