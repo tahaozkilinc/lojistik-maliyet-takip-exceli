@@ -10,12 +10,14 @@ export function Topbar({ onMenu }: { onMenu: () => void }) {
 
   // Birincil eylem butonu görünüme göre değişir (orijinal go() davranışı).
   let primary: { label: string; onClick: () => void } | null;
+  let secondary: { label: string; onClick: () => void } | null = null;
   switch (ui.view) {
     case 'firmalar':
       primary = { label: 'Yeni Firma', onClick: () => openModal({ type: 'firma' }) };
       break;
     case 'lokasyonlar':
       primary = { label: 'Yeni Lokasyon', onClick: () => openModal({ type: 'lokasyon' }) };
+      secondary = { label: 'Toplu Ekle', onClick: () => openModal({ type: 'lokasyonToplu' }) };
       break;
     case 'denizNavlun':
       primary = { label: 'Yeni Navlun Kaydı', onClick: () => openModal({ type: 'navlun' }) };
@@ -63,6 +65,12 @@ export function Topbar({ onMenu }: { onMenu: () => void }) {
           onChange={(e) => setUi({ search: e.target.value })}
         />
       </div>
+      {secondary && (
+        <button className="btn" onClick={secondary.onClick}>
+          <Icon name="upload" size={16} />
+          {secondary.label}
+        </button>
+      )}
       {primary && (
         <button className="btn primary" onClick={primary.onClick}>
           <Icon name="plus" size={16} sw={2.4} />

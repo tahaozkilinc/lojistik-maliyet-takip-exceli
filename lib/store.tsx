@@ -44,6 +44,7 @@ export type ModalState =
   | { type: 'onay'; id: string }
   | { type: 'firma'; id?: string }
   | { type: 'lokasyon'; id?: string }
+  | { type: 'lokasyonToplu' }
   | { type: 'anlasma'; firmaId: string; anlId?: string }
   | { type: 'navlun'; id?: string }
   | { type: 'karaNavlun'; id?: string }

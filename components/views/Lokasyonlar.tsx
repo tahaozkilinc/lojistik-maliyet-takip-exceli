@@ -28,9 +28,14 @@ export function Lokasyonlar() {
           Yükleme noktalarınızı (depo, lidaş, antrepo, liman…) buraya girin. Talep oluştururken yükleme noktasını bu listeden seçeceksiniz; her
           lokasyonun fabrikaya ortalama navlunu burada birikir.
         </p>
-        <button className="btn primary" onClick={() => openModal({ type: 'lokasyon' })}>
-          + İlk Lokasyonu Ekle
-        </button>
+        <div style={{ display: 'flex', gap: 8, justifyContent: 'center' }}>
+          <button className="btn primary" onClick={() => openModal({ type: 'lokasyon' })}>
+            + İlk Lokasyonu Ekle
+          </button>
+          <button className="btn" onClick={() => openModal({ type: 'lokasyonToplu' })}>
+            Excel&apos;den Toplu Ekle
+          </button>
+        </div>
       </div>
     );
   }
