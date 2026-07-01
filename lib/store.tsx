@@ -196,6 +196,8 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   /** Henüz merkezi veritabanına onaylanmış şekilde kaydedilmemiş yerel değişiklik var mı. */
   const dirtyRef = useRef(false);
   const saveFailNotified = useRef(false);
+  const historyInitRef = useRef(false);
+  const isPoppingRef = useRef(false);
 
   const [ui, setUiState] = useState<UIState>({
     view: 'dashboard',
@@ -452,6 +454,54 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     };
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
+  }, []);
+
+  // Sayfa geçişlerinde tarayıcı geçmişine kayıt ekle
+  useEffect(() => {
+    if (isPoppingRef.current) {
+      isPoppingRef.current = false;
+      return;
+    }
+    const histState = {
+      view: ui.view,
+      detailId: ui.detailId,
+      firmaId: ui.firmaId,
+      lokasyonId: ui.lokasyonId,
+      limanTalepId: ui.limanTalepId,
+    };
+    if (!historyInitRef.current) {
+      history.replaceState(histState, '');
+      historyInitRef.current = true;
+    } else {
+      history.pushState(histState, '');
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ui.view]);
+
+  // Tarayıcı geri/ileri tuşu desteği
+  useEffect(() => {
+    const onPop = (e: PopStateEvent) => {
+      const s = e.state as {
+        view?: string;
+        detailId?: string | null;
+        firmaId?: string | null;
+        lokasyonId?: string | null;
+        limanTalepId?: string | null;
+      } | null;
+      if (!s?.view) return;
+      isPoppingRef.current = true;
+      setUiState((prev) => ({
+        ...prev,
+        view: s.view as ViewKey,
+        detailId: s.detailId ?? null,
+        firmaId: s.firmaId ?? null,
+        lokasyonId: s.lokasyonId ?? null,
+        limanTalepId: s.limanTalepId ?? null,
+      }));
+      setModal(null);
+    };
+    window.addEventListener('popstate', onPop);
+    return () => window.removeEventListener('popstate', onPop);
   }, []);
 
   const value = useMemo<StoreValue>(
