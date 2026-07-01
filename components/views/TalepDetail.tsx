@@ -93,16 +93,12 @@ export function TalepDetail() {
       toast('Önce teklif ekleyin', 'err');
       return;
     }
-    if (!x!.secilenTeklifId) {
-      if (!confirm('Önerilecek teklif seçmediniz. En uygun (en düşük) teklif otomatik önerilsin mi?')) return;
-    }
     mutate((d) => {
       const t = d.talepler.find((y) => y.id === x!.id)!;
-      if (!t.secilenTeklifId) t.secilenTeklifId = bestQuoteId(d, t);
       t.durum = 'onayda';
       t.onay = { ...(t.onay || {}), gonderim: new Date().toISOString() };
     });
-    toast('Talep onaya gönderildi', 'ok');
+    toast('Talep onaya gönderildi — tedarikçiyi onay ekranında seçin', 'ok');
   }
   function withdrawApproval() {
     if (x!.durum !== 'onayda') return;

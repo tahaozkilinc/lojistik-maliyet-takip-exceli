@@ -1,8 +1,8 @@
 'use client';
-import React from 'react';
+import React, { useState } from 'react';
 import { useStore } from '@/lib/store';
 import { money, fmtTon, dt } from '@/lib/format';
-import { bestQuoteId, firmName } from '@/lib/calc';
+import { bestQuoteId, firmName, qTotal } from '@/lib/calc';
 import type { Talep } from '@/lib/types';
 import { StatusBadge } from '@/components/StatusBadge';
 import { Icon } from '@/components/Icon';
@@ -25,7 +25,16 @@ export function Talepler() {
       );
     return list;
   }
+  const [showAll, setShowAll] = useState(false);
   const list = visibleTalepler();
+  const shown = list.slice(0, showAll ? list.length : 10);
+
+  // Görünen listedeki taleplerin en iyi teklif tutarları toplamı (TRY).
+  const toplamTutar = list.reduce((sum, x) => {
+    const bq = x.teklifler.find((t) => t.id === bestQuoteId(db, x));
+    return sum + (bq ? qTotal(db, bq, x) : 0);
+  }, 0);
+
   const cnt = (d: string) => db.talepler.filter((x) => d === 'all' || x.durum === d).length;
   const nSel = [...talepSel].filter((id) => {
     const t = db.talepler.find((x) => x.id === id);
@@ -68,13 +77,12 @@ export function Talepler() {
     const msg =
       `${sendable.length} talep onaya gönderilecek.` +
       (noQuote.length ? ` ${noQuote.length} talepte teklif olmadığından atlanacak.` : '') +
-      `\nSeçili teklifi olmayan taleplerde en uygun (en düşük) teklif otomatik önerilecek. Devam edilsin mi?`;
+      '\nTedarikçi seçimi Onaylar ekranından yapılacak. Devam edilsin mi?';
     if (!confirm(msg)) return;
     let n = 0;
     mutate((d) => {
       sendable.forEach((st) => {
         const t = d.talepler.find((x) => x.id === st.id)!;
-        if (!t.secilenTeklifId) t.secilenTeklifId = bestQuoteId(d, t);
         t.durum = 'onayda';
         t.onay = { ...(t.onay || {}), gonderim: new Date().toISOString() };
         n++;
@@ -123,6 +131,25 @@ export function Talepler() {
         )}
       </div>
       <div className="panel">
+        {list.length > 0 && (
+          <div className="panel-head" style={{ borderBottom: '1px solid var(--line-2)', padding: '10px 18px', gap: 18 }}>
+            <span style={{ fontSize: 13, color: 'var(--muted)' }}>
+              <b style={{ color: 'var(--text)', fontSize: 15 }}>{list.length}</b> talep
+            </span>
+            {toplamTutar > 0 && (
+              <span style={{ fontSize: 13, color: 'var(--muted)' }}>
+                Toplam tahmini tutar{' '}
+                <b style={{ color: 'var(--navy-3)', fontSize: 15 }}>{money(toplamTutar, 'TRY')}</b>
+              </span>
+            )}
+            <div className="spacer" />
+            {list.length > 10 && (
+              <span style={{ fontSize: 12, color: 'var(--faint)' }}>
+                {showAll ? list.length : 10}/{list.length} gösteriliyor
+              </span>
+            )}
+          </div>
+        )}
         <div className="panel-body flush">
           {list.length ? (
             <>
@@ -148,7 +175,7 @@ export function Talepler() {
                   </tr>
                 </thead>
                 <tbody>
-                  {list.map((x) => {
+                  {shown.map((x) => {
                     const bq = x.teklifler.find((t) => t.id === bestQuoteId(db, x));
                     const canSel = x.durum === 'toplama';
                     return (
@@ -209,6 +236,20 @@ export function Talepler() {
                   })}
                 </tbody>
               </table>
+              {!showAll && list.length > 10 && (
+                <div style={{ padding: '12px 16px', textAlign: 'center', borderTop: '1px solid var(--line-2)' }}>
+                  <button className="btn sm ghost" onClick={() => setShowAll(true)}>
+                    Tümünü Göster ({list.length} talep)
+                  </button>
+                </div>
+              )}
+              {showAll && list.length > 10 && (
+                <div style={{ padding: '12px 16px', textAlign: 'center', borderTop: '1px solid var(--line-2)' }}>
+                  <button className="btn sm ghost" onClick={() => setShowAll(false)}>
+                    Daralt (ilk 10)
+                  </button>
+                </div>
+              )}
               {toplamaTot > 0 && (
                 <div style={{ padding: '10px 16px', fontSize: 12, color: 'var(--faint)', borderTop: '1px solid var(--line-2)' }}>
                   Soldaki kutucuklardan birden çok talebi seçip <b>Seçilenleri Onaya Gönder</b> ile topluca onaya
