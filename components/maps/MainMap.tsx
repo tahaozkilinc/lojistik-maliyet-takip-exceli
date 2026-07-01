@@ -41,9 +41,10 @@ export function MainMap() {
       }
       const map = L.map(el, { scrollWheelZoom: true }).setView([39.0, 35.2], 5);
       mapRef.current = map;
-      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
         maxZoom: 19,
         attribution: '© OpenStreetMap',
+        crossOrigin: '',
       }).addTo(map);
       const pts: [number, number][] = [];
       const fabrikaId = db.lokasyonlar.find((l) => l.fabrika)?.id;

@@ -44,7 +44,7 @@ export function ModalMap({
       const c = initial.current.lat != null && initial.current.lng != null ? { lat: initial.current.lat, lng: initial.current.lng } : { lat: 39.0, lng: 35.2 };
       const map = L.map(el, { scrollWheelZoom: true }).setView([c.lat, c.lng], initial.current.lat != null ? 12 : 5);
       mapRef.current = map;
-      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '© OSM' }).addTo(map);
+      L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '© OSM', crossOrigin: '' }).addTo(map);
       if (initial.current.lat != null && initial.current.lng != null) {
         markerRef.current = L.circleMarker([initial.current.lat, initial.current.lng], {
           radius: 9,
