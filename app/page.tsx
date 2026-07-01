@@ -35,6 +35,7 @@ export default function Page() {
     <>
       <div className="app">
         <Sidebar open={menuOpen} onClose={() => setMenuOpen(false)} />
+        {menuOpen && <div className="sidebar-backdrop" onClick={() => setMenuOpen(false)} />}
         <div className="main">
           <Topbar onMenu={() => setMenuOpen((o) => !o)} />
           <div className="content" id="content">

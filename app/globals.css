@@ -69,6 +69,7 @@ a{color:var(--navy-3);text-decoration:none}
 .search-box input:focus{border-color:var(--navy-3);background:var(--surface);box-shadow:0 0 0 3px rgba(29,77,126,.12)}
 .search-box svg{position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--faint)}
 .menu-toggle{display:none;background:none;border:none;color:var(--text)}
+.sidebar-backdrop{display:none}
 .content{padding:24px 26px 60px;max-width:1600px;width:100%}
 
 /* ===== Buttons ===== */
@@ -316,6 +317,7 @@ tbody tr:last-child td{border-bottom:none}
 @media(max-width:760px){
   .sidebar{transform:translateX(-100%)}
   .sidebar.open{transform:none}
+  .sidebar-backdrop{display:block;position:fixed;inset:0;z-index:39;background:rgba(0,0,0,.45)}
   .main{margin-left:0}
   .menu-toggle{display:flex}
   .topbar{flex-wrap:wrap}
