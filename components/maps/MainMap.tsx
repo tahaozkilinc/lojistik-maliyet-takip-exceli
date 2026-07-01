@@ -46,6 +46,7 @@ export function MainMap() {
         attribution: '© OpenStreetMap',
       }).addTo(map);
       const pts: [number, number][] = [];
+      const fabrikaId = db.lokasyonlar.find((l) => l.fabrika)?.id;
       db.lokasyonlar
         .filter((l) => hasCoord(l) && (ui.haritaFilter === 'all' || lokTipOf(l) === ui.haritaFilter))
         .forEach((l) => {
@@ -59,7 +60,7 @@ export function MainMap() {
           const s = l.fabrika
             ? ''
             : (() => {
-                const st = lokasyonStats(db, l.id);
+                const st = lokasyonStats(db, l.id, fabrikaId);
                 return st.fiyatli ? `<br><b>Fabrikaya ort:</b> ${money(st.avg, 'TRY')} · ${st.sefer} sefer` : '';
               })();
           m.bindPopup(

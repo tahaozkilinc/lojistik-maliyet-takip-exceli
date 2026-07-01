@@ -119,8 +119,8 @@ export interface LokasyonStats {
   son: number;
 }
 
-export function lokasyonStats(db: DB, locId: string): LokasyonStats {
-  const ts = [...db.talepler.filter((t) => t.yuklemeLokasyonId === locId)].sort(
+export function lokasyonStats(db: DB, locId: string, teslimId?: string): LokasyonStats {
+  const ts = [...db.talepler.filter((t) => t.yuklemeLokasyonId === locId && (!teslimId || t.teslimLokasyonId === teslimId))].sort(
     (a, b) => new Date(a.createdAt || 0).getTime() - new Date(b.createdAt || 0).getTime(),
   );
   const prices: number[] = [];
