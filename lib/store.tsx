@@ -198,6 +198,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   const saveFailNotified = useRef(false);
   const historyInitRef = useRef(false);
   const isPoppingRef = useRef(false);
+  const dbRef = useRef<DB>(emptyDB());
 
   const [ui, setUiState] = useState<UIState>({
     view: 'dashboard',
@@ -214,6 +215,9 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     karaNavlunHat: '__all',
     search: '',
   });
+
+  // dbRef'i her render sonrası güncel tut (mutate için senkron erişim).
+  useEffect(() => { dbRef.current = db; });
 
   // Tema (auth'tan bağımsız, anında uygulanır).
   useEffect(() => {
@@ -288,6 +292,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         if (remote) {
           setDb(remote);
           saveLocalCache(remote);
+          try { localStorage.setItem(EMBED_FLAG_KEY, EMBED_VERSION); } catch { /* yok say */ }
         } else {
           const local = loadLocalCache();
           setDb(local);
@@ -407,13 +412,11 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
 
   const mutate = useCallback(
     (fn: (db: DB) => void): DB => {
-      let next!: DB;
-      setDb((prev) => {
-        next = structuredClone(prev);
-        fn(next);
-        saveLocalCache(next);
-        return next;
-      });
+      const next = structuredClone(dbRef.current);
+      fn(next);
+      dbRef.current = next;
+      saveLocalCache(next);
+      setDb(next);
       scheduleRemoteSave(next);
       return next;
     },
