@@ -51,11 +51,14 @@ export function Lokasyonlar() {
   const shown = order.filter((t) => present.includes(t)).concat(present.filter((t) => !order.includes(t)));
 
   let list = [...db.lokasyonlar].sort((a, b) => (b.fabrika ? 1 : 0) - (a.fabrika ? 1 : 0) || a.ad.localeCompare(b.ad, 'tr'));
-  if (ui.lokFilter !== 'all') list = list.filter((l) => lokTipOf(l) === ui.lokFilter);
-  if (q)
+  // Arama varsa chip filtresini yoksay — tüm tiplerde ara.
+  if (q) {
     list = list.filter((l) =>
-      (l.ad + (l.sehir || '') + (l.il || '') + (l.ilce || '') + (l.tip || '') + (l.iletisim || '')).toLowerCase().includes(q),
+      (l.ad + (l.sehir || '') + (l.il || '') + (l.ilce || '') + lokTipOf(l) + (l.iletisim || '') + (l.adres || '')).toLowerCase().includes(q),
     );
+  } else if (ui.lokFilter !== 'all') {
+    list = list.filter((l) => lokTipOf(l) === ui.lokFilter);
+  }
 
   const filterBar = (
     <div className="filter-bar">

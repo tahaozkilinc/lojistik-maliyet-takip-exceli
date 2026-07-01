@@ -48,8 +48,10 @@ export function MainMap() {
       }).addTo(map);
       const pts: [number, number][] = [];
       const fabrikaId = db.lokasyonlar.find((l) => l.fabrika)?.id;
+      const sq = ui.search.toLowerCase().trim();
       db.lokasyonlar
         .filter((l) => hasCoord(l) && (ui.haritaFilter === 'all' || lokTipOf(l) === ui.haritaFilter))
+        .filter((l) => !sq || (l.ad + (l.sehir || '') + (l.il || '') + (l.ilce || '') + lokTipOf(l)).toLowerCase().includes(sq))
         .forEach((l) => {
           const m = L.circleMarker([l.lat as number, l.lng as number], {
             radius: 9,
@@ -82,7 +84,7 @@ export function MainMap() {
       }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [db.lokasyonlar, db.talepler, ui.haritaFilter]);
+  }, [db.lokasyonlar, db.talepler, ui.haritaFilter, ui.search]);
 
   if (failed) {
     return (

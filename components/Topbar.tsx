@@ -4,7 +4,7 @@ import { useStore } from '@/lib/store';
 import { Icon } from './Icon';
 import { TITLES } from '@/lib/constants';
 
-const SEARCH_VIEWS = new Set<string>(['talepler', 'onaylar', 'firmalar', 'lokasyonlar', 'navlunFirmalar']);
+const SEARCH_VIEWS = new Set<string>(['talepler', 'onaylar', 'firmalar', 'lokasyonlar', 'navlunFirmalar', 'haritalar']);
 
 export function Topbar({ onMenu }: { onMenu: () => void }) {
   const { ui, setUi, openModal, toast, db, go } = useStore();
