@@ -122,7 +122,11 @@ export function ProfilModal() {
         <div className="hint" style={{ marginBottom: 10 }}>
           Tüm verilerinizi (talepler, firmalar, lokasyonlar…) JSON olarak yedekleyin veya önceki bir yedeği geri yükleyin.
         </div>
-        <div style={{ display: 'flex', gap: 8 }}>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          <button className="btn primary" onClick={() => { replaceDB(db); toast('Veriler buluta kaydediliyor…', 'ok'); }}>
+            <Icon name="upload" size={14} />
+            Buluta Kaydet (Supabase)
+          </button>
           <button className="btn" onClick={handleExport}>
             <Icon name="download" size={14} />
             Yedek İndir
