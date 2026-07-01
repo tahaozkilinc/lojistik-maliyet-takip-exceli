@@ -1,7 +1,7 @@
 'use client';
 import React, { useEffect, useRef, useState } from 'react';
 import 'leaflet/dist/leaflet.css';
-import type { Map as LeafletMap } from 'leaflet';
+import type { Map as LeafletMap, TileLayer } from 'leaflet';
 import { useStore } from '@/lib/store';
 import { hasCoord } from '@/lib/geo';
 import { lokasyonStats } from '@/lib/calc';
@@ -20,8 +20,12 @@ export function MainMap() {
   const { db, ui } = useStore();
   const elRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<LeafletMap | null>(null);
+  const LRef = useRef<typeof import('leaflet') | null>(null);
+  const tileLayerRef = useRef<TileLayer | null>(null);
+  const [mapReady, setMapReady] = useState(false);
   const [failed, setFailed] = useState(false);
 
+  // Leaflet'i yükle ve tile layer'ı bir kez kur; bileşen unmount olduğunda temizle.
   useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -35,56 +39,71 @@ export function MainMap() {
         return;
       }
       if (cancelled) return;
-      if (mapRef.current) {
-        mapRef.current.remove();
-        mapRef.current = null;
-      }
+      LRef.current = L;
       const map = L.map(el, { scrollWheelZoom: true }).setView([39.0, 35.2], 5);
       mapRef.current = map;
-      L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      tileLayerRef.current = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
         maxZoom: 19,
         attribution: '© OpenStreetMap',
         crossOrigin: '',
       }).addTo(map);
-      const pts: [number, number][] = [];
-      const fabrikaId = db.lokasyonlar.find((l) => l.fabrika)?.id;
-      const sq = ui.search.toLowerCase().trim();
-      db.lokasyonlar
-        .filter((l) => hasCoord(l) && (ui.haritaFilter === 'all' || lokTipOf(l) === ui.haritaFilter))
-        .filter((l) => !sq || (l.ad + (l.sehir || '') + (l.il || '') + (l.ilce || '') + lokTipOf(l)).toLowerCase().includes(sq))
-        .forEach((l) => {
-          const m = L.circleMarker([l.lat as number, l.lng as number], {
-            radius: 9,
-            color: '#fff',
-            weight: 2,
-            fillColor: lokRenk(l),
-            fillOpacity: 1,
-          }).addTo(map);
-          const s = l.fabrika
-            ? ''
-            : (() => {
-                const st = lokasyonStats(db, l.id, fabrikaId);
-                return st.fiyatli ? `<br><b>Fabrikaya ort:</b> ${money(st.avg, 'TRY')} · ${st.sefer} sefer` : '';
-              })();
-          m.bindPopup(
-            `<b>${escapeHtml(l.ad)}</b>${l.fabrika ? ' ★' : ''}<br>${escapeHtml(
-              [l.ilce, l.il].filter(Boolean).join(' / ') || l.sehir || '',
-            )}${l.tip ? ' · ' + escapeHtml(l.tip) : ''}${s}`,
-          );
-          pts.push([l.lat as number, l.lng as number]);
-        });
-      if (pts.length) map.fitBounds(pts, { padding: [50, 50], maxZoom: 12 });
       setTimeout(() => mapRef.current && mapRef.current.invalidateSize(), 120);
+      if (!cancelled) setMapReady(true);
     })();
     return () => {
       cancelled = true;
+      setMapReady(false);
+      tileLayerRef.current = null;
       if (mapRef.current) {
         mapRef.current.remove();
         mapRef.current = null;
       }
     };
+  }, []);
+
+  // Veri, chip filtresi veya arama değişince sadece pin'leri güncelle; tile layer dokunulmaz.
+  useEffect(() => {
+    const L = LRef.current;
+    const map = mapRef.current;
+    const tileLayer = tileLayerRef.current;
+    if (!L || !map || !mapReady) return;
+
+    // Tile layer dışındaki tüm layer'ları kaldır.
+    map.eachLayer((layer) => {
+      if (layer !== tileLayer) map.removeLayer(layer);
+    });
+
+    const pts: [number, number][] = [];
+    const fabrikaId = db.lokasyonlar.find((l) => l.fabrika)?.id;
+    const sq = ui.search.toLowerCase().trim();
+
+    db.lokasyonlar
+      .filter((l) => hasCoord(l) && (ui.haritaFilter === 'all' || lokTipOf(l) === ui.haritaFilter))
+      .filter((l) => !sq || (l.ad + (l.sehir || '') + (l.il || '') + (l.ilce || '') + lokTipOf(l)).toLowerCase().includes(sq))
+      .forEach((l) => {
+        const m = L.circleMarker([l.lat as number, l.lng as number], {
+          radius: 9,
+          color: '#fff',
+          weight: 2,
+          fillColor: lokRenk(l),
+          fillOpacity: 1,
+        }).addTo(map);
+        const s = l.fabrika
+          ? ''
+          : (() => {
+              const st = lokasyonStats(db, l.id, fabrikaId);
+              return st.fiyatli ? `<br><b>Fabrikaya ort:</b> ${money(st.avg, 'TRY')} · ${st.sefer} sefer` : '';
+            })();
+        m.bindPopup(
+          `<b>${escapeHtml(l.ad)}</b>${l.fabrika ? ' ★' : ''}<br>${escapeHtml(
+            [l.ilce, l.il].filter(Boolean).join(' / ') || l.sehir || '',
+          )}${l.tip ? ' · ' + escapeHtml(l.tip) : ''}${s}`,
+        );
+        pts.push([l.lat as number, l.lng as number]);
+      });
+    if (pts.length) map.fitBounds(pts, { padding: [50, 50], maxZoom: 12 });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [db.lokasyonlar, db.talepler, ui.haritaFilter, ui.search]);
+  }, [mapReady, db.lokasyonlar, db.talepler, ui.haritaFilter, ui.search]);
 
   if (failed) {
     return (

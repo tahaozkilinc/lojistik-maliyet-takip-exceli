@@ -16,7 +16,12 @@ export function Haritalar() {
   const order = ['Fabrika', 'Liman', 'Lidaş', 'Depo', 'Antrepo', 'Diğer'];
   const present = [...new Set(db.lokasyonlar.map(lokTipOf))];
   const shown = order.filter((t) => present.includes(t)).concat(present.filter((t) => !order.includes(t)));
-  const flist = db.lokasyonlar.filter((l) => ui.haritaFilter === 'all' || lokTipOf(l) === ui.haritaFilter);
+  const sq = ui.search.toLowerCase().trim();
+  const flist = db.lokasyonlar.filter((l) => {
+    if (ui.haritaFilter !== 'all' && lokTipOf(l) !== ui.haritaFilter) return false;
+    if (sq && !(l.ad + (l.sehir || '') + (l.il || '') + (l.ilce || '') + lokTipOf(l)).toLowerCase().includes(sq)) return false;
+    return true;
+  });
   const konumlu = flist.filter(hasCoord).length;
 
   const chip = (k: string, l: string, renk?: string) => (
