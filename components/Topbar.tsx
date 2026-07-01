@@ -4,8 +4,10 @@ import { useStore } from '@/lib/store';
 import { Icon } from './Icon';
 import { TITLES } from '@/lib/constants';
 
+const SEARCH_VIEWS = new Set<string>(['talepler', 'onaylar', 'firmalar', 'lokasyonlar', 'navlunFirmalar']);
+
 export function Topbar({ onMenu }: { onMenu: () => void }) {
-  const { ui, setUi, openModal, toast, db } = useStore();
+  const { ui, setUi, openModal, toast, db, go } = useStore();
   const [title, crumb] = TITLES[ui.view] || ['', ''];
 
   // Birincil eylem butonu görünüme göre değişir (orijinal go() davranışı).
@@ -62,7 +64,10 @@ export function Topbar({ onMenu }: { onMenu: () => void }) {
           id="globalSearch"
           placeholder="Talep, güzergah, firma ara…"
           value={ui.search}
-          onChange={(e) => setUi({ search: e.target.value })}
+          onChange={(e) => {
+            if (e.target.value && !SEARCH_VIEWS.has(ui.view)) go('talepler');
+            setUi({ search: e.target.value });
+          }}
         />
       </div>
       {secondary && (

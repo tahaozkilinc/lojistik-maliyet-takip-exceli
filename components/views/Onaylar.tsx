@@ -8,10 +8,18 @@ import { StatusBadge } from '@/components/StatusBadge';
 import { Icon } from '@/components/Icon';
 
 export function Onaylar() {
-  const { db, go, openModal, toast, setPrintJob, bulkSel, setBulkSel } = useStore();
-  const onayda = db.talepler.filter((x) => x.durum === 'onayda');
+  const { db, ui, go, openModal, toast, setPrintJob, bulkSel, setBulkSel } = useStore();
+  const q = ui.search.toLowerCase().trim();
+  function matchQ(x: { talepNo: string; yuklemeNoktasi: string; teslimNoktasi: string; yukTipi?: string; teklifler: { firmaId: string }[] }) {
+    if (!q) return true;
+    return (
+      (x.talepNo + x.yuklemeNoktasi + x.teslimNoktasi + (x.yukTipi || '')).toLowerCase().includes(q) ||
+      x.teklifler.some((t) => firmName(db, t.firmaId).toLowerCase().includes(q))
+    );
+  }
+  const onayda = db.talepler.filter((x) => x.durum === 'onayda' && matchQ(x));
   const gecmis = db.talepler
-    .filter((x) => x.durum === 'onaylandi' || x.durum === 'reddedildi')
+    .filter((x) => (x.durum === 'onaylandi' || x.durum === 'reddedildi') && matchQ(x))
     .sort((a, b) => new Date((b.onay && b.onay.tarih) || 0).getTime() - new Date((a.onay && a.onay.tarih) || 0).getTime());
 
   const validIds = new Set(onayda.map((x) => x.id));
