@@ -28,6 +28,7 @@ const NAV: { group: string; items: { view: ViewKey; label: string; icon: IconNam
       { view: 'denizNavlun', label: 'Deniz Navlun', icon: 'ship' },
       { view: 'karaNavlun', label: 'Kara Navlun', icon: 'truck' },
       { view: 'navlunFirmalar', label: 'Navlun Firmaları', icon: 'users' },
+      { view: 'limanTalepleri', label: 'Liman Masrafları', icon: 'ship' },
     ],
   },
 ];

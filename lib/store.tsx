@@ -49,6 +49,8 @@ export type ModalState =
   | { type: 'navlun'; id?: string }
   | { type: 'karaNavlun'; id?: string }
   | { type: 'navlunFirma'; id?: string }
+  | { type: 'limanTalep'; id?: string }
+  | { type: 'limanMasraf'; talepId: string; masrafId?: string }
   | { type: 'kur' }
   | { type: 'profil' }
   | null;
@@ -65,6 +67,7 @@ export interface UIState {
   detailId: string | null;
   firmaId: string | null;
   lokasyonId: string | null;
+  limanTalepId: string | null;
   talepFilter: string;
   lokFilter: string;
   haritaFilter: string;
@@ -199,6 +202,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     detailId: null,
     firmaId: null,
     lokasyonId: null,
+    limanTalepId: null,
     talepFilter: 'all',
     lokFilter: 'all',
     haritaFilter: 'all',

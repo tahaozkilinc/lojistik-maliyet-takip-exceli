@@ -13,6 +13,7 @@ export function emptyDB(): DB {
     denizNavlun: [],
     karaNavlun: [],
     navlunFirmalari: [],
+    limanTalepleri: [],
     kur: { USD: 34.5, EUR: 37.2 },
     meta: { firma: 'Sunar Yatırım A.Ş.', departman: 'Dış Ticaret & Lojistik' },
   };
@@ -82,6 +83,9 @@ export function normalizeDB(raw: unknown, fallbackMeta?: DB['meta']): DB {
     denizNavlun: Array.isArray(clean.denizNavlun) ? clean.denizNavlun : base.denizNavlun,
     karaNavlun: Array.isArray(clean.karaNavlun) ? clean.karaNavlun : base.karaNavlun,
     navlunFirmalari: Array.isArray(clean.navlunFirmalari) ? clean.navlunFirmalari : base.navlunFirmalari,
+    limanTalepleri: (Array.isArray(clean.limanTalepleri) ? clean.limanTalepleri : base.limanTalepleri).map(
+      (lt) => (!Array.isArray(lt.masraflar) ? { ...lt, masraflar: [] } : lt),
+    ),
     kur: clean.kur && typeof clean.kur === 'object' ? { ...base.kur, ...clean.kur } : base.kur,
     meta: clean.meta && typeof clean.meta === 'object' ? { ...base.meta, ...clean.meta } : base.meta,
   };
@@ -246,6 +250,8 @@ export function migrate(db: DB): boolean {
   if (!Array.isArray(db.denizNavlun)) db.denizNavlun = [];
   if (!Array.isArray(db.karaNavlun)) db.karaNavlun = [];
   if (!Array.isArray(db.navlunFirmalari)) db.navlunFirmalari = [];
+  if (!Array.isArray(db.limanTalepleri)) { db.limanTalepleri = []; }
+  db.limanTalepleri.forEach((lt) => { if (!Array.isArray(lt.masraflar)) { lt.masraflar = []; dirty = true; } });
   if (
     !(
       db.talepler.length ||

@@ -3,6 +3,7 @@
    ============================================================ */
 
 export type Durum = 'toplama' | 'onayda' | 'onaylandi' | 'reddedildi';
+export type LimanDurum = 'devam' | 'tamamlandi' | 'iptal';
 
 /** Para birimi kodları; veri farklı kodlar da içerebileceğinden string tabanı korunur. */
 export type ParaBirimi = 'TRY' | 'USD' | 'EUR' | (string & {});
@@ -201,6 +202,34 @@ export interface KaraNavlunKayit {
   onay?: Onay | null;
 }
 
+export interface LimanMasraf {
+  id: string;
+  masrafTipi: string;
+  aciklama?: string;
+  firmaId?: string;
+  fiyat: number;
+  paraBirimi: ParaBirimi;
+  kdvDahil?: boolean;
+  createdAt?: string;
+}
+
+export interface LimanTalep {
+  id: string;
+  talepNo: string;
+  limanId: string;
+  gemiAdi?: string;
+  seferNo?: string;
+  yukTipi?: string;
+  konteynerSayisi?: number | null;
+  konteynerTipi?: string;
+  masraflar: LimanMasraf[];
+  durum: LimanDurum;
+  notlar?: string;
+  girisTarihi?: string;
+  cikisTarihi?: string;
+  createdAt?: string;
+}
+
 export interface Kur {
   USD: number;
   EUR: number;
@@ -220,6 +249,7 @@ export interface DB {
   karaNavlun: KaraNavlunKayit[];
   /** Navlun (deniz + kara) tekliflerinde kullanılan, ana Firma listesinden bağımsız firma kaydı. */
   navlunFirmalari: NavlunFirma[];
+  limanTalepleri: LimanTalep[];
   kur: Kur;
   meta: Meta;
 }

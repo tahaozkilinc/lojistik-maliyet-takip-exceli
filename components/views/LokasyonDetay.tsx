@@ -7,6 +7,12 @@ import { TIP_RENK } from '@/lib/constants';
 import { Icon } from '@/components/Icon';
 import type { Teklif, Talep } from '@/lib/types';
 
+const DURUM_LABEL: Record<string, string> = {
+  devam: 'Devam Ediyor',
+  tamamlandi: 'Tamamlandı',
+  iptal: 'İptal',
+};
+
 type Row = {
   teklif: Teklif;
   talep: Talep;
@@ -18,7 +24,7 @@ type Row = {
 };
 
 export function LokasyonDetay() {
-  const { db, ui, go, openModal } = useStore();
+  const { db, ui, go, setUi, openModal } = useStore();
   const lok = db.lokasyonlar.find((l) => l.id === ui.lokasyonId);
   const [sirala, setSirala] = useState<'tarih' | 'fiyat'>('tarih');
   const [firma, setFirma] = useState<string>('all');
@@ -233,6 +239,82 @@ export function LokasyonDetay() {
           )}
         </div>
       </div>
+
+      {lok.tip === 'Liman' && (() => {
+        const limanKayitlari = db.limanTalepleri.filter((lt) => lt.limanId === lok.id);
+        return (
+          <div className="panel" style={{ marginTop: 16 }}>
+            <div className="panel-head">
+              <h2>
+                <Icon name="ship" size={15} />
+                &nbsp;Liman Masraf Kayıtları
+              </h2>
+              <div style={{ flex: 1 }} />
+              <button className="btn sm primary" onClick={() => openModal({ type: 'limanTalep' })}>
+                <Icon name="plus" size={13} sw={2.4} />
+                Yeni Kayıt
+              </button>
+              {limanKayitlari.length > 0 && (
+                <button
+                  className="btn sm"
+                  onClick={() => { setUi({ lokFilter: lok.id }); go('limanTalepleri'); }}
+                >
+                  Tümünü Gör
+                </button>
+              )}
+            </div>
+            <div className="panel-body flush">
+              {limanKayitlari.length ? (
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Talep No</th>
+                      <th>Gemi / Sefer</th>
+                      <th style={{ textAlign: 'center' }}>Masraf</th>
+                      <th style={{ textAlign: 'right' }}>Toplam (₺)</th>
+                      <th>Durum</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {[...limanKayitlari]
+                      .sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''))
+                      .slice(0, 5)
+                      .map((lt) => {
+                        const toplam = (lt.masraflar || []).reduce((s, m) => s + toTRY(db, m.fiyat, m.paraBirimi), 0);
+                        return (
+                          <tr
+                            key={lt.id}
+                            style={{ cursor: 'pointer' }}
+                            onClick={() => { setUi({ limanTalepId: lt.id }); go('limanTalepDetay'); }}
+                          >
+                            <td className="cell-strong">{lt.talepNo}</td>
+                            <td style={{ fontSize: 12.5 }}>
+                              {lt.gemiAdi || '—'}
+                              {lt.seferNo ? <span style={{ color: 'var(--faint)', fontSize: 11 }}> · {lt.seferNo}</span> : null}
+                            </td>
+                            <td style={{ textAlign: 'center' }}>
+                              <span className="tag">{(lt.masraflar || []).length}</span>
+                            </td>
+                            <td style={{ textAlign: 'right', fontWeight: 700, color: 'var(--green)' }}>
+                              {toplam ? money(toplam, 'TRY') : '—'}
+                            </td>
+                            <td style={{ fontSize: 11.5, color: 'var(--muted)' }}>
+                              {DURUM_LABEL[lt.durum] || lt.durum}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                  </tbody>
+                </table>
+              ) : (
+                <div className="empty" style={{ padding: 20 }}>
+                  <p>Bu liman için henüz masraf kaydı yok.</p>
+                </div>
+              )}
+            </div>
+          </div>
+        );
+      })()}
     </>
   );
 }
