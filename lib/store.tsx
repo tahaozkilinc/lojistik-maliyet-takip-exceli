@@ -64,6 +64,7 @@ export interface UIState {
   view: ViewKey;
   detailId: string | null;
   firmaId: string | null;
+  lokasyonId: string | null;
   talepFilter: string;
   lokFilter: string;
   haritaFilter: string;
@@ -197,6 +198,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     view: 'dashboard',
     detailId: null,
     firmaId: null,
+    lokasyonId: null,
     talepFilter: 'all',
     lokFilter: 'all',
     haritaFilter: 'all',

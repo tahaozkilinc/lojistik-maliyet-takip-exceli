@@ -16,7 +16,12 @@ function lokTipOf(l: Lokasyon) {
 }
 
 export function Lokasyonlar() {
-  const { db, ui, setUi, openModal } = useStore();
+  const { db, ui, setUi, go, openModal } = useStore();
+
+  function goLokasyon(id: string) {
+    setUi({ lokasyonId: id });
+    go('lokasyonDetay');
+  }
   const q = ui.search.toLowerCase().trim();
 
   if (!db.lokasyonlar.length) {
@@ -81,7 +86,7 @@ export function Lokasyonlar() {
           const byP = lokasyonStatsByProduct(db, l.id);
           const renk = lokRenk(l);
           return (
-            <div key={l.id} className="firm-card" style={{ borderTop: `3px solid ${renk}` }}>
+            <div key={l.id} className="firm-card" style={{ borderTop: `3px solid ${renk}`, cursor: 'pointer' }} onClick={() => goLokasyon(l.id)}>
               <div className="fc-head" style={l.fabrika ? { background: 'linear-gradient(135deg,var(--gold),var(--gold-2))' } : undefined}>
                 <div
                   className="fc-avatar"
@@ -110,7 +115,7 @@ export function Lokasyonlar() {
                 <button
                   className="btn sm ghost"
                   style={{ color: l.fabrika ? 'var(--navy)' : '#cfe0f0' }}
-                  onClick={() => openModal({ type: 'lokasyon', id: l.id })}
+                  onClick={(e) => { e.stopPropagation(); openModal({ type: 'lokasyon', id: l.id }); }}
                 >
                   ✎
                 </button>

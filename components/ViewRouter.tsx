@@ -8,6 +8,7 @@ import { Onaylar } from './views/Onaylar';
 import { Firmalar } from './views/Firmalar';
 import { FirmaDetay } from './views/FirmaDetay';
 import { Lokasyonlar } from './views/Lokasyonlar';
+import { LokasyonDetay } from './views/LokasyonDetay';
 import { Haritalar } from './views/Haritalar';
 import { Analiz } from './views/Analiz';
 import { DenizNavlun } from './views/DenizNavlun';
@@ -31,6 +32,8 @@ export function ViewRouter() {
       return <FirmaDetay />;
     case 'lokasyonlar':
       return <Lokasyonlar />;
+    case 'lokasyonDetay':
+      return <LokasyonDetay />;
     case 'haritalar':
       return <Haritalar />;
     case 'analiz':
