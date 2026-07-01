@@ -36,7 +36,7 @@ const NAV: { group: string; items: { view: ViewKey; label: string; icon: IconNam
 export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { db, ui, go, toggleTheme, openModal, logout } = useStore();
 
-  const navTalep = db.talepler.length;
+  const navTalep = db.talepler.filter((x) => x.durum === 'toplama').length;
   const navOnay = db.talepler.filter((x) => x.durum === 'onayda').length;
 
   return (
