@@ -73,10 +73,12 @@ export function normalizeDB(raw: unknown, fallbackMeta?: DB['meta']): DB {
   if (fallbackMeta) base.meta = fallbackMeta;
   const clean = sanitizeParsed(raw) as Partial<DB> | null;
   if (!clean || typeof clean !== 'object') return base;
+  const rawTalepler = Array.isArray(clean.talepler) ? clean.talepler : base.talepler;
   const db: DB = {
     firmalar: Array.isArray(clean.firmalar) ? clean.firmalar : base.firmalar,
     lokasyonlar: Array.isArray(clean.lokasyonlar) ? clean.lokasyonlar : base.lokasyonlar,
-    talepler: Array.isArray(clean.talepler) ? clean.talepler : base.talepler,
+    // teklifler eksikse boş dizi ver — yoksa TalepDetail render'da çöküyor.
+    talepler: rawTalepler.map((t) => (!Array.isArray(t.teklifler) ? { ...t, teklifler: [] } : t)),
     denizNavlun: Array.isArray(clean.denizNavlun) ? clean.denizNavlun : base.denizNavlun,
     karaNavlun: Array.isArray(clean.karaNavlun) ? clean.karaNavlun : base.karaNavlun,
     navlunFirmalari: Array.isArray(clean.navlunFirmalari) ? clean.navlunFirmalari : base.navlunFirmalari,
@@ -274,6 +276,10 @@ export function migrate(db: DB): boolean {
     dirty = true;
   }
   db.talepler.forEach((t) => {
+    if (!Array.isArray(t.teklifler)) {
+      t.teklifler = [];
+      dirty = true;
+    }
     if (!t.yuklemeLokasyonId && t.yuklemeNoktasi) {
       let l = db.lokasyonlar.find((x) => x.ad.toLowerCase() === t.yuklemeNoktasi.toLowerCase());
       if (!l) {

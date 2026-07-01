@@ -124,15 +124,16 @@ export function TalepDetail() {
     toast('İndirim kaldırıldı', 'ok');
   }
 
+  const teklifler = Array.isArray(x.teklifler) ? x.teklifler : [];
   const best = bestQuoteId(db, x);
-  const sortedQ = [...x.teklifler].sort((a, b) => toTRY(db, a.fiyat, a.paraBirimi) - toTRY(db, b.fiyat, b.paraBirimi));
-  const canSend = x.durum === 'toplama' && x.teklifler.length > 0;
+  const sortedQ = [...teklifler].sort((a, b) => toTRY(db, a.fiyat, a.paraBirimi) - toTRY(db, b.fiyat, b.paraBirimi));
+  const canSend = x.durum === 'toplama' && teklifler.length > 0;
   const yL = lokById(db, x.yuklemeLokasyonId);
   const tL = lokById(db, x.teslimLokasyonId);
   const kus = hasCoord(yL) && hasCoord(tL) ? haversine(yL, tL) : null;
   const son = sonIslem(db, x.yuklemeLokasyonId, x.teslimLokasyonId, x.id);
   const anlasmalar = findAnlasmalar(db, x.yuklemeLokasyonId, x.teslimLokasyonId, x.yukTipi);
-  const trys = x.teklifler.map((q) => toTRY(db, q.fiyat, q.paraBirimi));
+  const trys = teklifler.map((q) => toTRY(db, q.fiyat, q.paraBirimi));
   const g = gerceklesenBirim(x);
   const sq = selectedQuote(x);
   const ind = indirimYuzde(db, x);
@@ -285,7 +286,7 @@ export function TalepDetail() {
 
           <div className="panel">
             <div className="panel-head">
-              <h2>Teklifler ({x.teklifler.length})</h2>
+              <h2>Teklifler ({teklifler.length})</h2>
               <div className="spacer" />
               {x.durum === 'toplama' && (
                 <button className="btn sm primary" onClick={() => openModal({ type: 'teklif', talepId: x.id })}>
@@ -295,7 +296,7 @@ export function TalepDetail() {
               )}
             </div>
             <div className="panel-body">
-              {x.teklifler.length ? (
+              {teklifler.length ? (
                 <>
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(210px,1fr))', gap: 14 }}>
                     {sortedQ.map((q) => {
@@ -363,7 +364,7 @@ export function TalepDetail() {
                     })}
                   </div>
 
-                  {x.teklifler.length > 1 && (
+                  {teklifler.length > 1 && (
                     <div
                       style={{
                         marginTop: 16,
@@ -383,7 +384,7 @@ export function TalepDetail() {
                       </div>
                       <div>
                         <span style={{ color: 'var(--muted)' }}>Ortalama:</span>{' '}
-                        <b>{money(trys.reduce((s, v) => s + v, 0) / x.teklifler.length, 'TRY')}/{x.birim || 'ton'}</b>
+                        <b>{money(trys.reduce((s, v) => s + v, 0) / teklifler.length, 'TRY')}/{x.birim || 'ton'}</b>
                       </div>
                       {x.miktar ? (
                         <div>
@@ -512,9 +513,9 @@ export function TalepDetail() {
                   <div className="tl-t">Talep oluşturuldu</div>
                   <div className="tl-d">{dtt(x.createdAt)}</div>
                 </div>
-                <div className={'tl-item ' + (x.teklifler.length ? 'done' : 'active')}>
+                <div className={'tl-item ' + (teklifler.length ? 'done' : 'active')}>
                   <div className="tl-t">Fiyatlar toplandı</div>
-                  <div className="tl-d">{x.teklifler.length} teklif girildi</div>
+                  <div className="tl-d">{teklifler.length} teklif girildi</div>
                 </div>
                 <div className={'tl-item ' + (x.durum === 'onayda' ? 'active' : x.durum === 'onaylandi' || x.durum === 'reddedildi' ? 'done' : '')}>
                   <div className="tl-t">Onaya gönderildi</div>
