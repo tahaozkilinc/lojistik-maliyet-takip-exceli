@@ -2,8 +2,10 @@
 import React, { useState } from 'react';
 import { useStore } from '@/lib/store';
 import { ModalShell, ModalHead } from '@/components/Modal';
+import { Icon } from '@/components/Icon';
 import { TEL_PH } from '@/lib/constants';
 import { uid, telFmt } from '@/lib/format';
+import type { Calisan } from '@/lib/types';
 
 export function NavlunFirmaModal({ id }: { id?: string }) {
   const { db, mutate, closeModal, toast } = useStore();
@@ -11,9 +13,20 @@ export function NavlunFirmaModal({ id }: { id?: string }) {
 
   const [ad, setAd] = useState(f ? f.ad : '');
   const [tel, setTel] = useState(f && f.telefon ? f.telefon : '+90 ');
-  const [email, setEmail] = useState(f ? f.email || '' : '');
-  const [adres, setAdres] = useState(f ? f.adres || '' : '');
   const [notlar, setNotlar] = useState(f ? f.notlar || '' : '');
+  const [emps, setEmps] = useState<Calisan[]>(
+    f && f.calisanlar && f.calisanlar.length ? f.calisanlar.map((c) => ({ ...c })) : [{ ad: '', unvan: '', email: '', telefon: '' }],
+  );
+
+  function setEmp(i: number, k: keyof Calisan, v: string) {
+    setEmps((prev) => prev.map((e, idx) => (idx === i ? { ...e, [k]: v } : e)));
+  }
+  function addEmp() {
+    setEmps((prev) => [...prev, { ad: '', unvan: '', email: '', telefon: '' }]);
+  }
+  function delEmp(i: number) {
+    setEmps((prev) => prev.filter((_, idx) => idx !== i));
+  }
 
   function save() {
     const adt = ad.trim();
@@ -21,12 +34,15 @@ export function NavlunFirmaModal({ id }: { id?: string }) {
       toast('Firma adı zorunlu', 'err');
       return;
     }
+    const calisanlar = emps
+      .map((e) => ({ ad: (e.ad || '').trim(), unvan: (e.unvan || '').trim(), email: (e.email || '').trim(), telefon: (e.telefon || '').trim() }))
+      .filter((e) => e.ad || e.email || e.telefon);
+    // email/adres bilinçli olarak yazılmaz: eski kayıtlardaki değerler silinmeden korunur.
     const data = {
       ad: adt,
       telefon: tel.trim(),
-      email: email.trim(),
-      adres: adres.trim(),
       notlar: notlar.trim(),
+      calisanlar,
     };
     mutate((d) => {
       if (id) {
@@ -50,34 +66,47 @@ export function NavlunFirmaModal({ id }: { id?: string }) {
   }
 
   return (
-    <ModalShell onClose={closeModal}>
+    <ModalShell onClose={closeModal} size="xwide">
       <ModalHead title={f ? 'Navlun Firmasını Düzenle' : 'Yeni Navlun Firması'} onClose={closeModal} />
       <div className="modal-body">
         <div className="hint" style={{ marginBottom: 10 }}>
           Bu liste, Nakliye Talepleri modülündeki ana Firmalar listesinden bağımsızdır — yalnızca deniz/kara navlun
           tekliflerinde kullanılır.
         </div>
-        <div className="field">
-          <label>
-            Firma Adı <span className="req">*</span>
-          </label>
-          <input placeholder="örn. MSC, Maersk, Çukurova Lojistik" value={ad} onChange={(e) => setAd(e.target.value)} />
-        </div>
         <div className="grid-2">
           <div className="field">
-            <label>Telefon</label>
-            <input placeholder={TEL_PH} value={tel} onChange={(e) => setTel(telFmt(e.target.value))} />
+            <label>
+              Firma Adı <span className="req">*</span>
+            </label>
+            <input placeholder="örn. MSC, Maersk, Çukurova Lojistik" value={ad} onChange={(e) => setAd(e.target.value)} />
           </div>
           <div className="field">
-            <label>E-posta</label>
-            <input placeholder="ornek@firma.com" value={email} onChange={(e) => setEmail(e.target.value)} />
+            <label>Telefon (santral)</label>
+            <input placeholder={TEL_PH} value={tel} onChange={(e) => setTel(telFmt(e.target.value))} />
           </div>
         </div>
-        <div className="field">
-          <label>Adres</label>
-          <input value={adres} onChange={(e) => setAdres(e.target.value)} />
+        <div className="section-divider">
+          <Icon name="users" size={14} />
+          İletişim Kişileri
         </div>
-        <div className="field">
+        <div id="empList">
+          {emps.map((e, i) => (
+            <div className="emp-row" key={i}>
+              <input placeholder="Ad Soyad" value={e.ad || ''} onChange={(ev) => setEmp(i, 'ad', ev.target.value)} />
+              <input placeholder="Ünvan" value={e.unvan || ''} onChange={(ev) => setEmp(i, 'unvan', ev.target.value)} />
+              <input placeholder="E-posta" value={e.email || ''} onChange={(ev) => setEmp(i, 'email', ev.target.value)} />
+              <input placeholder={TEL_PH} value={e.telefon || ''} onChange={(ev) => setEmp(i, 'telefon', telFmt(ev.target.value))} />
+              <button className="del" onClick={() => delEmp(i)}>
+                ×
+              </button>
+            </div>
+          ))}
+        </div>
+        <button className="btn sm" onClick={addEmp}>
+          <Icon name="plus" size={13} sw={2.4} />
+          Kişi Ekle
+        </button>
+        <div className="field" style={{ marginTop: 16 }}>
           <label>Notlar</label>
           <textarea placeholder="Hat, ödeme koşulları, özel not…" value={notlar} onChange={(e) => setNotlar(e.target.value)} />
         </div>

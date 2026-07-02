@@ -25,7 +25,10 @@ export function NavlunFirmalar() {
   }
 
   let list = [...db.navlunFirmalari].sort((a, b) => a.ad.localeCompare(b.ad, 'tr'));
-  if (q) list = list.filter((f) => (f.ad + (f.email || '') + (f.adres || '')).toLowerCase().includes(q));
+  if (q)
+    list = list.filter((f) =>
+      (f.ad + (f.calisanlar || []).map((c) => c.ad + (c.email || '')).join('')).toLowerCase().includes(q),
+    );
 
   return (
     <>
@@ -82,16 +85,37 @@ export function NavlunFirmalar() {
                     {f.telefon}
                   </div>
                 )}
-                {f.email && (
-                  <div className="fc-line">
-                    <Icon name="mail" size={15} />
-                    {f.email}
+                {f.calisanlar && f.calisanlar.length ? (
+                  <div className="fc-emp">
+                    {f.calisanlar.map((c, i) => (
+                      <div key={i} className="fc-emp-item">
+                        <div className="ea">{initials(c.ad)}</div>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div className="en">
+                            {c.ad}
+                            {c.unvan ? (
+                              <>
+                                {' · '}
+                                <span style={{ fontWeight: 500, color: 'var(--muted)' }}>{c.unvan}</span>
+                              </>
+                            ) : null}
+                          </div>
+                          <div className="et">
+                            {c.email ? c.email : ''}
+                            {c.telefon ? (c.email ? ' · ' : '') + c.telefon : ''}
+                          </div>
+                        </div>
+                        {c.email ? (
+                          <a className="btn sm ghost" href={'mailto:' + c.email} onClick={(e) => e.stopPropagation()} title="E-posta gönder">
+                            ✉
+                          </a>
+                        ) : null}
+                      </div>
+                    ))}
                   </div>
-                )}
-                {f.adres && (
-                  <div className="fc-line">
-                    <Icon name="mappin" size={15} />
-                    {f.adres}
+                ) : (
+                  <div className="fc-emp" style={{ color: 'var(--faint)', fontSize: 12.5 }}>
+                    İletişim kişisi eklenmedi
                   </div>
                 )}
                 {f.notlar && (

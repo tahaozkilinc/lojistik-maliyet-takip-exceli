@@ -132,9 +132,13 @@ export interface NavlunFirma {
   id: string;
   ad: string;
   telefon?: string;
+  /** Eski kayıtlar için korunur; form artık göstermez. */
   email?: string;
+  /** Eski kayıtlar için korunur; form artık göstermez. */
   adres?: string;
   notlar?: string;
+  /** Firma iletişim kişileri. */
+  calisanlar?: Calisan[];
   createdAt?: string;
 }
 
