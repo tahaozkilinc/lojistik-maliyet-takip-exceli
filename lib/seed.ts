@@ -13,6 +13,7 @@ export function emptyDB(): DB {
     denizNavlun: [],
     karaNavlun: [],
     navlunFirmalari: [],
+    tasimaTalepleri: [],
     limanTalepleri: [],
     kur: { USD: 34.5, EUR: 37.2 },
     meta: { firma: 'Sunar Yatırım A.Ş.', departman: 'Dış Ticaret & Lojistik' },
@@ -65,6 +66,12 @@ export function sanitizeBelgeUrls(db: DB): DB {
       if (n.onay) n.onay.imzaliBelge = null;
     }
   });
+  db.tasimaTalepleri.forEach((t) => {
+    const b = t.onay && t.onay.imzaliBelge;
+    if (b && b.data && !SAFE_FILE_DATA_URL.test(b.data)) {
+      if (t.onay) t.onay.imzaliBelge = null;
+    }
+  });
   return db;
 }
 
@@ -83,6 +90,9 @@ export function normalizeDB(raw: unknown, fallbackMeta?: DB['meta']): DB {
     denizNavlun: Array.isArray(clean.denizNavlun) ? clean.denizNavlun : base.denizNavlun,
     karaNavlun: Array.isArray(clean.karaNavlun) ? clean.karaNavlun : base.karaNavlun,
     navlunFirmalari: Array.isArray(clean.navlunFirmalari) ? clean.navlunFirmalari : base.navlunFirmalari,
+    tasimaTalepleri: (Array.isArray(clean.tasimaTalepleri) ? clean.tasimaTalepleri : base.tasimaTalepleri).map(
+      (t) => (!Array.isArray(t.teklifler) ? { ...t, teklifler: [] } : t),
+    ),
     limanTalepleri: (Array.isArray(clean.limanTalepleri) ? clean.limanTalepleri : base.limanTalepleri).map(
       (lt) => (!Array.isArray(lt.masraflar) ? { ...lt, masraflar: [] } : lt),
     ),
@@ -250,6 +260,8 @@ export function migrate(db: DB): boolean {
   if (!Array.isArray(db.denizNavlun)) db.denizNavlun = [];
   if (!Array.isArray(db.karaNavlun)) db.karaNavlun = [];
   if (!Array.isArray(db.navlunFirmalari)) db.navlunFirmalari = [];
+  if (!Array.isArray(db.tasimaTalepleri)) db.tasimaTalepleri = [];
+  db.tasimaTalepleri.forEach((t) => { if (!Array.isArray(t.teklifler)) t.teklifler = []; });
   if (!Array.isArray(db.limanTalepleri)) { db.limanTalepleri = []; }
   db.limanTalepleri.forEach((lt) => { if (!Array.isArray(lt.masraflar)) { lt.masraflar = []; dirty = true; } });
   if (

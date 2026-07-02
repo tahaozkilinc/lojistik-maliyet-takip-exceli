@@ -4,7 +4,7 @@ import { useStore } from '@/lib/store';
 import { Icon } from './Icon';
 import { TITLES } from '@/lib/constants';
 
-const SEARCH_VIEWS = new Set<string>(['talepler', 'onaylar', 'firmalar', 'lokasyonlar', 'navlunFirmalar', 'haritalar']);
+const SEARCH_VIEWS = new Set<string>(['talepler', 'onaylar', 'firmalar', 'lokasyonlar', 'navlunFirmalar', 'haritalar', 'tasimaTalepleri']);
 
 export function Topbar({ onMenu }: { onMenu: () => void }) {
   const { ui, setUi, openModal, toast, db, go } = useStore();
@@ -26,6 +26,10 @@ export function Topbar({ onMenu }: { onMenu: () => void }) {
       break;
     case 'karaNavlun':
       primary = { label: 'Yeni Kara Navlun Kaydı', onClick: () => openModal({ type: 'karaNavlun' }) };
+      break;
+    case 'tasimaTalepleri':
+    case 'tasimaTalepDetay':
+      primary = { label: 'Yeni Taşıma Talebi', onClick: () => openModal({ type: 'tasimaTalep' }) };
       break;
     case 'analiz':
     case 'haritalar':

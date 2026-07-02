@@ -16,6 +16,8 @@ import { Analiz } from './views/Analiz';
 import { DenizNavlun } from './views/DenizNavlun';
 import { KaraNavlun } from './views/KaraNavlun';
 import { NavlunFirmalar } from './views/NavlunFirmalar';
+import { TasimaTalepleri } from './views/TasimaTalepleri';
+import { TasimaTalepDetail } from './views/TasimaTalepDetail';
 
 export function ViewRouter() {
   const { ui } = useStore();
@@ -50,6 +52,10 @@ export function ViewRouter() {
       return <KaraNavlun />;
     case 'navlunFirmalar':
       return <NavlunFirmalar />;
+    case 'tasimaTalepleri':
+      return <TasimaTalepleri />;
+    case 'tasimaTalepDetay':
+      return <TasimaTalepDetail />;
     default:
       return <Dashboard />;
   }

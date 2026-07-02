@@ -1,0 +1,156 @@
+'use client';
+import React, { useState } from 'react';
+import { useStore } from '@/lib/store';
+import { ModalShell, ModalHead } from '@/components/Modal';
+import { YUK_TIPLERI } from '@/lib/constants';
+import { uid } from '@/lib/format';
+import { nextTasimaNo } from '@/lib/tasima';
+
+export function TasimaTalepModal({ id }: { id?: string }) {
+  const { db, mutate, closeModal, toast, go } = useStore();
+  const x = id ? db.tasimaTalepleri.find((t) => t.id === id) : null;
+
+  const [talepNo, setTalepNo] = useState(x ? x.talepNo : nextTasimaNo(db));
+  const [kalkis, setKalkis] = useState(x ? x.kalkisYeri || '' : '');
+  const [varis, setVaris] = useState(x ? x.varisYeri || '' : '');
+  const [yuk, setYuk] = useState(x ? x.yukTipi || '' : '');
+  const [tarih, setTarih] = useState(x ? x.tarih || '' : '');
+  const [siparisNo, setSiparisNo] = useState(x ? x.siparisNo || '' : '');
+  const [notlar, setNotlar] = useState(x ? x.notlar || '' : '');
+
+  // Otomatik tamamlama: mevcut taleplerdeki kalkış/varış yerleri.
+  const kalkislar = [...new Set(db.tasimaTalepleri.map((t) => (t.kalkisYeri || '').trim()).filter(Boolean))];
+  const varislar = [...new Set(db.tasimaTalepleri.map((t) => (t.varisYeri || '').trim()).filter(Boolean))];
+
+  function save() {
+    const k = kalkis.trim();
+    const v = varis.trim();
+    if (!k || !v) {
+      toast('Kalkış ve varış yerini girin', 'err');
+      return;
+    }
+    const data = {
+      talepNo: talepNo.trim() || 'TT-' + Date.now(),
+      kalkisYeri: k,
+      varisYeri: v,
+      yukTipi: yuk.trim(),
+      tarih: tarih,
+      siparisNo: siparisNo.trim(),
+      notlar: notlar.trim(),
+    };
+    let newId = '';
+    mutate((d) => {
+      if (id) {
+        const t = d.tasimaTalepleri.find((y) => y.id === id);
+        if (t) Object.assign(t, data);
+      } else {
+        newId = uid('tt');
+        d.tasimaTalepleri.push({
+          id: newId,
+          createdAt: new Date().toISOString(),
+          durum: 'toplama',
+          teklifler: [],
+          secilenTeklifId: null,
+          ...data,
+        });
+      }
+    });
+    closeModal();
+    if (newId) {
+      go('tasimaTalepDetay', newId);
+      toast('Taşıma talebi oluşturuldu — deniz/kara/hava fiyatlarını girebilirsiniz', 'ok');
+    } else {
+      toast('Taşıma talebi güncellendi', 'ok');
+    }
+  }
+
+  function del() {
+    if (!confirm('Bu taşıma talebi ve içindeki tüm fiyatlar silinsin mi?')) return;
+    mutate((d) => {
+      d.tasimaTalepleri = d.tasimaTalepleri.filter((t) => t.id !== id);
+    });
+    closeModal();
+    go('tasimaTalepleri');
+    toast('Taşıma talebi silindi', 'ok');
+  }
+
+  return (
+    <ModalShell onClose={closeModal}>
+      <ModalHead title={x ? 'Taşıma Talebini Düzenle' : 'Yeni Taşıma Talebi'} onClose={closeModal} />
+      <div className="modal-body">
+        <div className="grid-2">
+          <div className="field">
+            <label>Talep No</label>
+            <input value={talepNo} onChange={(e) => setTalepNo(e.target.value)} />
+          </div>
+          <div className="field">
+            <label>Tarih</label>
+            <input type="date" value={tarih} onChange={(e) => setTarih(e.target.value)} />
+          </div>
+        </div>
+        <div className="grid-2">
+          <div className="field">
+            <label>
+              Kalkış Yeri <span className="req">*</span>
+            </label>
+            <input list="ttKalkisList" autoComplete="off" placeholder="örn. Mersin" value={kalkis} onChange={(e) => setKalkis(e.target.value)} />
+            <datalist id="ttKalkisList">
+              {kalkislar.map((h) => (
+                <option key={h} value={h} />
+              ))}
+            </datalist>
+          </div>
+          <div className="field">
+            <label>
+              Varış Yeri <span className="req">*</span>
+            </label>
+            <input list="ttVarisList" autoComplete="off" placeholder="örn. Rotterdam" value={varis} onChange={(e) => setVaris(e.target.value)} />
+            <datalist id="ttVarisList">
+              {varislar.map((h) => (
+                <option key={h} value={h} />
+              ))}
+            </datalist>
+          </div>
+        </div>
+        <div className="grid-2">
+          <div className="field">
+            <label>Yük</label>
+            <input list="ttYukList" autoComplete="off" placeholder="örn. Mısır Özü" value={yuk} onChange={(e) => setYuk(e.target.value)} />
+            <datalist id="ttYukList">
+              {YUK_TIPLERI.map((y) => (
+                <option key={y} value={y} />
+              ))}
+            </datalist>
+          </div>
+          <div className="field">
+            <label>Sipariş No</label>
+            <input placeholder="örn. SIP-2026-0154" value={siparisNo} onChange={(e) => setSiparisNo(e.target.value)} />
+            <div className="hint">Taşıma gerçekleştiğinde sipariş numarasını buraya yazın</div>
+          </div>
+        </div>
+        <div className="field">
+          <label>Notlar</label>
+          <textarea placeholder="Özel koşul, geçerlilik, açıklama…" value={notlar} onChange={(e) => setNotlar(e.target.value)} />
+        </div>
+        <div className="hint">
+          Deniz / Kara / Hava fiyatları talep oluşturulduktan sonra talep detayında girilir; teklif veren firmalar Navlun
+          Firmaları listesinden seçilir.
+        </div>
+      </div>
+      <div className="modal-foot">
+        {x && (
+          <button className="btn danger" onClick={del}>
+            Sil
+          </button>
+        )}
+        <div style={{ flex: 1 }} />
+        <button className="btn" onClick={closeModal}>
+          Vazgeç
+        </button>
+        <button className="btn primary" onClick={save}>
+          {x ? 'Kaydet' : 'Oluştur'}
+        </button>
+      </div>
+    </ModalShell>
+  );
+}

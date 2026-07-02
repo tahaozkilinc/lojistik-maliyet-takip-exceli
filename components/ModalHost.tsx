@@ -12,6 +12,7 @@ import { AnlasmaModal } from './modals/AnlasmaModal';
 import { NavlunModal } from './modals/NavlunModal';
 import { KaraNavlunModal } from './modals/KaraNavlunModal';
 import { NavlunFirmaModal } from './modals/NavlunFirmaModal';
+import { TasimaTalepModal } from './modals/TasimaTalepModal';
 import { LimanTalepModal } from './modals/LimanTalepModal';
 import { LimanMasrafModal } from './modals/LimanMasrafModal';
 import { KurModal } from './modals/KurModal';
@@ -51,6 +52,8 @@ export function ModalHost() {
       return <KaraNavlunModal id={modal.id} />;
     case 'navlunFirma':
       return <NavlunFirmaModal id={modal.id} />;
+    case 'tasimaTalep':
+      return <TasimaTalepModal id={modal.id} />;
     case 'limanTalep':
       return <LimanTalepModal id={modal.id} />;
     case 'limanMasraf':

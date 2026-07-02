@@ -4,7 +4,7 @@ import { useStore } from '@/lib/store';
 import { Icon, type IconName } from './Icon';
 import type { ViewKey } from '@/lib/constants';
 
-const NAV: { group: string; items: { view: ViewKey; label: string; icon: IconName; badge?: 'talep' | 'onay' }[] }[] = [
+const NAV: { group: string; items: { view: ViewKey; label: string; icon: IconName; badge?: 'talep' | 'onay' | 'tasima' }[] }[] = [
   {
     group: 'Operasyon',
     items: [
@@ -25,6 +25,7 @@ const NAV: { group: string; items: { view: ViewKey; label: string; icon: IconNam
   {
     group: 'Navlun Takibi',
     items: [
+      { view: 'tasimaTalepleri', label: 'Taşıma Talepleri', icon: 'send', badge: 'tasima' },
       { view: 'denizNavlun', label: 'Deniz Navlun', icon: 'ship' },
       { view: 'karaNavlun', label: 'Kara Navlun', icon: 'truck' },
       { view: 'navlunFirmalar', label: 'Navlun Firmaları', icon: 'users' },
@@ -38,6 +39,7 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
 
   const navTalep = db.talepler.filter((x) => x.durum === 'toplama').length;
   const navOnay = db.talepler.filter((x) => x.durum === 'onayda').length;
+  const navTasima = db.tasimaTalepleri.filter((x) => x.durum === 'toplama').length;
 
   return (
     <aside className={'sidebar' + (open ? ' open' : '')} id="sidebar">
@@ -68,6 +70,7 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
                 {it.label}
                 {it.badge === 'talep' && <span className="badge">{navTalep}</span>}
                 {it.badge === 'onay' && <span className="badge">{navOnay}</span>}
+                {it.badge === 'tasima' && <span className="badge">{navTasima}</span>}
               </a>
             ))}
           </React.Fragment>

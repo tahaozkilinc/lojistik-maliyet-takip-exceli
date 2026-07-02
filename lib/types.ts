@@ -252,6 +252,41 @@ export interface LimanTalep {
   createdAt?: string;
 }
 
+/** Taşıma talebi teklif modu — talep içindeki üç ayrı fiyat bölümü. */
+export type TasimaMod = 'deniz' | 'kara' | 'hava';
+
+/** Taşıma talebine bir navlun firmasından girilen fiyat teklifi. */
+export interface TasimaTeklif {
+  id: string;
+  /** Teklifin ait olduğu bölüm: deniz | kara | hava. */
+  mod: TasimaMod;
+  /** NavlunFirma.id — teklif veren firma yalnızca Navlun Firmaları listesinden seçilir. */
+  firmaId: string;
+  fiyat: number;
+  paraBirimi: ParaBirimi;
+  notlar?: string;
+  createdAt?: string;
+}
+
+/** Deniz/kara/hava fiyatlarının tek talep altında toplandığı taşıma talebi. */
+export interface TasimaTalep {
+  id: string;
+  talepNo: string;
+  kalkisYeri: string;
+  varisYeri: string;
+  yukTipi?: string;
+  /** Yükleme / talep tarihi. */
+  tarih?: string;
+  /** Gerçekleşen taşımanın sipariş numarası. */
+  siparisNo?: string;
+  notlar?: string;
+  teklifler: TasimaTeklif[];
+  secilenTeklifId?: string | null;
+  durum: Durum;
+  onay?: Onay | null;
+  createdAt?: string;
+}
+
 export interface Kur {
   USD: number;
   EUR: number;
@@ -271,6 +306,8 @@ export interface DB {
   karaNavlun: KaraNavlunKayit[];
   /** Navlun (deniz + kara) tekliflerinde kullanılan, ana Firma listesinden bağımsız firma kaydı. */
   navlunFirmalari: NavlunFirma[];
+  /** Deniz/kara/hava fiyatlarının tek talep altında toplandığı taşıma talepleri. */
+  tasimaTalepleri: TasimaTalep[];
   limanTalepleri: LimanTalep[];
   kur: Kur;
   meta: Meta;
