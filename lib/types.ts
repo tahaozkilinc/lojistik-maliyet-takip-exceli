@@ -158,6 +158,10 @@ export interface NavlunKayit {
   tarih?: string;
   hat?: string;
   tasiyici?: string;
+  /** NavlunFirma.id — taşımayı yapan firma, Navlun Firmaları listesinden seçilir. */
+  firmaId?: string;
+  /** Gerçekleşen taşımanın sipariş numarası. */
+  siparisNo?: string;
   c20?: number | null;
   c40?: number | null;
   paraBirimi?: ParaBirimi;
@@ -190,6 +194,10 @@ export interface KaraNavlunKayit {
   tarih?: string;
   hat?: string;
   tasiyici?: string;
+  /** NavlunFirma.id — taşımayı yapan firma, Navlun Firmaları listesinden seçilir. */
+  firmaId?: string;
+  /** Gerçekleşen taşımanın sipariş numarası. */
+  siparisNo?: string;
   aracTipi?: string;
   fiyat?: number | null;
   birim?: string;

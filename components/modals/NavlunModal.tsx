@@ -19,7 +19,11 @@ export function NavlunModal({ id }: { id?: string }) {
 
   const [donem, setDonem] = useState(r ? r.donem : new Date().toISOString().slice(0, 7));
   const [hat, setHat] = useState(r ? r.hat || '' : '');
-  const [tasiyici, setTasiyici] = useState(r ? r.tasiyici || '' : '');
+  // Eski kayıtlarda taşıyıcı serbest metindi; listede olmayan bu değer kaybolmasın
+  // diye '__legacy' seçeneği olarak korunur. Yeni seçimler yalnızca Navlun Firmaları'ndan.
+  const legacyTasiyici = r && !r.firmaId && r.tasiyici ? r.tasiyici : '';
+  const [firmaSel, setFirmaSel] = useState(r ? r.firmaId || (legacyTasiyici ? '__legacy' : '') : '');
+  const [siparisNo, setSiparisNo] = useState(r ? r.siparisNo || '' : '');
   const [c20, setC20] = useState(r && r.c20 != null ? String(r.c20) : '');
   const [c40, setC40] = useState(r && r.c40 != null ? String(r.c40) : '');
   const [para, setPara] = useState(r ? r.paraBirimi || 'USD' : 'USD');
@@ -44,6 +48,13 @@ export function NavlunModal({ id }: { id?: string }) {
   const [pendingFile, setPendingFile] = useState<ImzaliBelge | null>(null);
   const [existingBelge, setExistingBelge] = useState<ImzaliBelge | null>((r?.onay && r.onay.imzaliBelge) || null);
 
+  /** Seçilen navlun firmasını kayda yazılacak firmaId + tasiyici çiftine çevirir. */
+  function firmaBilgi(): { firmaId: string; tasiyici: string } {
+    if (firmaSel === '__legacy') return { firmaId: '', tasiyici: legacyTasiyici };
+    const f = db.navlunFirmalari.find((x) => x.id === firmaSel);
+    return { firmaId: f ? f.id : '', tasiyici: f ? f.ad : '' };
+  }
+
   function save() {
     if (!donem) {
       toast('Dönem (ay) seçin', 'err');
@@ -59,7 +70,8 @@ export function NavlunModal({ id }: { id?: string }) {
       donem,
       tarih: donem + '-15',
       hat: hat.trim(),
-      tasiyici: tasiyici.trim(),
+      ...firmaBilgi(),
+      siparisNo: siparisNo.trim(),
       c20: c20t ? Number(c20t) : null,
       c40: c40t ? Number(c40t) : null,
       paraBirimi: para,
@@ -134,6 +146,10 @@ export function NavlunModal({ id }: { id?: string }) {
       rec.donem = donem;
       rec.tarih = donem + '-15';
       rec.hat = hat.trim();
+      const fb = firmaBilgi();
+      rec.firmaId = fb.firmaId;
+      rec.tasiyici = fb.tasiyici;
+      rec.siparisNo = siparisNo.trim();
       rec.notlar = not.trim();
       rec.teklifler = teklifler;
       rec.secilenTeklifId = selId;
@@ -142,7 +158,9 @@ export function NavlunModal({ id }: { id?: string }) {
       if (newDurum === 'onaylandi' && selId) {
         const q = teklifler.find((t) => t.id === selId);
         if (q) {
+          rec.firmaId = q.firmaId;
           rec.tasiyici = navlunFirmName(db, q.firmaId);
+          if (q.siparisKodu && !rec.siparisNo) rec.siparisNo = q.siparisKodu;
           if (q.c20 != null) rec.c20 = q.c20;
           if (q.c40 != null) rec.c40 = q.c40;
           if (q.paraBirimi) rec.paraBirimi = q.paraBirimi;
@@ -159,7 +177,6 @@ export function NavlunModal({ id }: { id?: string }) {
     persist('onayda', { gonderim: new Date().toISOString() });
     setDurum('onayda');
     if (r) {
-      setTasiyici(r.tasiyici || tasiyici);
       setC20(r.c20 != null ? String(r.c20) : c20);
       setC40(r.c40 != null ? String(r.c40) : c40);
       setPara(r.paraBirimi || para);
@@ -248,9 +265,29 @@ export function NavlunModal({ id }: { id?: string }) {
             </datalist>
           </div>
         </div>
-        <div className="field">
-          <label>Taşıyıcı / Acente (opsiyonel — özet/hızlı kayıt)</label>
-          <input placeholder="örn. Maersk, MSC, CMA CGM" value={tasiyici} onChange={(e) => setTasiyici(e.target.value)} />
+        <div className="grid-2">
+          <div className="field">
+            <label>Taşıyıcı Firma</label>
+            <select value={firmaSel} onChange={(e) => setFirmaSel(e.target.value)}>
+              <option value="">— Seçiniz —</option>
+              {legacyTasiyici ? <option value="__legacy">{legacyTasiyici} (eski kayıt)</option> : null}
+              {db.navlunFirmalari.map((f) => (
+                <option key={f.id} value={f.id}>
+                  {f.ad}
+                </option>
+              ))}
+            </select>
+            <div className="hint">
+              {db.navlunFirmalari.length
+                ? 'Yalnızca Navlun Firmaları bölümünde tanımlı firmalar seçilebilir'
+                : 'Liste boş — önce "Navlun Firmaları" bölümünden firma ekleyin'}
+            </div>
+          </div>
+          <div className="field">
+            <label>Sipariş No</label>
+            <input placeholder="örn. SIP-2026-0154" value={siparisNo} onChange={(e) => setSiparisNo(e.target.value)} />
+            <div className="hint">Gerçekleşen taşımanın sipariş numarası</div>
+          </div>
         </div>
         <div className="grid-3">
           <div className="field">

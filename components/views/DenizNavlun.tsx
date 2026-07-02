@@ -208,6 +208,7 @@ export function DenizNavlun() {
                   <th>Dönem</th>
                   <th>Hat</th>
                   <th>Taşıyıcı</th>
+                  <th>Sipariş No</th>
                   <th style={{ textAlign: 'right' }}>20′</th>
                   <th style={{ textAlign: 'right' }}>40′</th>
                   <th>Durum</th>
@@ -221,6 +222,7 @@ export function DenizNavlun() {
                     <td className="cell-strong">{donemLabel(r.donem)}</td>
                     <td>{r.hat || '—'}</td>
                     <td>{r.tasiyici || '—'}</td>
+                    <td>{r.siparisNo || '—'}</td>
                     <td style={{ textAlign: 'right' }}>{r.c20 != null ? money(r.c20, r.paraBirimi || 'USD') : '—'}</td>
                     <td style={{ textAlign: 'right' }}>{r.c40 != null ? money(r.c40, r.paraBirimi || 'USD') : '—'}</td>
                     <td>{r.durum ? <StatusBadge durum={r.durum} /> : '—'}</td>

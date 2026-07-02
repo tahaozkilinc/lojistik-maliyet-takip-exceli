@@ -186,6 +186,7 @@ export function KaraNavlun() {
                   <th>Dönem</th>
                   <th>Hat</th>
                   <th>Taşıyıcı</th>
+                  <th>Sipariş No</th>
                   <th>Araç Tipi</th>
                   <th style={{ textAlign: 'right' }}>Fiyat</th>
                   <th>Durum</th>
@@ -199,6 +200,7 @@ export function KaraNavlun() {
                     <td className="cell-strong">{donemLabel(r.donem)}</td>
                     <td>{r.hat || '—'}</td>
                     <td>{r.tasiyici || '—'}</td>
+                    <td>{r.siparisNo || '—'}</td>
                     <td>{r.aracTipi || '—'}</td>
                     <td style={{ textAlign: 'right' }}>
                       {r.fiyat != null ? money(r.fiyat, r.paraBirimi || 'TRY') + (r.birim ? ' / ' + r.birim : '') : '—'}
