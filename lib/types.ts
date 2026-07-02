@@ -156,7 +156,12 @@ export interface NavlunKayit {
   id: string;
   donem: string; // YYYY-MM
   tarih?: string;
+  /** Bileşik güzergah ("Kalkış → Varış") — filtre/grafik/analizler bu alanı kullanır. */
   hat?: string;
+  /** Güzergahın ayrı girilen kalkış noktası. */
+  kalkisYeri?: string;
+  /** Güzergahın ayrı girilen varış noktası. */
+  varisYeri?: string;
   tasiyici?: string;
   /** NavlunFirma.id — taşımayı yapan firma, Navlun Firmaları listesinden seçilir. */
   firmaId?: string;
@@ -192,7 +197,12 @@ export interface KaraNavlunKayit {
   id: string;
   donem: string; // YYYY-MM
   tarih?: string;
+  /** Bileşik güzergah ("Kalkış → Varış") — filtre/grafik/analizler bu alanı kullanır. */
   hat?: string;
+  /** Güzergahın ayrı girilen kalkış noktası. */
+  kalkisYeri?: string;
+  /** Güzergahın ayrı girilen varış noktası. */
+  varisYeri?: string;
   tasiyici?: string;
   /** NavlunFirma.id — taşımayı yapan firma, Navlun Firmaları listesinden seçilir. */
   firmaId?: string;

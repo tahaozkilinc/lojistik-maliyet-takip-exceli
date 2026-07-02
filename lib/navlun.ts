@@ -16,6 +16,19 @@ export function navlunHatlar(db: DB): string[] {
   );
 }
 
+/** "Kalkış → Varış" bileşik güzergahını iki parçaya ayırır (eski kayıtlar için). */
+export function splitHat(h?: string): { kalkis: string; varis: string } {
+  const s = (h || '').trim();
+  const m = s.split(/\s*(?:→|->)\s*/);
+  if (m.length < 2) return { kalkis: s, varis: '' };
+  return { kalkis: m[0].trim(), varis: m.slice(1).join(' → ').trim() };
+}
+
+/** Kalkış + varış çiftini filtre/grafiklerin kullandığı bileşik güzergaha çevirir. */
+export function joinHat(kalkis: string, varis: string): string {
+  return [kalkis.trim(), varis.trim()].filter(Boolean).join(' → ');
+}
+
 export function navlunFiltered(db: DB, yil: number, hat: string): NavlunKayit[] {
   return db.denizNavlun.filter((r) => {
     if (+(r.donem || '').slice(0, 4) !== yil) return false;

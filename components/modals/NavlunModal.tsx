@@ -2,7 +2,7 @@
 import React, { useRef, useState } from 'react';
 import { useStore } from '@/lib/store';
 import { ModalShell, ModalHead } from '@/components/Modal';
-import { navlunHatlar } from '@/lib/navlun';
+import { navlunHatlar, splitHat, joinHat } from '@/lib/navlun';
 import { PARA_KODLARI, SAFE_FILE_MIME } from '@/lib/constants';
 import { uid, money } from '@/lib/format';
 import { toTRY, navlunFirmName } from '@/lib/calc';
@@ -14,11 +14,17 @@ export function NavlunModal({ id }: { id?: string }) {
   const { db, mutate, closeModal, toast, setUi } = useStore();
   const r = id ? db.denizNavlun.find((x) => x.id === id) : null;
   const hatlar = navlunHatlar(db);
+  // Otomatik tamamlama: mevcut kayıtlardaki güzergahların kalkış/varış parçaları.
+  const kalkislar = [...new Set(hatlar.map((h) => splitHat(h).kalkis).filter(Boolean))];
+  const varislar = [...new Set(hatlar.map((h) => splitHat(h).varis).filter(Boolean))];
   const fileInput = useRef<HTMLInputElement>(null);
   const num = (v: string) => v.replace(',', '.').replace(/[^-0-9.]/g, '');
 
   const [donem, setDonem] = useState(r ? r.donem : new Date().toISOString().slice(0, 7));
-  const [hat, setHat] = useState(r ? r.hat || '' : '');
+  // Güzergah iki ayrı alan olarak girilir; eski kayıtlarda tek "hat" metni varsa bölünür.
+  const initHat = r ? (r.kalkisYeri != null || r.varisYeri != null ? { kalkis: r.kalkisYeri || '', varis: r.varisYeri || '' } : splitHat(r.hat)) : { kalkis: '', varis: '' };
+  const [kalkis, setKalkis] = useState(initHat.kalkis);
+  const [varis, setVaris] = useState(initHat.varis);
   // Eski kayıtlarda taşıyıcı serbest metindi; listede olmayan bu değer kaybolmasın
   // diye '__legacy' seçeneği olarak korunur. Yeni seçimler yalnızca Navlun Firmaları'ndan.
   const legacyTasiyici = r && !r.firmaId && r.tasiyici ? r.tasiyici : '';
@@ -69,7 +75,9 @@ export function NavlunModal({ id }: { id?: string }) {
     const data = {
       donem,
       tarih: donem + '-15',
-      hat: hat.trim(),
+      hat: joinHat(kalkis, varis),
+      kalkisYeri: kalkis.trim(),
+      varisYeri: varis.trim(),
       ...firmaBilgi(),
       siparisNo: siparisNo.trim(),
       c20: c20t ? Number(c20t) : null,
@@ -145,7 +153,9 @@ export function NavlunModal({ id }: { id?: string }) {
       if (!rec) return;
       rec.donem = donem;
       rec.tarih = donem + '-15';
-      rec.hat = hat.trim();
+      rec.hat = joinHat(kalkis, varis);
+      rec.kalkisYeri = kalkis.trim();
+      rec.varisYeri = varis.trim();
       const fb = firmaBilgi();
       rec.firmaId = fb.firmaId;
       rec.tasiyici = fb.tasiyici;
@@ -247,19 +257,28 @@ export function NavlunModal({ id }: { id?: string }) {
     <ModalShell onClose={closeModal} size={r ? 'wide' : undefined}>
       <ModalHead title={r ? 'Navlun Kaydını Düzenle' : 'Yeni Deniz Navlun Kaydı'} onClose={closeModal} />
       <div className="modal-body">
+        <div className="field">
+          <label>
+            Dönem (Ay) <span className="req">*</span>
+          </label>
+          <input type="month" value={donem} onChange={(e) => setDonem(e.target.value)} />
+          <div className="hint">Genelde her ayın 15&apos;i alınır</div>
+        </div>
         <div className="grid-2">
           <div className="field">
-            <label>
-              Dönem (Ay) <span className="req">*</span>
-            </label>
-            <input type="month" value={donem} onChange={(e) => setDonem(e.target.value)} />
-            <div className="hint">Genelde her ayın 15&apos;i alınır</div>
+            <label>Kalkış Yeri</label>
+            <input list="kalkisList" autoComplete="off" placeholder="örn. Mersin" value={kalkis} onChange={(e) => setKalkis(e.target.value)} />
+            <datalist id="kalkisList">
+              {kalkislar.map((h) => (
+                <option key={h} value={h} />
+              ))}
+            </datalist>
           </div>
           <div className="field">
-            <label>Hat / Güzergah</label>
-            <input list="hatList" autoComplete="off" placeholder="örn. Mersin → Shanghai" value={hat} onChange={(e) => setHat(e.target.value)} />
-            <datalist id="hatList">
-              {hatlar.map((h) => (
+            <label>Varış Yeri</label>
+            <input list="varisList" autoComplete="off" placeholder="örn. Shanghai" value={varis} onChange={(e) => setVaris(e.target.value)} />
+            <datalist id="varisList">
+              {varislar.map((h) => (
                 <option key={h} value={h} />
               ))}
             </datalist>
