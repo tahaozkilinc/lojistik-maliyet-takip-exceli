@@ -69,10 +69,6 @@ export function LoginScreen() {
         <button className="btn primary login-btn" type="submit" disabled={busy}>
           {busy ? 'Lütfen bekleyin…' : 'Giriş Yap'}
         </button>
-
-        <div className="login-foot">
-          Veriler tüm kullanıcılar arasında merkezi olarak paylaşılır. Giriş bilgileriniz Supabase tarafından güvenli biçimde saklanır ve doğrulanır.
-        </div>
       </form>
     </div>
   );
