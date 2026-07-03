@@ -2,7 +2,7 @@
 import React from 'react';
 import { useStore } from '@/lib/store';
 import { money, donemLabel } from '@/lib/format';
-import { karaNavlunYillar, karaNavlunHatlar, karaNavlunFiltered, karaNavlunAyData, karaDominantCur } from '@/lib/karaNavlun';
+import { karaNavlunYillar, karaNavlunHatlar, karaNavlunFiltered, karaNavlunAyData, karaDominantCur, effectiveKaraFiyat } from '@/lib/karaNavlun';
 import { navlunDelta } from '@/lib/navlun';
 import { AYLAR } from '@/lib/constants';
 import { Icon } from '@/components/Icon';
@@ -127,7 +127,11 @@ export function KaraNavlun() {
         <div className="stat s2">
           <div className="k">Son Kayıt</div>
           <div className="v" style={{ fontSize: 17 }}>
-            {lastRec && lastRec.fiyat != null ? money(lastRec.fiyat, lastRec.paraBirimi || 'TRY') : '—'}
+            {(() => {
+              if (!lastRec) return '—';
+              const eff = effectiveKaraFiyat(db, lastRec);
+              return eff.fiyat != null ? money(eff.fiyat, eff.paraBirimi) : '—';
+            })()}
           </div>
           <div className="d">{lastRec ? donemLabel(lastRec.donem) + (lastRec.hat ? ' · ' + lastRec.hat : '') : '—'}</div>
         </div>
@@ -195,7 +199,9 @@ export function KaraNavlun() {
                 </tr>
               </thead>
               <tbody>
-                {recList.map((r) => (
+                {recList.map((r) => {
+                  const eff = effectiveKaraFiyat(db, r);
+                  return (
                   <tr key={r.id}>
                     <td className="cell-strong">{donemLabel(r.donem)}</td>
                     <td>{r.hat || '—'}</td>
@@ -203,7 +209,7 @@ export function KaraNavlun() {
                     <td>{r.siparisNo || '—'}</td>
                     <td>{r.aracTipi || '—'}</td>
                     <td style={{ textAlign: 'right' }}>
-                      {r.fiyat != null ? money(r.fiyat, r.paraBirimi || 'TRY') + (r.birim ? ' / ' + r.birim : '') : '—'}
+                      {eff.fiyat != null ? money(eff.fiyat, eff.paraBirimi) + (r.birim ? ' / ' + r.birim : '') : '—'}
                     </td>
                     <td>{r.durum ? <StatusBadge durum={r.durum} /> : '—'}</td>
                     <td>{r.notlar ? r.notlar : ''}</td>
@@ -216,7 +222,8 @@ export function KaraNavlun() {
                       </button>
                     </td>
                   </tr>
-                ))}
+                  );
+                })}
               </tbody>
             </table>
           ) : (

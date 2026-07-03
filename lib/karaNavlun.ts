@@ -2,7 +2,8 @@
    Kara navlun yardımcıları — deniz navlun ile aynı mantık,
    tek bir birim fiyat serisi üzerinden.
    ============================================================ */
-import type { DB, KaraNavlunKayit } from './types';
+import type { DB, KaraNavlunKayit, KaraNavlunTeklif } from './types';
+import { toTRY } from './calc';
 
 export function karaNavlunYillar(db: DB): number[] {
   const ys = [...new Set(db.karaNavlun.map((r) => +(r.donem || '').slice(0, 4)).filter(Boolean))];
@@ -25,6 +26,33 @@ export function karaNavlunFiltered(db: DB, yil: number, hat: string): KaraNavlun
   });
 }
 
+/** Kaydın en düşük TRY karşılığına sahip firma teklifi (varsa). */
+function bestKaraTeklif(db: DB, r: KaraNavlunKayit): KaraNavlunTeklif | null {
+  let best: KaraNavlunTeklif | null = null;
+  let bv = Infinity;
+  (r.teklifler || []).forEach((t) => {
+    if (t.fiyat == null) return;
+    const v = toTRY(db, t.fiyat, t.paraBirimi || 'TRY');
+    if (v > 0 && v < bv) {
+      bv = v;
+      best = t;
+    }
+  });
+  return best;
+}
+
+/**
+ * Kaydın özet (hızlı) fiyat alanı boşsa, seçilen — yoksa en uygun — firma
+ * teklifinden fiyatı türetir. Bu sayede yalnızca "Firma Teklifleri" akışıyla
+ * girilen fiyatlar da aylık tablo/grafik/kayıt listesinde "—" görünmez.
+ */
+export function effectiveKaraFiyat(db: DB, r: KaraNavlunKayit): { fiyat: number | null; paraBirimi: string } {
+  if (r.fiyat != null) return { fiyat: r.fiyat, paraBirimi: r.paraBirimi || 'TRY' };
+  const sel = (r.teklifler || []).find((t) => t.id === r.secilenTeklifId) || bestKaraTeklif(db, r);
+  if (sel && sel.fiyat != null) return { fiyat: sel.fiyat, paraBirimi: sel.paraBirimi || 'TRY' };
+  return { fiyat: null, paraBirimi: r.paraBirimi || 'TRY' };
+}
+
 export interface KaraAyData {
   fiyat: number | null;
   count: number;
@@ -38,7 +66,8 @@ export function karaNavlunAyData(db: DB, yil: number, hat: string): KaraAyData[]
   karaNavlunFiltered(db, yil, hat).forEach((r) => {
     const m = +(r.donem || '').slice(5, 7) - 1;
     if (m < 0 || m > 11) return;
-    if (r.fiyat != null && (r.fiyat as unknown) !== '' && isFinite(+r.fiyat)) months[m].fiyat.push(+r.fiyat);
+    const eff = effectiveKaraFiyat(db, r);
+    if (eff.fiyat != null && isFinite(+eff.fiyat)) months[m].fiyat.push(+eff.fiyat);
     months[m].recs.push(r);
   });
   return months.map((o) => ({

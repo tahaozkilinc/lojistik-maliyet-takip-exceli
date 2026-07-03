@@ -1,7 +1,8 @@
 /* ============================================================
    Deniz navlun yardımcıları — orijinal uygulamadan birebir.
    ============================================================ */
-import type { DB, NavlunKayit } from './types';
+import type { DB, NavlunKayit, NavlunTeklif } from './types';
+import { toTRY } from './calc';
 
 export function navlunYillar(db: DB): number[] {
   const ys = [...new Set(db.denizNavlun.map((r) => +(r.donem || '').slice(0, 4)).filter(Boolean))];
@@ -37,6 +38,35 @@ export function navlunFiltered(db: DB, yil: number, hat: string): NavlunKayit[] 
   });
 }
 
+/** Kaydın en düşük TRY karşılığına sahip firma teklifi (varsa). */
+function bestNavlunTeklif(db: DB, r: NavlunKayit): NavlunTeklif | null {
+  let best: NavlunTeklif | null = null;
+  let bv = Infinity;
+  (r.teklifler || []).forEach((t) => {
+    if (t.c20 == null && t.c40 == null) return;
+    const v = toTRY(db, (t.c40 ?? t.c20) as number, t.paraBirimi || 'USD');
+    if (v > 0 && v < bv) {
+      bv = v;
+      best = t;
+    }
+  });
+  return best;
+}
+
+/**
+ * Kaydın özet (hızlı) C20/C40 alanları boşsa, seçilen — yoksa en uygun — firma
+ * teklifinden fiyatı türetir. Bu sayede yalnızca "Firma Teklifleri" akışıyla
+ * girilen fiyatlar da aylık tablo/grafik/kayıt listesinde "—" görünmez.
+ */
+export function effectiveNavlunFiyat(db: DB, r: NavlunKayit): { c20: number | null; c40: number | null; paraBirimi: string } {
+  if (r.c20 != null || r.c40 != null) {
+    return { c20: r.c20 ?? null, c40: r.c40 ?? null, paraBirimi: r.paraBirimi || 'USD' };
+  }
+  const sel = (r.teklifler || []).find((t) => t.id === r.secilenTeklifId) || bestNavlunTeklif(db, r);
+  if (sel) return { c20: sel.c20 ?? null, c40: sel.c40 ?? null, paraBirimi: sel.paraBirimi || 'USD' };
+  return { c20: null, c40: null, paraBirimi: r.paraBirimi || 'USD' };
+}
+
 export interface AyData {
   c20: number | null;
   c40: number | null;
@@ -52,8 +82,9 @@ export function navlunAyData(db: DB, yil: number, hat: string): AyData[] {
   navlunFiltered(db, yil, hat).forEach((r) => {
     const m = +(r.donem || '').slice(5, 7) - 1;
     if (m < 0 || m > 11) return;
-    if (r.c20 != null && (r.c20 as unknown) !== '' && isFinite(+r.c20)) months[m].c20.push(+r.c20);
-    if (r.c40 != null && (r.c40 as unknown) !== '' && isFinite(+r.c40)) months[m].c40.push(+r.c40);
+    const eff = effectiveNavlunFiyat(db, r);
+    if (eff.c20 != null && isFinite(+eff.c20)) months[m].c20.push(+eff.c20);
+    if (eff.c40 != null && isFinite(+eff.c40)) months[m].c40.push(+eff.c40);
     months[m].recs.push(r);
   });
   return months.map((o) => ({

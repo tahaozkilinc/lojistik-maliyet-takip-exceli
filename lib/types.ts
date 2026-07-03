@@ -262,10 +262,17 @@ export interface TasimaTeklif {
   mod: TasimaMod;
   /** NavlunFirma.id — teklif veren firma yalnızca Navlun Firmaları listesinden seçilir. */
   firmaId: string;
+  /** Toplam tutar. Deniz modunda navlunFiyat + lokalFiyat toplamıdır. */
   fiyat: number;
   paraBirimi: ParaBirimi;
   notlar?: string;
   createdAt?: string;
+  /** Yalnızca deniz modunda kullanılır: konteyner tipi (20′, 40′, 40′ HC, Dökme Yük). */
+  konteynerTipi?: string;
+  /** Yalnızca deniz modunda kullanılır: ana deniz taşıma (okyanus navlunu) bedeli. */
+  navlunFiyat?: number | null;
+  /** Yalnızca deniz modunda kullanılır: liman/elleçleme gibi yerel (lokal) masraflar. */
+  lokalFiyat?: number | null;
 }
 
 /** Deniz/kara/hava fiyatlarının tek talep altında toplandığı taşıma talebi. */
@@ -280,8 +287,12 @@ export interface TasimaTalep {
   tarih?: string;
   /** Talebin kimliği: kullanıcının kendi sipariş numarası. */
   siparisNo?: string;
-  /** Taşımayı gerçekleştiren firma — serbest metin. */
+  /** Eski alan adı — geriye dönük uyumluluk için korunur; yeni kayıtlarda yukSahibiFirma kullanılır. */
   tasiyiciFirma?: string;
+  /** Yükün ait olduğu / taşındığı firma (müşteri, yük sahibi) — serbest metin. */
+  yukSahibiFirma?: string;
+  /** Incoterms 2020 teslim şekli kodu (EXW, FOB, CIF, DAP…). */
+  incoterm?: string;
   notlar?: string;
   teklifler: TasimaTeklif[];
   secilenTeklifId?: string | null;

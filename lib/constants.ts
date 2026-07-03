@@ -24,6 +24,21 @@ export const ARAC = [
 ];
 export const YUK_TIPLERI = ['Mısır', 'Mısır Özü', 'Ayçekirdeği', 'Soya'];
 
+/** Incoterms 2020 teslim şekilleri. */
+export const INCOTERMS: { kod: string; ad: string }[] = [
+  { kod: 'EXW', ad: 'EXW — Ex Works (İşyerinde Teslim)' },
+  { kod: 'FCA', ad: 'FCA — Free Carrier (Taşıyıcıya Teslim)' },
+  { kod: 'FAS', ad: 'FAS — Free Alongside Ship (Gemi Doğrultusunda Teslim)' },
+  { kod: 'FOB', ad: 'FOB — Free On Board (Gemide Teslim)' },
+  { kod: 'CFR', ad: 'CFR — Cost and Freight (Mal Bedeli ve Navlun)' },
+  { kod: 'CIF', ad: 'CIF — Cost, Insurance and Freight (Mal Bedeli, Sigorta ve Navlun)' },
+  { kod: 'CPT', ad: 'CPT — Carriage Paid To (Taşıma Ödenmiş)' },
+  { kod: 'CIP', ad: 'CIP — Carriage and Insurance Paid To (Taşıma ve Sigorta Ödenmiş)' },
+  { kod: 'DAP', ad: 'DAP — Delivered At Place (Belirlenen Yerde Teslim)' },
+  { kod: 'DPU', ad: 'DPU — Delivered At Place Unloaded (Boşaltılmış Teslim)' },
+  { kod: 'DDP', ad: 'DDP — Delivered Duty Paid (Gümrük Vergisi Ödenmiş Teslim)' },
+];
+
 export const TEL_PH = '+90 5XX XXX XX XX';
 
 /**

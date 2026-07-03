@@ -2,7 +2,7 @@
 import React from 'react';
 import { useStore } from '@/lib/store';
 import { money, donemLabel } from '@/lib/format';
-import { navlunYillar, navlunHatlar, navlunFiltered, navlunAyData, dominantCur, navlunDelta } from '@/lib/navlun';
+import { navlunYillar, navlunHatlar, navlunFiltered, navlunAyData, dominantCur, navlunDelta, effectiveNavlunFiyat } from '@/lib/navlun';
 import { AYLAR } from '@/lib/constants';
 import { Icon } from '@/components/Icon';
 import { StatusBadge } from '@/components/StatusBadge';
@@ -147,7 +147,12 @@ export function DenizNavlun() {
         <div className="stat s2">
           <div className="k">Son Kayıt</div>
           <div className="v" style={{ fontSize: 17 }}>
-            {lastRec ? money(lastRec.c40 != null ? lastRec.c40 : lastRec.c20!, lastRec.paraBirimi || 'USD') : '—'}
+            {(() => {
+              if (!lastRec) return '—';
+              const eff = effectiveNavlunFiyat(db, lastRec);
+              const v = eff.c40 != null ? eff.c40 : eff.c20;
+              return v != null ? money(v, eff.paraBirimi) : '—';
+            })()}
           </div>
           <div className="d">{lastRec ? donemLabel(lastRec.donem) + (lastRec.hat ? ' · ' + lastRec.hat : '') : '—'}</div>
         </div>
@@ -217,14 +222,16 @@ export function DenizNavlun() {
                 </tr>
               </thead>
               <tbody>
-                {recList.map((r) => (
+                {recList.map((r) => {
+                  const eff = effectiveNavlunFiyat(db, r);
+                  return (
                   <tr key={r.id}>
                     <td className="cell-strong">{donemLabel(r.donem)}</td>
                     <td>{r.hat || '—'}</td>
                     <td>{r.tasiyici || '—'}</td>
                     <td>{r.siparisNo || '—'}</td>
-                    <td style={{ textAlign: 'right' }}>{r.c20 != null ? money(r.c20, r.paraBirimi || 'USD') : '—'}</td>
-                    <td style={{ textAlign: 'right' }}>{r.c40 != null ? money(r.c40, r.paraBirimi || 'USD') : '—'}</td>
+                    <td style={{ textAlign: 'right' }}>{eff.c20 != null ? money(eff.c20, eff.paraBirimi) : '—'}</td>
+                    <td style={{ textAlign: 'right' }}>{eff.c40 != null ? money(eff.c40, eff.paraBirimi) : '—'}</td>
                     <td>{r.durum ? <StatusBadge durum={r.durum} /> : '—'}</td>
                     <td>{r.notlar ? r.notlar : ''}</td>
                     <td style={{ whiteSpace: 'nowrap' }}>
@@ -236,7 +243,8 @@ export function DenizNavlun() {
                       </button>
                     </td>
                   </tr>
-                ))}
+                  );
+                })}
               </tbody>
             </table>
           ) : (

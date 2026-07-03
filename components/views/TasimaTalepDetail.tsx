@@ -4,7 +4,7 @@ import { useStore } from '@/lib/store';
 import { money, dt, uid } from '@/lib/format';
 import { toTRY, navlunFirmName } from '@/lib/calc';
 import { TASIMA_MODLAR, TASIMA_MOD_RENK, tasimaBestQuoteId } from '@/lib/tasima';
-import { PARA_KODLARI } from '@/lib/constants';
+import { PARA_KODLARI, KONTEYNER_TIPLERI } from '@/lib/constants';
 import { StatusBadge } from '@/components/StatusBadge';
 import { Icon } from '@/components/Icon';
 import type { TasimaMod } from '@/lib/types';
@@ -14,6 +14,11 @@ interface AddForm {
   fiyat: string;
   para: string;
   not: string;
+  // Yalnızca deniz modunda kullanılır — firmalar konteyner tipine göre navlun +
+  // lokal masrafı ayrı ayrı verdiği için bu iki alan ayrı toplanır.
+  konteynerTipi: string;
+  navlun: string;
+  lokal: string;
 }
 
 const num = (v: string) => v.replace(',', '.').replace(/[^-0-9.]/g, '');
@@ -22,7 +27,15 @@ export function TasimaTalepDetail() {
   const { db, ui, go, openModal, mutate, toast } = useStore();
   const x = db.tasimaTalepleri.find((t) => t.id === ui.detailId);
 
-  const mkForm = (para: string): AddForm => ({ firmaId: db.navlunFirmalari[0]?.id || '', fiyat: '', para, not: '' });
+  const mkForm = (para: string): AddForm => ({
+    firmaId: db.navlunFirmalari[0]?.id || '',
+    fiyat: '',
+    para,
+    not: '',
+    konteynerTipi: KONTEYNER_TIPLERI[0],
+    navlun: '',
+    lokal: '',
+  });
   const [forms, setForms] = useState<Record<TasimaMod, AddForm>>({
     deniz: mkForm('USD'),
     kara: mkForm('TRY'),
@@ -55,6 +68,34 @@ export function TasimaTalepDetail() {
     const f = forms[mod];
     if (!f.firmaId) {
       toast('Önce Navlun Firmaları bölümünden firma ekleyin', 'err');
+      return;
+    }
+    if (mod === 'deniz') {
+      const nv = parseFloat(f.navlun) || 0;
+      const lk = parseFloat(f.lokal) || 0;
+      const toplam = nv + lk;
+      if (toplam <= 0) {
+        toast('Navlun ve/veya lokal masraf girin', 'err');
+        return;
+      }
+      mutate((d) => {
+        const t = d.tasimaTalepleri.find((y) => y.id === x!.id);
+        if (!t) return;
+        t.teklifler.push({
+          id: uid('ttk'),
+          mod,
+          firmaId: f.firmaId,
+          fiyat: toplam,
+          paraBirimi: f.para,
+          notlar: f.not.trim(),
+          konteynerTipi: f.konteynerTipi,
+          navlunFiyat: nv || null,
+          lokalFiyat: lk || null,
+          createdAt: new Date().toISOString(),
+        });
+      });
+      setForm(mod, { navlun: '', lokal: '', not: '' });
+      toast('Fiyat eklendi', 'ok');
       return;
     }
     const fv = parseFloat(f.fiyat);
@@ -197,9 +238,14 @@ export function TasimaTalepDetail() {
               <b>Tarih:</b> {dt(x.tarih)}
             </div>
           ) : null}
-          {x.tasiyiciFirma ? (
+          {x.yukSahibiFirma || x.tasiyiciFirma ? (
             <div>
-              <b>Taşıyıcı:</b> {x.tasiyiciFirma}
+              <b>Yük Sahibi Firma:</b> {x.yukSahibiFirma || x.tasiyiciFirma}
+            </div>
+          ) : null}
+          {x.incoterm ? (
+            <div>
+              <b>Incoterms:</b> {x.incoterm}
             </div>
           ) : null}
         </div>
@@ -258,7 +304,10 @@ export function TasimaTalepDetail() {
                     <tr>
                       {editable ? <th style={{ width: 42, textAlign: 'center' }}>Seç</th> : null}
                       <th>Firma</th>
-                      <th style={{ textAlign: 'right' }}>Fiyat</th>
+                      {key === 'deniz' ? <th>Konteyner</th> : null}
+                      {key === 'deniz' ? <th style={{ textAlign: 'right' }}>Navlun</th> : null}
+                      {key === 'deniz' ? <th style={{ textAlign: 'right' }}>Lokal</th> : null}
+                      <th style={{ textAlign: 'right' }}>{key === 'deniz' ? 'Toplam' : 'Fiyat'}</th>
                       <th style={{ textAlign: 'right' }}>TRY Karşılığı</th>
                       <th>Not</th>
                       <th></th>
@@ -308,6 +357,17 @@ export function TasimaTalepDetail() {
                               </span>
                             ) : null}
                           </td>
+                          {key === 'deniz' ? <td>{q.konteynerTipi || '—'}</td> : null}
+                          {key === 'deniz' ? (
+                            <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
+                              {q.navlunFiyat != null ? money(q.navlunFiyat, q.paraBirimi) : '—'}
+                            </td>
+                          ) : null}
+                          {key === 'deniz' ? (
+                            <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
+                              {q.lokalFiyat != null ? money(q.lokalFiyat, q.paraBirimi) : '—'}
+                            </td>
+                          ) : null}
                           <td style={{ textAlign: 'right', fontWeight: 700, whiteSpace: 'nowrap' }}>{money(q.fiyat, q.paraBirimi)}</td>
                           <td style={{ textAlign: 'right', whiteSpace: 'nowrap', color: 'var(--muted)' }}>
                             {money(toTRY(db, q.fiyat, q.paraBirimi), 'TRY')}
@@ -359,10 +419,34 @@ export function TasimaTalepDetail() {
                       )}
                     </select>
                   </div>
-                  <div className="field" style={{ marginBottom: 0, width: 110 }}>
-                    <label style={{ fontSize: 11 }}>Fiyat</label>
-                    <input inputMode="decimal" placeholder="0" value={f.fiyat} onChange={(e) => setForm(key, { fiyat: num(e.target.value) })} />
-                  </div>
+                  {key === 'deniz' ? (
+                    <div className="field" style={{ marginBottom: 0, minWidth: 130 }}>
+                      <label style={{ fontSize: 11 }}>Konteyner Tipi</label>
+                      <select value={f.konteynerTipi} onChange={(e) => setForm(key, { konteynerTipi: e.target.value })}>
+                        {KONTEYNER_TIPLERI.map((k) => (
+                          <option key={k}>{k}</option>
+                        ))}
+                      </select>
+                    </div>
+                  ) : null}
+                  {key === 'deniz' ? (
+                    <div className="field" style={{ marginBottom: 0, width: 100 }}>
+                      <label style={{ fontSize: 11 }}>Navlun</label>
+                      <input inputMode="decimal" placeholder="0" value={f.navlun} onChange={(e) => setForm(key, { navlun: num(e.target.value) })} />
+                    </div>
+                  ) : null}
+                  {key === 'deniz' ? (
+                    <div className="field" style={{ marginBottom: 0, width: 100 }}>
+                      <label style={{ fontSize: 11 }}>Lokal</label>
+                      <input inputMode="decimal" placeholder="0" value={f.lokal} onChange={(e) => setForm(key, { lokal: num(e.target.value) })} />
+                    </div>
+                  ) : null}
+                  {key !== 'deniz' ? (
+                    <div className="field" style={{ marginBottom: 0, width: 110 }}>
+                      <label style={{ fontSize: 11 }}>Fiyat</label>
+                      <input inputMode="decimal" placeholder="0" value={f.fiyat} onChange={(e) => setForm(key, { fiyat: num(e.target.value) })} />
+                    </div>
+                  ) : null}
                   <div className="field" style={{ marginBottom: 0, width: 90 }}>
                     <label style={{ fontSize: 11 }}>Para</label>
                     <select value={f.para} onChange={(e) => setForm(key, { para: e.target.value })}>

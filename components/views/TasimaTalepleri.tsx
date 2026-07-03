@@ -18,7 +18,15 @@ export function TasimaTalepleri() {
   if (q)
     list = list.filter(
       (x) =>
-        (x.talepNo + x.kalkisYeri + x.varisYeri + (x.yukTipi || '') + (x.siparisNo || '') + (x.tasiyiciFirma || ''))
+        (
+          x.talepNo +
+          x.kalkisYeri +
+          x.varisYeri +
+          (x.yukTipi || '') +
+          (x.siparisNo || '') +
+          (x.yukSahibiFirma || x.tasiyiciFirma || '') +
+          (x.incoterm || '')
+        )
           .toLowerCase()
           .includes(q) ||
         x.teklifler.some((t) => navlunFirmName(db, t.firmaId).toLowerCase().includes(q)),
@@ -73,7 +81,7 @@ export function TasimaTalepleri() {
                   <th>Güzergah</th>
                   <th>Yük</th>
                   <th>Tarih</th>
-                  <th>Taşıyıcı</th>
+                  <th>Yük Sahibi Firma</th>
                   <th>Teklif</th>
                   <th>En İyi</th>
                   <th>Durum</th>
@@ -93,7 +101,7 @@ export function TasimaTalepleri() {
                       </td>
                       <td>{x.yukTipi || '—'}</td>
                       <td>{x.tarih ? dt(x.tarih) : '—'}</td>
-                      <td>{x.tasiyiciFirma || '—'}</td>
+                      <td>{x.yukSahibiFirma || x.tasiyiciFirma || '—'}</td>
                       <td>
                         <span className="tag">{x.teklifler.length}</span>
                       </td>
@@ -120,7 +128,6 @@ export function TasimaTalepleri() {
                           <span style={{ color: 'var(--faint)' }}>—</span>
                         )}
                       </td>
-                      <td>{x.siparisNo || '—'}</td>
                       <td>
                         <StatusBadge durum={x.durum} />
                       </td>

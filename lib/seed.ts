@@ -256,6 +256,10 @@ export function seedIfEmpty(db: DB): void {
 
 /** Eski veri yapısını yeni şemaya taşır (orijinal migrate). Değişiklik olduysa true döner. */
 export function migrate(db: DB): boolean {
+  // NOT: `dirty` fonksiyonun en başında tanımlanır — aşağıdaki erken forEach'ler
+  // (limanTalepleri) onu kullanır; `let` bildirimi kullanımdan sonra olursa TDZ
+  // hatasıyla (ReferenceError) migrate tamamen çöker ve veri hiç yüklenemez.
+  let dirty = false;
   if (!Array.isArray(db.lokasyonlar)) db.lokasyonlar = [];
   if (!Array.isArray(db.denizNavlun)) db.denizNavlun = [];
   if (!Array.isArray(db.karaNavlun)) db.karaNavlun = [];
@@ -274,7 +278,6 @@ export function migrate(db: DB): boolean {
     )
   )
     return false;
-  let dirty = false;
   let fab = db.lokasyonlar.find((l) => l.fabrika);
   if (!fab) {
     fab = {
