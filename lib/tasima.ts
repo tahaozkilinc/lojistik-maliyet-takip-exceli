@@ -1,7 +1,7 @@
 /* ============================================================
    Taşıma talebi yardımcıları — deniz/kara/hava fiyat toplama.
    ============================================================ */
-import type { DB, TasimaTalep, TasimaMod } from './types';
+import type { DB, TasimaTalep, TasimaMod, TasimaTeklif } from './types';
 import { toTRY } from './calc';
 
 export const TASIMA_MODLAR: { key: TasimaMod; label: string }[] = [
@@ -32,4 +32,31 @@ export function tasimaBestQuoteId(db: DB, t: TasimaTalep): string | null {
     }
   });
   return best;
+}
+
+/** Bir talebin "referans" fiyatı: onaylanan/seçilen teklif varsa o, yoksa en uygun teklif. */
+export function tasimaReferansTeklif(db: DB, t: TasimaTalep): TasimaTeklif | null {
+  const sel = (t.teklifler || []).find((q) => q.id === t.secilenTeklifId);
+  if (sel) return sel;
+  const bestId = tasimaBestQuoteId(db, t);
+  return (t.teklifler || []).find((q) => q.id === bestId) || null;
+}
+
+/**
+ * Aynı güzergahtaki (kalkış+varış — boşluk/büyük-küçük harf duyarsız) diğer
+ * taşıma talepleri, en yeniden eskiye sıralı. `excludeId` düzenlenen kaydın
+ * kendisini listeden çıkarmak için kullanılır.
+ */
+export function tasimaGecmisi(db: DB, kalkis: string, varis: string, excludeId?: string): TasimaTalep[] {
+  const k = kalkis.trim().toLowerCase();
+  const v = varis.trim().toLowerCase();
+  if (!k || !v) return [];
+  return db.tasimaTalepleri
+    .filter(
+      (t) =>
+        t.id !== excludeId &&
+        (t.kalkisYeri || '').trim().toLowerCase() === k &&
+        (t.varisYeri || '').trim().toLowerCase() === v,
+    )
+    .sort((a, b) => new Date(b.tarih || b.createdAt || 0).getTime() - new Date(a.tarih || a.createdAt || 0).getTime());
 }

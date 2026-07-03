@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import { useStore } from '@/lib/store';
 import { money, dt, uid } from '@/lib/format';
 import { toTRY, navlunFirmName } from '@/lib/calc';
-import { TASIMA_MODLAR, TASIMA_MOD_RENK, tasimaBestQuoteId } from '@/lib/tasima';
+import { TASIMA_MODLAR, TASIMA_MOD_RENK, tasimaBestQuoteId, tasimaGecmisi, tasimaReferansTeklif } from '@/lib/tasima';
 import { PARA_KODLARI, KONTEYNER_TIPLERI } from '@/lib/constants';
 import { StatusBadge } from '@/components/StatusBadge';
 import { Icon } from '@/components/Icon';
@@ -184,6 +184,7 @@ export function TasimaTalepDetail() {
   }
 
   const secilen = x.teklifler.find((q) => q.id === x.secilenTeklifId);
+  const gecmis = tasimaGecmisi(db, x.kalkisYeri, x.varisYeri, x.id);
 
   return (
     <>
@@ -256,6 +257,90 @@ export function TasimaTalepDetail() {
           {x.notlar}
         </div>
       ) : null}
+
+      {gecmis.length > 0 && (
+        <div className="panel" style={{ marginTop: 16 }}>
+          <div className="panel-head">
+            <h2>
+              <Icon name="chart" size={15} /> Bu Güzergahta Geçmiş Taşımalar
+            </h2>
+            <div className="spacer" />
+            <span className="tag">{gecmis.length} kayıt</span>
+          </div>
+          <div className="panel-body flush">
+            <table>
+              <thead>
+                <tr>
+                  <th>Tarih</th>
+                  <th>Mod</th>
+                  <th>Firma</th>
+                  <th style={{ textAlign: 'right' }}>Fiyat</th>
+                  <th>Sipariş No</th>
+                  <th>Durum</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody>
+                {gecmis.map((g) => {
+                  const ref = tasimaReferansTeklif(db, g);
+                  return (
+                    <tr key={g.id} className="t-row-click" onClick={() => go('tasimaTalepDetay', g.id)}>
+                      <td>{g.tarih ? dt(g.tarih) : '—'}</td>
+                      <td>
+                        {ref ? (
+                          <span
+                            style={{
+                              display: 'inline-block',
+                              background: TASIMA_MOD_RENK[ref.mod],
+                              color: '#fff',
+                              fontSize: 10,
+                              fontWeight: 700,
+                              padding: '1px 8px',
+                              borderRadius: 10,
+                            }}
+                          >
+                            {TASIMA_MODLAR.find((m) => m.key === ref.mod)?.label}
+                          </span>
+                        ) : (
+                          '—'
+                        )}
+                      </td>
+                      <td>{ref ? navlunFirmName(db, ref.firmaId) : '—'}</td>
+                      <td className="cell-strong" style={{ textAlign: 'right' }}>
+                        {ref ? money(ref.fiyat, ref.paraBirimi) : '—'}
+                      </td>
+                      <td>{g.siparisNo || '—'}</td>
+                      <td>
+                        <StatusBadge durum={g.durum} />
+                      </td>
+                      <td>
+                        <button
+                          className="btn sm ghost"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            go('tasimaTalepDetay', g.id);
+                          }}
+                        >
+                          Aç →
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+            <div style={{ padding: '10px 16px', fontSize: 12, color: 'var(--faint)', borderTop: '1px solid var(--line-2)' }}>
+              {(() => {
+                const last = gecmis.find((g) => tasimaReferansTeklif(db, g));
+                const lastRef = last ? tasimaReferansTeklif(db, last) : null;
+                return lastRef && last
+                  ? `En son ${dt(last.tarih || last.createdAt)} tarihinde ${navlunFirmName(db, lastRef.firmaId)} ile ${money(lastRef.fiyat, lastRef.paraBirimi)} bedelle taşınmış.`
+                  : 'Bu güzergahta henüz fiyatlandırılmış geçmiş kayıt yok.';
+              })()}
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="stat-grid" style={{ margin: '16px 0 4px' }}>
         {TASIMA_MODLAR.map(({ key, label }, i) => {

@@ -3,7 +3,9 @@ import React, { useState } from 'react';
 import { useStore } from '@/lib/store';
 import { ModalShell, ModalHead } from '@/components/Modal';
 import { YUK_TIPLERI, INCOTERMS } from '@/lib/constants';
-import { uid } from '@/lib/format';
+import { uid, money, dt } from '@/lib/format';
+import { navlunFirmName } from '@/lib/calc';
+import { tasimaGecmisi, tasimaReferansTeklif } from '@/lib/tasima';
 
 export function TasimaTalepModal({ id }: { id?: string }) {
   const { db, mutate, closeModal, toast, go } = useStore();
@@ -23,6 +25,11 @@ export function TasimaTalepModal({ id }: { id?: string }) {
   // Otomatik tamamlama: mevcut taleplerdeki kalkış/varış yerleri.
   const kalkislar = [...new Set(db.tasimaTalepleri.map((t) => (t.kalkisYeri || '').trim()).filter(Boolean))];
   const varislar = [...new Set(db.tasimaTalepleri.map((t) => (t.varisYeri || '').trim()).filter(Boolean))];
+
+  // Aynı güzergahta daha önce taşıma yapılmış mı — kullanıcı yazarken canlı gösterilir.
+  const gecmis = tasimaGecmisi(db, kalkis, varis, id);
+  const sonGecmis = gecmis.find((g) => tasimaReferansTeklif(db, g));
+  const sonRef = sonGecmis ? tasimaReferansTeklif(db, sonGecmis) : null;
 
   function save() {
     const sip = siparisNo.trim();
@@ -124,6 +131,31 @@ export function TasimaTalepModal({ id }: { id?: string }) {
             </datalist>
           </div>
         </div>
+        {gecmis.length > 0 && (
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 8,
+              fontSize: 12.5,
+              background: 'var(--gold-soft)',
+              border: '1px solid var(--gold)',
+              borderRadius: 8,
+              padding: '9px 12px',
+              marginBottom: 14,
+            }}
+          >
+            <span style={{ fontWeight: 700 }}>ℹ Bu güzergahta {gecmis.length} geçmiş taşıma var.</span>
+            {sonGecmis && sonRef ? (
+              <span>
+                En son {dt(sonGecmis.tarih || sonGecmis.createdAt)} · <b>{navlunFirmName(db, sonRef.firmaId)}</b> ·{' '}
+                <b>{money(sonRef.fiyat, sonRef.paraBirimi)}</b>
+              </span>
+            ) : (
+              <span>Henüz fiyatlandırılmış kayıt yok.</span>
+            )}
+          </div>
+        )}
         <div className="grid-2">
           <div className="field">
             <label>Yük</label>
