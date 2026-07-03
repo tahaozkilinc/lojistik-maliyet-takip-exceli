@@ -298,7 +298,17 @@ export interface TasimaTalep {
   secilenTeklifId?: string | null;
   durum: Durum;
   onay?: Onay | null;
+  /** Seçilen tekliften sonra firma ile görüşülüp uygulanan indirimli/gerçekleşen fiyat. */
+  gerceklesen?: TasimaGerceklesen | null;
   createdAt?: string;
+}
+
+/** Taşıma talebinde seçilen tekliften sonra uygulanan indirim/gerçekleşen fiyat kaydı. */
+export interface TasimaGerceklesen {
+  fiyat: number;
+  paraBirimi: ParaBirimi;
+  not?: string;
+  tarih?: string;
 }
 
 export interface Kur {

@@ -50,6 +50,7 @@ export type ModalState =
   | { type: 'karaNavlun'; id?: string }
   | { type: 'navlunFirma'; id?: string }
   | { type: 'tasimaTalep'; id?: string }
+  | { type: 'tasimaIndirim'; talepId: string }
   | { type: 'limanTalep'; id?: string }
   | { type: 'limanMasraf'; talepId: string; masrafId?: string }
   | { type: 'kur' }

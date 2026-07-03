@@ -3,7 +3,14 @@ import React, { useState } from 'react';
 import { useStore } from '@/lib/store';
 import { money, dt, uid } from '@/lib/format';
 import { toTRY, navlunFirmName } from '@/lib/calc';
-import { TASIMA_MODLAR, TASIMA_MOD_RENK, tasimaBestQuoteId, tasimaGecmisi, tasimaReferansTeklif } from '@/lib/tasima';
+import {
+  TASIMA_MODLAR,
+  TASIMA_MOD_RENK,
+  tasimaBestQuoteId,
+  tasimaGecmisi,
+  tasimaEfektifFiyat,
+  tasimaIndirimYuzde,
+} from '@/lib/tasima';
 import { PARA_KODLARI, KONTEYNER_TIPLERI } from '@/lib/constants';
 import { StatusBadge } from '@/components/StatusBadge';
 import { Icon } from '@/components/Icon';
@@ -185,6 +192,17 @@ export function TasimaTalepDetail() {
 
   const secilen = x.teklifler.find((q) => q.id === x.secilenTeklifId);
   const gecmis = tasimaGecmisi(db, x.kalkisYeri, x.varisYeri, x.id);
+  const efektif = tasimaEfektifFiyat(db, x);
+  const indirimPct = tasimaIndirimYuzde(db, x);
+
+  function indirimSil() {
+    if (x!.gerceklesen && !confirm('Gerçekleşen/indirimli fiyat kaldırılsın mı?')) return;
+    mutate((d) => {
+      const t = d.tasimaTalepleri.find((y) => y.id === x!.id);
+      if (t) t.gerceklesen = null;
+    });
+    toast('İndirim kaldırıldı', 'ok');
+  }
 
   return (
     <>
@@ -282,16 +300,16 @@ export function TasimaTalepDetail() {
               </thead>
               <tbody>
                 {gecmis.map((g) => {
-                  const ref = tasimaReferansTeklif(db, g);
+                  const eff = tasimaEfektifFiyat(db, g);
                   return (
                     <tr key={g.id} className="t-row-click" onClick={() => go('tasimaTalepDetay', g.id)}>
                       <td>{g.tarih ? dt(g.tarih) : '—'}</td>
                       <td>
-                        {ref ? (
+                        {eff ? (
                           <span
                             style={{
                               display: 'inline-block',
-                              background: TASIMA_MOD_RENK[ref.mod],
+                              background: TASIMA_MOD_RENK[eff.mod],
                               color: '#fff',
                               fontSize: 10,
                               fontWeight: 700,
@@ -299,15 +317,22 @@ export function TasimaTalepDetail() {
                               borderRadius: 10,
                             }}
                           >
-                            {TASIMA_MODLAR.find((m) => m.key === ref.mod)?.label}
+                            {TASIMA_MODLAR.find((m) => m.key === eff.mod)?.label}
                           </span>
                         ) : (
                           '—'
                         )}
                       </td>
-                      <td>{ref ? navlunFirmName(db, ref.firmaId) : '—'}</td>
+                      <td>{eff ? navlunFirmName(db, eff.firmaId) : '—'}</td>
                       <td className="cell-strong" style={{ textAlign: 'right' }}>
-                        {ref ? money(ref.fiyat, ref.paraBirimi) : '—'}
+                        {eff ? (
+                          <>
+                            {money(eff.fiyat, eff.paraBirimi)}
+                            {eff.indirimli && <span style={{ marginLeft: 5, fontSize: 10, color: 'var(--green)', fontWeight: 700 }}>İNDİRİMLİ</span>}
+                          </>
+                        ) : (
+                          '—'
+                        )}
                       </td>
                       <td>{g.siparisNo || '—'}</td>
                       <td>
@@ -331,10 +356,10 @@ export function TasimaTalepDetail() {
             </table>
             <div style={{ padding: '10px 16px', fontSize: 12, color: 'var(--faint)', borderTop: '1px solid var(--line-2)' }}>
               {(() => {
-                const last = gecmis.find((g) => tasimaReferansTeklif(db, g));
-                const lastRef = last ? tasimaReferansTeklif(db, last) : null;
-                return lastRef && last
-                  ? `En son ${dt(last.tarih || last.createdAt)} tarihinde ${navlunFirmName(db, lastRef.firmaId)} ile ${money(lastRef.fiyat, lastRef.paraBirimi)} bedelle taşınmış.`
+                const last = gecmis.find((g) => tasimaEfektifFiyat(db, g));
+                const lastEff = last ? tasimaEfektifFiyat(db, last) : null;
+                return lastEff && last
+                  ? `En son ${dt(last.tarih || last.createdAt)} tarihinde ${navlunFirmName(db, lastEff.firmaId)} ile ${money(lastEff.fiyat, lastEff.paraBirimi)} bedelle taşınmış${lastEff.indirimli ? ' (indirimli fiyat)' : ''}.`
                   : 'Bu güzergahta henüz fiyatlandırılmış geçmiş kayıt yok.';
               })()}
             </div>
@@ -359,13 +384,81 @@ export function TasimaTalepDetail() {
           );
         })}
         <div className="stat s4">
-          <div className="k">Seçilen</div>
-          <div className="v" style={{ fontSize: 21, color: 'var(--gold)' }}>
-            {secilen ? money(secilen.fiyat, secilen.paraBirimi) : '—'}
+          <div className="k">Seçilen{efektif?.indirimli ? ' (indirimli)' : ''}</div>
+          <div className="v" style={{ fontSize: 21, color: efektif?.indirimli ? 'var(--green)' : 'var(--gold)' }}>
+            {efektif ? money(efektif.fiyat, efektif.paraBirimi) : '—'}
           </div>
-          <div className="d">{secilen ? navlunFirmName(db, secilen.firmaId) : 'henüz seçilmedi'}</div>
+          <div className="d">{efektif ? navlunFirmName(db, efektif.firmaId) : 'henüz seçilmedi'}</div>
         </div>
       </div>
+
+      {x.secilenTeklifId && secilen && (
+        <div
+          style={{
+            marginTop: 4,
+            marginBottom: 16,
+            padding: '14px 16px',
+            border: '1px solid ' + (x.gerceklesen ? 'var(--green)' : 'var(--line)'),
+            borderRadius: 10,
+            background: x.gerceklesen ? 'rgba(34,160,90,.07)' : 'var(--surface-2)',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+            <div style={{ fontWeight: 700, fontSize: 13.5 }}>İndirim / Gerçekleşen Fiyat</div>
+            <div style={{ flex: 1 }} />
+            <button
+              className={'btn sm ' + (x.gerceklesen ? '' : 'primary')}
+              onClick={() => openModal({ type: 'tasimaIndirim', talepId: x.id })}
+            >
+              {x.gerceklesen ? 'Düzenle' : 'Fiyat Gir'}
+            </button>
+            {x.gerceklesen && (
+              <button className="btn sm ghost" style={{ color: 'var(--red)' }} onClick={indirimSil}>
+                Kaldır
+              </button>
+            )}
+          </div>
+          {x.gerceklesen && efektif ? (
+            <>
+              <div style={{ marginTop: 11, display: 'flex', gap: 24, flexWrap: 'wrap', alignItems: 'flex-end' }}>
+                <div>
+                  <div style={{ fontSize: 11, color: 'var(--faint)' }}>Teklif</div>
+                  <div style={{ textDecoration: 'line-through', color: 'var(--muted)' }}>
+                    {money(secilen.fiyat, secilen.paraBirimi)}
+                  </div>
+                </div>
+                <div>
+                  <div style={{ fontSize: 11, color: 'var(--faint)' }}>Gerçekleşen (indirimli)</div>
+                  <div style={{ fontSize: 18, fontWeight: 800, color: 'var(--green)' }}>
+                    {money(efektif.fiyat, efektif.paraBirimi)}
+                  </div>
+                </div>
+                {indirimPct != null ? (
+                  <div>
+                    <div style={{ fontSize: 11, color: 'var(--faint)' }}>İndirim</div>
+                    <div style={{ fontWeight: 700, color: indirimPct >= 0 ? 'var(--green)' : 'var(--red)' }}>
+                      {indirimPct >= 0 ? '▼' : '▲'} {Math.abs(indirimPct).toFixed(1)}%
+                    </div>
+                  </div>
+                ) : null}
+                {x.gerceklesen.not ? (
+                  <div style={{ flexBasis: '100%', fontSize: 12, color: 'var(--muted)', fontStyle: 'italic', marginTop: 2 }}>
+                    {x.gerceklesen.not}
+                  </div>
+                ) : null}
+              </div>
+              <div style={{ marginTop: 9, fontSize: 11.5, color: 'var(--faint)' }}>
+                Bu fiyat, bu güzergahın bir sonraki &quot;geçmiş taşıma&quot; özetinde gerçekleşen tutar olarak baz alınır.
+              </div>
+            </>
+          ) : (
+            <div style={{ marginTop: 8, fontSize: 12.5, color: 'var(--muted)' }}>
+              Firma görüşme sonrası indirim yaptıysa gerçekleşen toplam fiyatı girin — bu güzergahın geçmiş taşıma
+              özetinde indirimli tutar olarak görünür.
+            </div>
+          )}
+        </div>
+      )}
 
       {TASIMA_MODLAR.map(({ key, label }) => {
         const qs = [...x.teklifler.filter((q) => q.mod === key)].sort(
@@ -572,10 +665,11 @@ export function TasimaTalepDetail() {
           </div>
           <div className="panel-body">
             <div style={{ fontSize: 12.5, color: 'var(--muted)', marginBottom: 8 }}>
-              {secilen ? (
+              {efektif ? (
                 <>
-                  Seçilen: <b>{navlunFirmName(db, secilen.firmaId)}</b> · <b>{money(secilen.fiyat, secilen.paraBirimi)}</b>{' '}
-                  ({TASIMA_MODLAR.find((m) => m.key === secilen.mod)?.label})
+                  Seçilen: <b>{navlunFirmName(db, efektif.firmaId)}</b> · <b>{money(efektif.fiyat, efektif.paraBirimi)}</b>{' '}
+                  ({TASIMA_MODLAR.find((m) => m.key === efektif.mod)?.label}
+                  {efektif.indirimli ? ' · indirimli' : ''})
                 </>
               ) : (
                 <span style={{ color: 'var(--amber)' }}>Henüz fiyat seçilmedi — yukarıdaki tablolardan bir satırı işaretleyin.</span>

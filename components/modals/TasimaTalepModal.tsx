@@ -5,7 +5,7 @@ import { ModalShell, ModalHead } from '@/components/Modal';
 import { YUK_TIPLERI, INCOTERMS } from '@/lib/constants';
 import { uid, money, dt } from '@/lib/format';
 import { navlunFirmName } from '@/lib/calc';
-import { tasimaGecmisi, tasimaReferansTeklif } from '@/lib/tasima';
+import { tasimaGecmisi, tasimaEfektifFiyat } from '@/lib/tasima';
 
 export function TasimaTalepModal({ id }: { id?: string }) {
   const { db, mutate, closeModal, toast, go } = useStore();
@@ -28,8 +28,8 @@ export function TasimaTalepModal({ id }: { id?: string }) {
 
   // Aynı güzergahta daha önce taşıma yapılmış mı — kullanıcı yazarken canlı gösterilir.
   const gecmis = tasimaGecmisi(db, kalkis, varis, id);
-  const sonGecmis = gecmis.find((g) => tasimaReferansTeklif(db, g));
-  const sonRef = sonGecmis ? tasimaReferansTeklif(db, sonGecmis) : null;
+  const sonGecmis = gecmis.find((g) => tasimaEfektifFiyat(db, g));
+  const sonRef = sonGecmis ? tasimaEfektifFiyat(db, sonGecmis) : null;
 
   function save() {
     const sip = siparisNo.trim();
@@ -150,6 +150,7 @@ export function TasimaTalepModal({ id }: { id?: string }) {
               <span>
                 En son {dt(sonGecmis.tarih || sonGecmis.createdAt)} · <b>{navlunFirmName(db, sonRef.firmaId)}</b> ·{' '}
                 <b>{money(sonRef.fiyat, sonRef.paraBirimi)}</b>
+                {sonRef.indirimli ? ' (indirimli)' : ''}
               </span>
             ) : (
               <span>Henüz fiyatlandırılmış kayıt yok.</span>
