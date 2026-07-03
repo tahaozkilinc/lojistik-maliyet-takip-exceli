@@ -150,7 +150,7 @@ export function TasimaTalepDetail() {
         <button className="btn sm ghost" onClick={() => go('tasimaTalepleri')}>
           ← Taşıma Talepleri
         </button>
-        <h2 style={{ fontSize: 18, fontWeight: 700 }}>{x.talepNo}</h2>
+        <h2 style={{ fontSize: 18, fontWeight: 700 }}>{x.siparisNo || x.talepNo}</h2>
         <StatusBadge durum={x.durum} />
         <div style={{ flex: 1 }} />
         <button className="btn sm" onClick={() => openModal({ type: 'tasimaTalep', id: x.id })}>
@@ -197,9 +197,9 @@ export function TasimaTalepDetail() {
               <b>Tarih:</b> {dt(x.tarih)}
             </div>
           ) : null}
-          {x.siparisNo ? (
+          {x.tasiyiciFirma ? (
             <div>
-              <b>Sipariş No:</b> {x.siparisNo}
+              <b>Taşıyıcı:</b> {x.tasiyiciFirma}
             </div>
           ) : null}
         </div>

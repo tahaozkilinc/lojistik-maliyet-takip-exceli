@@ -10,10 +10,24 @@ export function Topbar({ onMenu }: { onMenu: () => void }) {
   const { ui, setUi, openModal, toast, db, go } = useStore();
   const [title, crumb] = TITLES[ui.view] || ['', ''];
 
-  // Birincil eylem butonu görünüme göre değişir (orijinal go() davranışı).
+  // Birincil eylem butonu yalnızca ilgili bölümde görünür; diğer sayfalarda buton yok.
   let primary: { label: string; onClick: () => void } | null;
   let secondary: { label: string; onClick: () => void } | null = null;
   switch (ui.view) {
+    case 'talepler':
+    case 'detail':
+      primary = {
+        label: 'Yeni Talep',
+        onClick: () => {
+          if (!db.lokasyonlar.length) {
+            toast('Önce en az bir lokasyon eklemelisiniz', 'err');
+            openModal({ type: 'lokasyon' });
+            return;
+          }
+          openModal({ type: 'talep' });
+        },
+      };
+      break;
     case 'firmalar':
       primary = { label: 'Yeni Firma', onClick: () => openModal({ type: 'firma' }) };
       break;
@@ -31,23 +45,8 @@ export function Topbar({ onMenu }: { onMenu: () => void }) {
     case 'tasimaTalepDetay':
       primary = { label: 'Yeni Taşıma Talebi', onClick: () => openModal({ type: 'tasimaTalep' }) };
       break;
-    case 'analiz':
-    case 'haritalar':
-    case 'firmaDetay':
-      primary = null;
-      break;
     default:
-      primary = {
-        label: 'Yeni Talep',
-        onClick: () => {
-          if (!db.lokasyonlar.length) {
-            toast('Önce en az bir lokasyon eklemelisiniz', 'err');
-            openModal({ type: 'lokasyon' });
-            return;
-          }
-          openModal({ type: 'talep' });
-        },
-      };
+      primary = null;
   }
 
   return (

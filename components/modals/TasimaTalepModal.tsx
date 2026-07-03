@@ -4,18 +4,18 @@ import { useStore } from '@/lib/store';
 import { ModalShell, ModalHead } from '@/components/Modal';
 import { YUK_TIPLERI } from '@/lib/constants';
 import { uid } from '@/lib/format';
-import { nextTasimaNo } from '@/lib/tasima';
 
 export function TasimaTalepModal({ id }: { id?: string }) {
   const { db, mutate, closeModal, toast, go } = useStore();
   const x = id ? db.tasimaTalepleri.find((t) => t.id === id) : null;
 
-  const [talepNo, setTalepNo] = useState(x ? x.talepNo : nextTasimaNo(db));
+  // Kimlik kullanıcının kendi sipariş numarasıdır; eski kayıtlarda talepNo'dan devralınır.
+  const [siparisNo, setSiparisNo] = useState(x ? x.siparisNo || x.talepNo || '' : '');
   const [kalkis, setKalkis] = useState(x ? x.kalkisYeri || '' : '');
   const [varis, setVaris] = useState(x ? x.varisYeri || '' : '');
   const [yuk, setYuk] = useState(x ? x.yukTipi || '' : '');
   const [tarih, setTarih] = useState(x ? x.tarih || '' : '');
-  const [siparisNo, setSiparisNo] = useState(x ? x.siparisNo || '' : '');
+  const [tasiyici, setTasiyici] = useState(x ? x.tasiyiciFirma || '' : '');
   const [notlar, setNotlar] = useState(x ? x.notlar || '' : '');
 
   // Otomatik tamamlama: mevcut taleplerdeki kalkış/varış yerleri.
@@ -23,6 +23,11 @@ export function TasimaTalepModal({ id }: { id?: string }) {
   const varislar = [...new Set(db.tasimaTalepleri.map((t) => (t.varisYeri || '').trim()).filter(Boolean))];
 
   function save() {
+    const sip = siparisNo.trim();
+    if (!sip) {
+      toast('Sipariş numaranızı girin', 'err');
+      return;
+    }
     const k = kalkis.trim();
     const v = varis.trim();
     if (!k || !v) {
@@ -30,12 +35,13 @@ export function TasimaTalepModal({ id }: { id?: string }) {
       return;
     }
     const data = {
-      talepNo: talepNo.trim() || 'TT-' + Date.now(),
+      siparisNo: sip,
+      talepNo: sip,
       kalkisYeri: k,
       varisYeri: v,
       yukTipi: yuk.trim(),
       tarih: tarih,
-      siparisNo: siparisNo.trim(),
+      tasiyiciFirma: tasiyici.trim(),
       notlar: notlar.trim(),
     };
     let newId = '';
@@ -80,8 +86,11 @@ export function TasimaTalepModal({ id }: { id?: string }) {
       <div className="modal-body">
         <div className="grid-2">
           <div className="field">
-            <label>Talep No</label>
-            <input value={talepNo} onChange={(e) => setTalepNo(e.target.value)} />
+            <label>
+              Sipariş No <span className="req">*</span>
+            </label>
+            <input placeholder="örn. SIP-2026-0154" value={siparisNo} onChange={(e) => setSiparisNo(e.target.value)} />
+            <div className="hint">Kendi sipariş numaranız — talebin kimliği budur</div>
           </div>
           <div className="field">
             <label>Tarih</label>
@@ -123,9 +132,9 @@ export function TasimaTalepModal({ id }: { id?: string }) {
             </datalist>
           </div>
           <div className="field">
-            <label>Sipariş No</label>
-            <input placeholder="örn. SIP-2026-0154" value={siparisNo} onChange={(e) => setSiparisNo(e.target.value)} />
-            <div className="hint">Taşıma gerçekleştiğinde sipariş numarasını buraya yazın</div>
+            <label>Taşıyıcı Firma</label>
+            <input placeholder="Taşımayı yapan firmayı yazın" value={tasiyici} onChange={(e) => setTasiyici(e.target.value)} />
+            <div className="hint">Serbest metin — taşımayı gerçekten yapan firma</div>
           </div>
         </div>
         <div className="field">

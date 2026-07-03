@@ -271,14 +271,17 @@ export interface TasimaTeklif {
 /** Deniz/kara/hava fiyatlarının tek talep altında toplandığı taşıma talebi. */
 export interface TasimaTalep {
   id: string;
+  /** Eski kayıtlar için korunur; kimlik olarak artık siparisNo kullanılır. */
   talepNo: string;
   kalkisYeri: string;
   varisYeri: string;
   yukTipi?: string;
   /** Yükleme / talep tarihi. */
   tarih?: string;
-  /** Gerçekleşen taşımanın sipariş numarası. */
+  /** Talebin kimliği: kullanıcının kendi sipariş numarası. */
   siparisNo?: string;
+  /** Taşımayı gerçekleştiren firma — serbest metin. */
+  tasiyiciFirma?: string;
   notlar?: string;
   teklifler: TasimaTeklif[];
   secilenTeklifId?: string | null;

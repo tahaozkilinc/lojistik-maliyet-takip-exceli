@@ -18,7 +18,9 @@ export function TasimaTalepleri() {
   if (q)
     list = list.filter(
       (x) =>
-        (x.talepNo + x.kalkisYeri + x.varisYeri + (x.yukTipi || '') + (x.siparisNo || '')).toLowerCase().includes(q) ||
+        (x.talepNo + x.kalkisYeri + x.varisYeri + (x.yukTipi || '') + (x.siparisNo || '') + (x.tasiyiciFirma || ''))
+          .toLowerCase()
+          .includes(q) ||
         x.teklifler.some((t) => navlunFirmName(db, t.firmaId).toLowerCase().includes(q)),
     );
 
@@ -67,13 +69,13 @@ export function TasimaTalepleri() {
             <table>
               <thead>
                 <tr>
-                  <th>Talep No</th>
+                  <th>Sipariş No</th>
                   <th>Güzergah</th>
                   <th>Yük</th>
                   <th>Tarih</th>
+                  <th>Taşıyıcı</th>
                   <th>Teklif</th>
                   <th>En İyi</th>
-                  <th>Sipariş No</th>
                   <th>Durum</th>
                   <th></th>
                 </tr>
@@ -83,7 +85,7 @@ export function TasimaTalepleri() {
                   const bq = x.teklifler.find((t) => t.id === tasimaBestQuoteId(db, x));
                   return (
                     <tr key={x.id} className="t-row-click" onClick={() => go('tasimaTalepDetay', x.id)}>
-                      <td className="cell-strong">{x.talepNo}</td>
+                      <td className="cell-strong">{x.siparisNo || x.talepNo}</td>
                       <td>
                         <div className="cell-strong">
                           {x.kalkisYeri} → {x.varisYeri}
@@ -91,6 +93,7 @@ export function TasimaTalepleri() {
                       </td>
                       <td>{x.yukTipi || '—'}</td>
                       <td>{x.tarih ? dt(x.tarih) : '—'}</td>
+                      <td>{x.tasiyiciFirma || '—'}</td>
                       <td>
                         <span className="tag">{x.teklifler.length}</span>
                       </td>

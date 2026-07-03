@@ -33,16 +33,3 @@ export function tasimaBestQuoteId(db: DB, t: TasimaTalep): string | null {
   });
   return best;
 }
-
-/** Yeni taşıma talebi numarası: TT-YYYY-001 biçiminde artan. */
-export function nextTasimaNo(db: DB): string {
-  const pre = 'TT-' + new Date().getFullYear() + '-';
-  let mx = 0;
-  db.tasimaTalepleri.forEach((t) => {
-    if (t.talepNo && t.talepNo.startsWith(pre)) {
-      const n = parseInt(t.talepNo.slice(pre.length), 10);
-      if (isFinite(n) && n > mx) mx = n;
-    }
-  });
-  return pre + String(mx + 1).padStart(3, '0');
-}
