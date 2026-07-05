@@ -1,10 +1,9 @@
 'use client';
 import React from 'react';
 import { useStore } from '@/lib/store';
-import { money, fmt, fmtTon, dt } from '@/lib/format';
-import { qTotal, bestQuoteId, firmName } from '@/lib/calc';
+import { money, fmtTon } from '@/lib/format';
+import { qTotal, bestQuoteId } from '@/lib/calc';
 import { StatusBadge } from '@/components/StatusBadge';
-import { Icon } from '@/components/Icon';
 import { EmptyTalep } from './EmptyTalep';
 
 export function Dashboard() {
@@ -21,7 +20,6 @@ export function Dashboard() {
   });
 
   const son = [...T].sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime()).slice(0, 6);
-  const bekleyen = T.filter((x) => x.durum === 'onayda');
 
   return (
     <>
@@ -65,69 +63,6 @@ export function Dashboard() {
             {money(onayTutar, 'TRY')}
           </div>
           <div className="d">{onaylandi} onaylı talep</div>
-        </div>
-      </div>
-
-      <div className="panel">
-        <div className="panel-head">
-          <h2>Onay bekleyenler</h2>
-          <div className="spacer" />
-          {bekleyen.length > 0 && (
-            <button className="btn sm" onClick={() => go('onaylar')}>
-              Onay Merkezi →
-            </button>
-          )}
-        </div>
-        <div className="panel-body flush">
-          {bekleyen.length ? (
-            <table>
-              <thead>
-                <tr>
-                  <th>Talep No</th>
-                  <th>Güzergah</th>
-                  <th>Önerilen Firma</th>
-                  <th>Toplam Tutar</th>
-                  <th>Tarih</th>
-                  <th></th>
-                </tr>
-              </thead>
-              <tbody>
-                {bekleyen.map((x) => {
-                  const q =
-                    x.teklifler.find((q) => q.id === x.secilenTeklifId) ||
-                    x.teklifler.find((q) => q.id === bestQuoteId(db, x));
-                  return (
-                    <tr key={x.id} className="t-row-click" onClick={() => go('detail', x.id)}>
-                      <td className="cell-strong">{x.talepNo}</td>
-                      <td>
-                        {x.yuklemeNoktasi} → {x.teslimNoktasi}
-                      </td>
-                      <td>{q ? firmName(db, q.firmaId) : '—'}</td>
-                      <td className="cell-strong">{q ? money(qTotal(db, q, x), 'TRY') : '—'}</td>
-                      <td>{dt(x.createdAt)}</td>
-                      <td>
-                        <button
-                          className="btn sm primary"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            openModal({ type: 'onay', id: x.id });
-                          }}
-                        >
-                          İncele & Onayla
-                        </button>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          ) : (
-            <div className="empty">
-              <Icon name="onaylar" size={46} sw={1.5} />
-              <h3>Onay sırası boş</h3>
-              <p>Fiyatları topladıktan sonra talebi onaya gönderdiğinizde burada listelenir.</p>
-            </div>
-          )}
         </div>
       </div>
 
