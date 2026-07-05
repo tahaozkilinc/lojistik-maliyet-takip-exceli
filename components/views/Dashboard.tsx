@@ -4,13 +4,13 @@ import { useStore } from '@/lib/store';
 import { money, fmtTon } from '@/lib/format';
 import { qTotal, bestQuoteId } from '@/lib/calc';
 import { StatusBadge } from '@/components/StatusBadge';
+import { BrentWidget } from '@/components/BrentWidget';
 import { EmptyTalep } from './EmptyTalep';
 
 export function Dashboard() {
   const { db, go, openModal } = useStore();
   const T = db.talepler;
   const toplama = T.filter((x) => x.durum === 'toplama').length;
-  const onayda = T.filter((x) => x.durum === 'onayda').length;
   const onaylandi = T.filter((x) => x.durum === 'onaylandi').length;
 
   let onayTutar = 0;
@@ -37,25 +37,17 @@ export function Dashboard() {
           <span style={{ color: 'var(--muted)' }}>Motorin (Adana):</span>
           <b style={{ fontSize: 16 }}>{db.kur.motorin ? money(db.kur.motorin, 'TRY') + '/lt' : '—'}</b>
         </div>
-        <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
-          <span style={{ color: 'var(--muted)' }}>Brent Petrol:</span>
-          <b style={{ fontSize: 16 }}>{db.kur.brent ? money(db.kur.brent, 'USD') + '/varil' : '—'}</b>
-        </div>
         <button className="btn sm ghost" onClick={() => openModal({ type: 'kur' })}>
-          Güncelle
+          Motorin Güncelle
         </button>
+        <BrentWidget />
       </div>
 
-      <div className="stat-grid" style={{ gridTemplateColumns: 'repeat(3,1fr)' }}>
+      <div className="stat-grid" style={{ gridTemplateColumns: 'repeat(2,1fr)' }}>
         <div className="stat s1">
           <div className="k">Fiyat Toplanıyor</div>
           <div className="v">{toplama}</div>
           <div className="d">aktif talep</div>
-        </div>
-        <div className="stat s2">
-          <div className="k">Onay Bekleyen</div>
-          <div className="v">{onayda}</div>
-          <div className="d">yönetim onayında</div>
         </div>
         <div className="stat s3">
           <div className="k">Onaylanan Tutar</div>
