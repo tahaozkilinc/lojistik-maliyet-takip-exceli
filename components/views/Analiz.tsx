@@ -1,11 +1,24 @@
 'use client';
-import React from 'react';
+import React, { useState } from 'react';
 import { useStore } from '@/lib/store';
-import { money, fmt } from '@/lib/format';
-import { toTRY, bestQuoteId } from '@/lib/calc';
+import { money, fmt, dt } from '@/lib/format';
+import { toTRY, bestQuoteId, firmName, lokasyonStats } from '@/lib/calc';
+import { StatusBadge } from '@/components/StatusBadge';
 
 export function Analiz() {
-  const { db, openModal } = useStore();
+  const { db, openModal, go } = useStore();
+  const [yukSel, setYukSel] = useState('__all');
+  const [tesSel, setTesSel] = useState('__all');
+  const lokalar = [...db.lokasyonlar].sort((a, b) => a.ad.localeCompare(b.ad, 'tr'));
+
+  // Kullanıcının seçtiği belirli güzergah (yükleme + teslim lokasyonu).
+  const seciliGuzergah = yukSel !== '__all' && tesSel !== '__all';
+  const guzergahStats = seciliGuzergah ? lokasyonStats(db, yukSel, tesSel) : null;
+  const guzergahTalepler = seciliGuzergah
+    ? [...db.talepler]
+        .filter((t) => t.yuklemeLokasyonId === yukSel && t.teslimLokasyonId === tesSel)
+        .sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime())
+    : [];
 
   // Güzergah bazlı
   const routes: Record<string, { count: number; prices: number[] }> = {};
@@ -36,7 +49,117 @@ export function Analiz() {
     <>
       <div className="panel">
         <div className="panel-head">
-          <h2>Güzergah fiyat geçmişi</h2>
+          <h2>Güzergah bazlı analiz</h2>
+          <div className="spacer" />
+          {seciliGuzergah && (
+            <button
+              className="btn sm ghost"
+              onClick={() => {
+                setYukSel('__all');
+                setTesSel('__all');
+              }}
+            >
+              Temizle
+            </button>
+          )}
+        </div>
+        <div className="panel-body">
+          <div className="grid-2">
+            <div className="field" style={{ marginBottom: 0 }}>
+              <label>Çıkış (Yükleme) Yeri</label>
+              <select value={yukSel} onChange={(e) => setYukSel(e.target.value)}>
+                <option value="__all">Tümü</option>
+                {lokalar.map((l) => (
+                  <option key={l.id} value={l.id}>
+                    {l.ad}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="field" style={{ marginBottom: 0 }}>
+              <label>Varış (Teslim) Yeri</label>
+              <select value={tesSel} onChange={(e) => setTesSel(e.target.value)}>
+                <option value="__all">Tümü</option>
+                {lokalar.map((l) => (
+                  <option key={l.id} value={l.id}>
+                    {l.ad}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          {seciliGuzergah ? (
+            guzergahStats && guzergahStats.sefer ? (
+              <>
+                <div className="stat-grid" style={{ marginTop: 16 }}>
+                  <div className="stat s1">
+                    <div className="k">Sefer Sayısı</div>
+                    <div className="v" style={{ fontSize: 21 }}>{guzergahStats.sefer}</div>
+                    <div className="d">{guzergahStats.fiyatli} fiyatlı</div>
+                  </div>
+                  <div className="stat s3">
+                    <div className="k">En Düşük</div>
+                    <div className="v" style={{ fontSize: 21 }}>{guzergahStats.fiyatli ? money(guzergahStats.min, 'TRY') : '—'}</div>
+                  </div>
+                  <div className="stat s4">
+                    <div className="k">Ortalama</div>
+                    <div className="v" style={{ fontSize: 21, color: 'var(--gold)' }}>
+                      {guzergahStats.fiyatli ? money(guzergahStats.avg, 'TRY') : '—'}
+                    </div>
+                  </div>
+                  <div className="stat s2">
+                    <div className="k">En Yüksek</div>
+                    <div className="v" style={{ fontSize: 21 }}>{guzergahStats.fiyatli ? money(guzergahStats.max, 'TRY') : '—'}</div>
+                  </div>
+                </div>
+                <table style={{ marginTop: 16 }}>
+                  <thead>
+                    <tr>
+                      <th>Talep No</th>
+                      <th>Tarih</th>
+                      <th>Firma</th>
+                      <th style={{ textAlign: 'right' }}>Fiyat (TRY)</th>
+                      <th>Durum</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {guzergahTalepler.map((t) => {
+                      const q = t.teklifler.find((q) => q.id === t.secilenTeklifId) || t.teklifler.find((q) => q.id === bestQuoteId(db, t));
+                      return (
+                        <tr key={t.id} className="t-row-click" onClick={() => go('detail', t.id)}>
+                          <td className="cell-strong">{t.talepNo}</td>
+                          <td>{dt(t.yuklemeTarihi || t.createdAt)}</td>
+                          <td>{q ? firmName(db, q.firmaId) : '—'}</td>
+                          <td style={{ textAlign: 'right' }} className="cell-strong">
+                            {q ? money(toTRY(db, q.fiyat, q.paraBirimi), 'TRY') : '—'}
+                          </td>
+                          <td>
+                            <StatusBadge durum={t.durum} />
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </>
+            ) : (
+              <div className="empty" style={{ padding: 30 }}>
+                <p>Bu güzergahta (seçilen çıkış → varış) henüz talep yok.</p>
+              </div>
+            )
+          ) : (
+            <div className="hint" style={{ marginTop: 10 }}>
+              Belirli bir güzergahın geçmişini görmek için yukarıdan çıkış ve varış yerini seçin. Seçim yapılmazsa
+              aşağıda tüm güzergahlar listelenir.
+            </div>
+          )}
+        </div>
+      </div>
+
+      <div className="panel">
+        <div className="panel-head">
+          <h2>Tüm güzergahların fiyat geçmişi</h2>
           <div className="spacer" />
           <span className="tag">TRY karşılığı</span>
         </div>
