@@ -15,7 +15,7 @@ export function emptyDB(): DB {
     navlunFirmalari: [],
     tasimaTalepleri: [],
     limanTalepleri: [],
-    kur: { USD: 34.5, EUR: 37.2 },
+    kur: { USD: 34.5, EUR: 37.2, motorin: 0, brent: 0 },
     meta: { firma: 'Sunar Yatırım A.Ş.', departman: 'Dış Ticaret & Lojistik' },
   };
 }

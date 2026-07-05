@@ -25,6 +25,29 @@ export function Dashboard() {
 
   return (
     <>
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 18,
+          flexWrap: 'wrap',
+          marginBottom: 14,
+          fontSize: 13.5,
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
+          <span style={{ color: 'var(--muted)' }}>Motorin (Adana):</span>
+          <b style={{ fontSize: 16 }}>{db.kur.motorin ? money(db.kur.motorin, 'TRY') + '/lt' : '—'}</b>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
+          <span style={{ color: 'var(--muted)' }}>Brent Petrol:</span>
+          <b style={{ fontSize: 16 }}>{db.kur.brent ? money(db.kur.brent, 'USD') + '/varil' : '—'}</b>
+        </div>
+        <button className="btn sm ghost" onClick={() => openModal({ type: 'kur' })}>
+          Güncelle
+        </button>
+      </div>
+
       <div className="stat-grid" style={{ gridTemplateColumns: 'repeat(3,1fr)' }}>
         <div className="stat s1">
           <div className="k">Fiyat Toplanıyor</div>

@@ -314,6 +314,10 @@ export interface TasimaGerceklesen {
 export interface Kur {
   USD: number;
   EUR: number;
+  /** Motorin (dizel) — Petrol Ofisi Adana, ₺/lt. Manuel girilir. */
+  motorin: number;
+  /** Brent petrol, $/varil. Manuel girilir. */
+  brent: number;
   [k: string]: number;
 }
 
