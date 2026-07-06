@@ -41,15 +41,35 @@ const text = html
 // atılır; ADANA satırı yalnızca bu başlığın DEVAMINDA aranır. O satırın
 // ilk iki fiyatı V/Max Kurşunsuz 95 (benzin) ve V/Max Diesel (motorin)
 // sütunlarıdır.
+/**
+ * Bir tablo satırındaki ilk iki POMPA fiyatını çıkarır. Sayfada her hücre
+ * "64.62 53.85 TL/LT +KDV" biçiminde iki değer taşır: önce pompa (KDV dahil),
+ * sonra KDV hariç fiyat. Pompa fiyatı her zaman büyük olandır. Hücrede tek
+ * değer varsa (yapı değişirse) eski tek-değer deseni yedek olarak kullanılır.
+ */
+function parseRow(seg) {
+  const pairs = [...seg.matchAll(/(\d{1,3}[.,]\d{2})\s+(\d{1,3}[.,]\d{2})\s*TL/gi)].map((m) => {
+    const a = parseFloat(m[1].replace(',', '.'));
+    const b = parseFloat(m[2].replace(',', '.'));
+    return Math.max(a, b);
+  });
+  if (pairs.length >= 2) return [pairs[0], pairs[1]];
+  const singles = [...seg.matchAll(/(\d{1,3})[.,](\d{2})\s*TL/gi)].map((m) => parseFloat(m[1] + '.' + m[2]));
+  if (singles.length >= 2) return [singles[0], singles[1]];
+  return null;
+}
+
 function scanAdana(t) {
   const re = /\bADANA\b/gi;
   let m;
   while ((m = re.exec(t))) {
     const seg = t.slice(m.index, m.index + 260);
-    const prices = [...seg.matchAll(/(\d{1,3})[.,](\d{2})\s*TL/gi)];
-    if (prices.length >= 2 && prices[0].index < 90) {
+    const first = seg.search(/\d{1,3}[.,]\d{2}/);
+    if (first < 0 || first >= 90) continue; // fiyatsız geçiş (örn. şehir listesi)
+    const nums = parseRow(seg);
+    if (nums) {
       console.log('Eşleşen satır bağlamı →', seg.slice(0, 140));
-      return prices.slice(0, 2).map((p) => parseFloat(p[1] + '.' + p[2]));
+      return nums;
     }
   }
   return null;
