@@ -1,0 +1,55 @@
+name: Akaryakıt Fiyatı Çek (Petrol Ofisi Adana)
+
+# Her sabah 08:30'da (Türkiye saati = 05:30 UTC) Petrol Ofisi'nin akaryakıt
+# fiyatları sayfasından Adana benzin/dizel fiyatını çekip public/akaryakit.json
+# dosyasına yazar ve siteyi yeniden yayınlar. Elle de tetiklenebilir.
+on:
+  schedule:
+    - cron: '30 5 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  actions: write
+
+concurrency:
+  group: akaryakit-scrape
+  cancel-in-progress: false
+
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Fiyatları çek
+        run: node scripts/fetch-akaryakit.mjs
+
+      - name: Değişiklik varsa commit & push
+        id: push
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add public/akaryakit.json
+          if git diff --cached --quiet; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            echo "Fiyat değişmemiş — commit yok."
+          else
+            git commit -m "chore: günlük Petrol Ofisi Adana akaryakıt fiyatı güncellemesi"
+            git push
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      # GITHUB_TOKEN ile yapılan push başka workflow tetiklemez; yayın
+      # işini (deploy.yml) elle tetikleriz.
+      - name: Siteyi yeniden yayınla
+        if: steps.push.outputs.changed == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run deploy.yml --ref "${GITHUB_REF_NAME}" --repo "${GITHUB_REPOSITORY}"

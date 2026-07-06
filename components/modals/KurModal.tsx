@@ -7,13 +7,11 @@ export function KurModal() {
   const { db, mutate, closeModal, toast } = useStore();
   const [usd, setUsd] = useState(String(db.kur.USD));
   const [eur, setEur] = useState(String(db.kur.EUR));
-  const [motorin, setMotorin] = useState(db.kur.motorin ? String(db.kur.motorin) : '');
 
   function save() {
     mutate((d) => {
       d.kur.USD = Number(usd) || d.kur.USD;
       d.kur.EUR = Number(eur) || d.kur.EUR;
-      d.kur.motorin = Number(motorin) || 0;
     });
     closeModal();
     toast('Kurlar güncellendi', 'ok');
@@ -21,7 +19,7 @@ export function KurModal() {
 
   return (
     <ModalShell onClose={closeModal} style={{ maxWidth: 420 }}>
-      <ModalHead title="Döviz Kurları & Motorin Fiyatı" onClose={closeModal} />
+      <ModalHead title="Döviz Kurları" onClose={closeModal} />
       <div className="modal-body">
         <div className="grid-2">
           <div className="field">
@@ -33,13 +31,8 @@ export function KurModal() {
             <input type="number" step="any" value={eur} onChange={(e) => setEur(e.target.value)} />
           </div>
         </div>
-        <div className="field">
-          <label>Motorin ₺/lt (Petrol Ofisi Adana)</label>
-          <input type="number" step="any" placeholder="örn. 44.50" value={motorin} onChange={(e) => setMotorin(e.target.value)} />
-        </div>
         <div className="hint">
-          Petrol Ofisi&apos;nin şehir bazlı akaryakıt fiyatı için genel/anahtarsız bir API yok; güncel motorin
-          fiyatını buradan elle girin. Brent petrol artık ana sayfada TradingView&apos;dan canlı çekiliyor.
+          Akaryakıt fiyatları her sabah 08:30&apos;da Petrol Ofisi&apos;nden otomatik çekilir ve ana panelde gösterilir.
         </div>
       </div>
       <div className="modal-foot">
