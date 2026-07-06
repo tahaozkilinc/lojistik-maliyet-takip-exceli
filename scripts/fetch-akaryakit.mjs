@@ -35,13 +35,35 @@ const text = html
   .replace(/&nbsp;/gi, ' ')
   .replace(/\s+/g, ' ');
 
-// ADANA satırını bul; hemen ardından gelen ilk iki fiyat sütunu
-// V/Max Kurşunsuz 95 (benzin) ve V/Max Diesel (motorin) değerleridir.
-const i = text.search(/\bADANA\b/i);
-if (i < 0) fail("Sayfada 'ADANA' satırı bulunamadı — sayfa yapısı değişmiş olabilir.");
-const seg = text.slice(i, i + 400);
-const nums = [...seg.matchAll(/(\d{1,3})[.,](\d{2})\s*TL/gi)].map((m) => parseFloat(m[1] + '.' + m[2]));
-if (nums.length < 2) fail('ADANA satırında fiyat değerleri ayrıştırılamadı: ' + seg.slice(0, 160));
+// 'ADANA' sayfada birden çok yerde geçer (örn. şehir seçim listesi).
+// Fiyat tablosundaki satırı bulmak için TÜM geçişleri tarar; hemen
+// yanında (ilk 90 karakter içinde) fiyat başlayan ilk geçişi kullanırız.
+// O satırın ilk iki fiyatı V/Max Kurşunsuz 95 (benzin) ve V/Max Diesel
+// (motorin) sütunlarıdır.
+function extractAdanaPrices(t) {
+  const re = /\bADANA\b/gi;
+  let m;
+  while ((m = re.exec(t))) {
+    const seg = t.slice(m.index, m.index + 260);
+    const prices = [...seg.matchAll(/(\d{1,3})[.,](\d{2})\s*TL/gi)];
+    if (prices.length >= 2 && prices[0].index < 90) {
+      return prices.slice(0, 2).map((p) => parseFloat(p[1] + '.' + p[2]));
+    }
+  }
+  return null;
+}
+
+const nums = extractAdanaPrices(text);
+if (!nums) {
+  // Teşhis için: sayfada hiç fiyat var mı, ilk fiyatın çevresi nasıl görünüyor?
+  const all = [...text.matchAll(/(\d{1,3})[.,](\d{2})\s*TL/gi)];
+  console.error('Teşhis: sayfadaki toplam TL fiyat sayısı =', all.length);
+  if (all.length) {
+    const ix = all[0].index ?? 0;
+    console.error('Teşhis: ilk fiyatın bağlamı →', text.slice(Math.max(0, ix - 120), ix + 120));
+  }
+  fail('Fiyat tablosundaki ADANA satırı bulunamadı — sayfa yapısı değişmiş olabilir.');
+}
 
 const [benzin, motorin] = nums;
 // Ayrıştırma kayarsa saçma değer yazmamak için makul aralık denetimi.
