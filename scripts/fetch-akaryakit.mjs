@@ -35,22 +35,37 @@ const text = html
   .replace(/&nbsp;/gi, ' ')
   .replace(/\s+/g, ' ');
 
-// 'ADANA' sayfada birden çok yerde geçer (örn. şehir seçim listesi).
-// Fiyat tablosundaki satırı bulmak için TÜM geçişleri tarar; hemen
-// yanında (ilk 90 karakter içinde) fiyat başlayan ilk geçişi kullanırız.
-// O satırın ilk iki fiyatı V/Max Kurşunsuz 95 (benzin) ve V/Max Diesel
-// (motorin) sütunlarıdır.
-function extractAdanaPrices(t) {
+// 'ADANA' sayfada birden çok yerde geçer (şehir seçim listesi, KDV'siz /
+// tavan fiyat gibi BAŞKA fiyat tabloları dahil). Doğru pompa fiyatı
+// tablosunu bulmak için önce 'V/Max Kurşunsuz' sütun başlığına çapa
+// atılır; ADANA satırı yalnızca bu başlığın DEVAMINDA aranır. O satırın
+// ilk iki fiyatı V/Max Kurşunsuz 95 (benzin) ve V/Max Diesel (motorin)
+// sütunlarıdır.
+function scanAdana(t) {
   const re = /\bADANA\b/gi;
   let m;
   while ((m = re.exec(t))) {
     const seg = t.slice(m.index, m.index + 260);
     const prices = [...seg.matchAll(/(\d{1,3})[.,](\d{2})\s*TL/gi)];
     if (prices.length >= 2 && prices[0].index < 90) {
+      console.log('Eşleşen satır bağlamı →', seg.slice(0, 140));
       return prices.slice(0, 2).map((p) => parseFloat(p[1] + '.' + p[2]));
     }
   }
   return null;
+}
+
+function extractAdanaPrices(t) {
+  // Tüm 'V/Max Kurşunsuz' başlıklarını sırayla dene (doğru tablo çapası).
+  const hre = /V\s*\/?\s*Max\s+Kur[şs]unsuz/gi;
+  let hm;
+  while ((hm = hre.exec(t))) {
+    const nums = scanAdana(t.slice(hm.index, hm.index + 30000));
+    if (nums) return nums;
+  }
+  // Başlık bulunamazsa son çare: tüm sayfada tara (eski davranış).
+  console.error("Uyarı: 'V/Max Kurşunsuz' başlığı bulunamadı — tüm sayfa taranıyor.");
+  return scanAdana(t);
 }
 
 const nums = extractAdanaPrices(text);
