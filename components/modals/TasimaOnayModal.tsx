@@ -52,6 +52,16 @@ export function TasimaOnayModal({ id }: { id: string }) {
 
   const selRow = rows.find((r) => r.qid === selId);
 
+  // Talebe girilmiş indirim/gerçekleşen fiyat (varsa) — onay kararında gösterilir.
+  const ind = t.gerceklesen && t.gerceklesen.fiyat != null ? t.gerceklesen : null;
+  const indPct = (() => {
+    if (!ind || !selRow) return null;
+    const o = toTRY(db, parseFloat(selRow.fiyat) || 0, selRow.para);
+    const y = toTRY(db, ind.fiyat, ind.paraBirimi);
+    if (!o) return null;
+    return ((o - y) / o) * 100;
+  })();
+
   /** Tablo değerlerini DB'ye yazar; seçimi uygular. */
   function applyRevise(draft: typeof db) {
     const tt = draft.tasimaTalepleri.find((x) => x.id === id)!;
@@ -220,6 +230,36 @@ export function TasimaOnayModal({ id }: { id: string }) {
             <span style={{ color: 'var(--amber)' }}>Henüz teklif seçilmedi — bir satırı işaretleyin.</span>
           )}
         </div>
+
+        {ind ? (
+          <div
+            style={{
+              marginTop: 10,
+              padding: '10px 13px',
+              border: '1.4px solid var(--green)',
+              borderRadius: 8,
+              background: 'rgba(34,160,90,.08)',
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+              <span style={{ fontWeight: 800, color: 'var(--green)' }}>İndirim uygulandı</span>
+              {selRow ? (
+                <span style={{ textDecoration: 'line-through', color: 'var(--muted)', fontSize: 12.5 }}>
+                  {money(parseFloat(selRow.fiyat) || 0, selRow.para)}
+                </span>
+              ) : null}
+              <span style={{ fontSize: 17, fontWeight: 800, color: 'var(--green)' }}>
+                {money(ind.fiyat, ind.paraBirimi)}
+              </span>
+              {indPct != null ? (
+                <span style={{ fontWeight: 700, color: 'var(--green)' }}>▼ {indPct.toFixed(1)}%</span>
+              ) : null}
+            </div>
+            <div style={{ fontSize: 11.5, color: 'var(--muted)', marginTop: 4 }}>
+              Onaylanan tutar bu <b>indirimli (gerçekleşen)</b> fiyattır{ind.not ? ' · ' + ind.not : ''}.
+            </div>
+          </div>
+        ) : null}
         <div style={{ display: 'flex', gap: 8, marginTop: 10, flexWrap: 'wrap' }}>
           <button className="btn sm" onClick={saveRevise}>
             <Icon name="save" size={13} />

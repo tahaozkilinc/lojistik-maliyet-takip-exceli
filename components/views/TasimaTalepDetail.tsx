@@ -48,10 +48,6 @@ export function TasimaTalepDetail() {
     kara: mkForm('TRY'),
     hava: mkForm('USD'),
   });
-  const [yonetici, setYonetici] = useState('');
-  const [kararTarih, setKararTarih] = useState(new Date().toISOString().slice(0, 10));
-  const [onayNot, setOnayNot] = useState('');
-
   if (!x) {
     return (
       <div className="empty" style={{ padding: 50 }}>
@@ -166,30 +162,6 @@ export function TasimaTalepDetail() {
     toast('Talep onaydan geri çekildi', 'ok');
   }
 
-  function decide(karar: 'onaylandi' | 'reddedildi') {
-    const yon = yonetici.trim();
-    if (!yon) {
-      toast('Onaylayan kişiyi girin', 'err');
-      return;
-    }
-    if (karar === 'onaylandi' && !x!.secilenTeklifId) {
-      toast('Onaylamadan önce bir fiyat seçin (satırdaki Seç işareti)', 'err');
-      return;
-    }
-    mutate((d) => {
-      const t = d.tasimaTalepleri.find((y) => y.id === x!.id);
-      if (!t) return;
-      t.durum = karar;
-      t.onay = {
-        ...(t.onay || {}),
-        yonetici: yon,
-        tarih: new Date(kararTarih || Date.now()).toISOString(),
-        not: onayNot.trim(),
-      };
-    });
-    toast(karar === 'onaylandi' ? 'Taşıma talebi onaylandı ✓' : 'Taşıma talebi reddedildi', karar === 'onaylandi' ? 'ok' : 'err');
-  }
-
   const secilen = x.teklifler.find((q) => q.id === x.secilenTeklifId);
   const gecmis = tasimaGecmisi(db, x.kalkisYeri, x.varisYeri, x.id);
   const efektif = tasimaEfektifFiyat(db, x);
@@ -220,6 +192,11 @@ export function TasimaTalepDetail() {
           <button className="btn sm gold" onClick={sendToApproval}>
             <Icon name="send" size={14} />
             Onaya Gönder
+          </button>
+        )}
+        {x.durum === 'onayda' && (
+          <button className="btn sm primary" onClick={() => openModal({ type: 'tasimaOnay', id: x.id })}>
+            Onay İşlemi
           </button>
         )}
         {x.durum === 'onayda' && (
@@ -665,49 +642,18 @@ export function TasimaTalepDetail() {
       )}
 
       {x.durum === 'onayda' && (
-        <div className="panel" style={{ marginTop: 16 }}>
-          <div className="panel-head">
-            <h2>Yönetim Kararı</h2>
-          </div>
-          <div className="panel-body">
-            <div style={{ fontSize: 12.5, color: 'var(--muted)', marginBottom: 8 }}>
-              {efektif ? (
-                <>
-                  Seçilen: <b>{navlunFirmName(db, efektif.firmaId)}</b> · <b>{money(efektif.fiyat, efektif.paraBirimi)}</b>{' '}
-                  ({TASIMA_MODLAR.find((m) => m.key === efektif.mod)?.label}
-                  {efektif.indirimli ? ' · indirimli' : ''})
-                </>
-              ) : (
-                <span style={{ color: 'var(--amber)' }}>Henüz fiyat seçilmedi — yukarıdaki tablolardan bir satırı işaretleyin.</span>
-              )}
-            </div>
-            <div className="grid-2">
-              <div className="field">
-                <label>
-                  Onaylayan / Yönetici <span className="req">*</span>
-                </label>
-                <input placeholder="Ad Soyad" value={yonetici} onChange={(e) => setYonetici(e.target.value)} />
-              </div>
-              <div className="field">
-                <label>Karar Tarihi</label>
-                <input type="date" value={kararTarih} onChange={(e) => setKararTarih(e.target.value)} />
-              </div>
-            </div>
-            <div className="field">
-              <label>Not / Gerekçe</label>
-              <textarea placeholder="Onay/red ile ilgili açıklama…" value={onayNot} onChange={(e) => setOnayNot(e.target.value)} />
-            </div>
-            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-              <div style={{ flex: 1 }} />
-              <button className="btn danger" onClick={() => decide('reddedildi')}>
-                Reddet
-              </button>
-              <button className="btn green" onClick={() => decide('onaylandi')}>
-                <Icon name="check" size={15} sw={2.5} />
-                Onayla
-              </button>
-            </div>
-          </div>
+        <div
+          className="hint"
+          style={{ marginTop: 16, display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}
+        >
+          <span>
+            Bu talep onay bekliyor. Karar (revize · seç · ıslak imzalı onay) <b>Onay Merkezi</b>&apos;ndeki onay
+            formundan verilir.
+          </span>
+          <div style={{ flex: 1 }} />
+          <button className="btn sm primary" onClick={() => openModal({ type: 'tasimaOnay', id: x.id })}>
+            Onay Formunu Aç
+          </button>
         </div>
       )}
 
