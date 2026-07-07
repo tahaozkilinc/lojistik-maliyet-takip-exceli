@@ -31,7 +31,7 @@ interface AddForm {
 const num = (v: string) => v.replace(',', '.').replace(/[^-0-9.]/g, '');
 
 export function TasimaTalepDetail() {
-  const { db, ui, go, openModal, mutate, toast } = useStore();
+  const { db, ui, go, openModal, mutate, toast, setPrintJob } = useStore();
   const x = db.tasimaTalepleri.find((t) => t.id === ui.detailId);
 
   const mkForm = (para: string): AddForm => ({
@@ -226,6 +226,12 @@ export function TasimaTalepDetail() {
           <button className="btn sm danger" onClick={withdrawApproval}>
             <Icon name="back" size={14} />
             Onaydan Geri Çek
+          </button>
+        )}
+        {x.teklifler.length > 0 && (
+          <button className="btn sm" onClick={() => setPrintJob({ type: 'tasima', id: x.id })}>
+            <Icon name="print" size={14} />
+            Rapor / Yazdır
           </button>
         )}
       </div>

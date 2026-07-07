@@ -19,7 +19,7 @@ interface Row {
 
 /** Nakliye OnayModal'ının taşıma talebi karşılığı — aynı akış: revize → seç → karar. */
 export function TasimaOnayModal({ id }: { id: string }) {
-  const { db, mutate, closeModal, toast } = useStore();
+  const { db, mutate, closeModal, toast, setPrintJob } = useStore();
   const t = db.tasimaTalepleri.find((x) => x.id === id);
   const fileInput = useRef<HTMLInputElement>(null);
 
@@ -73,6 +73,11 @@ export function TasimaOnayModal({ id }: { id: string }) {
   function saveRevise() {
     mutate((d) => applyRevise(d));
     toast('Fiyatlar ve seçim kaydedildi', 'ok');
+  }
+  function saveReviseAndReport() {
+    mutate((d) => applyRevise(d));
+    closeModal();
+    setPrintJob({ type: 'tasima', id });
   }
 
   function handleFile(ev: React.ChangeEvent<HTMLInputElement>) {
@@ -219,6 +224,10 @@ export function TasimaOnayModal({ id }: { id: string }) {
           <button className="btn sm" onClick={saveRevise}>
             <Icon name="save" size={13} />
             Fiyatları Kaydet
+          </button>
+          <button className="btn sm" onClick={saveReviseAndReport}>
+            <Icon name="print" size={13} />
+            Kaydet &amp; Rapor Yazdır
           </button>
         </div>
 

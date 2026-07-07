@@ -61,6 +61,7 @@ export type ModalState =
 export type PrintJob =
   | { type: 'single'; id: string }
   | { type: 'combined'; ids: string[] }
+  | { type: 'tasima'; id: string }
   | null;
 
 export type ToastItem = { id: number; msg: string; type: '' | 'ok' | 'err' };

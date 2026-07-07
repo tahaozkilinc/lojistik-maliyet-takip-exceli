@@ -3,6 +3,7 @@ import React, { useEffect } from 'react';
 import { useStore } from '@/lib/store';
 import { PrintReport } from './PrintReport';
 import { PrintCombined } from './PrintCombined';
+import { PrintTasimaReport } from './PrintTasimaReport';
 
 export function PrintHost() {
   const { printJob, setPrintJob } = useStore();
@@ -23,6 +24,7 @@ export function PrintHost() {
     <div id="printArea">
       {printJob?.type === 'single' ? <PrintReport id={printJob.id} /> : null}
       {printJob?.type === 'combined' ? <PrintCombined ids={printJob.ids} /> : null}
+      {printJob?.type === 'tasima' ? <PrintTasimaReport id={printJob.id} /> : null}
     </div>
   );
 }

@@ -205,7 +205,16 @@ export function Onaylar() {
                         )}
                       </td>
                       <td>{x.onay && x.onay.gonderim ? dt(x.onay.gonderim) : '—'}</td>
-                      <td style={{ textAlign: 'right' }}>
+                      <td style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
+                        <button
+                          className="btn sm"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setPrintJob({ type: 'tasima', id: x.id });
+                          }}
+                        >
+                          Rapor
+                        </button>
                         <button
                           className="btn sm primary"
                           onClick={(e) => {
