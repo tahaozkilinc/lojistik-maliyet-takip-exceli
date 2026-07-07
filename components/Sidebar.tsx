@@ -38,7 +38,9 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
   const { db, ui, go, toggleTheme, openModal, logout } = useStore();
 
   const navTalep = db.talepler.filter((x) => x.durum === 'toplama').length;
-  const navOnay = db.talepler.filter((x) => x.durum === 'onayda').length;
+  const navOnay =
+    db.talepler.filter((x) => x.durum === 'onayda').length +
+    db.tasimaTalepleri.filter((x) => x.durum === 'onayda').length;
   const navTasima = db.tasimaTalepleri.filter((x) => x.durum === 'toplama').length;
 
   return (

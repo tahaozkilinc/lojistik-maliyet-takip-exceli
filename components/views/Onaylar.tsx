@@ -2,7 +2,8 @@
 import React from 'react';
 import { useStore } from '@/lib/store';
 import { money, dt } from '@/lib/format';
-import { qTotal, bestQuoteId, firmName } from '@/lib/calc';
+import { qTotal, bestQuoteId, firmName, navlunFirmName } from '@/lib/calc';
+import { tasimaEfektifFiyat, TASIMA_MODLAR, TASIMA_MOD_RENK } from '@/lib/tasima';
 import { openSignedFile } from '@/lib/export';
 import { StatusBadge } from '@/components/StatusBadge';
 import { Icon } from '@/components/Icon';
@@ -18,6 +19,15 @@ export function Onaylar() {
     );
   }
   const onayda = db.talepler.filter((x) => x.durum === 'onayda' && matchQ(x));
+  const tasimaOnayda = db.tasimaTalepleri.filter(
+    (x) =>
+      x.durum === 'onayda' &&
+      (!q ||
+        (x.talepNo + (x.siparisNo || '') + x.kalkisYeri + x.varisYeri + (x.yukTipi || '') + (x.yukSahibiFirma || x.tasiyiciFirma || ''))
+          .toLowerCase()
+          .includes(q) ||
+        x.teklifler.some((tk) => navlunFirmName(db, tk.firmaId).toLowerCase().includes(q))),
+  );
   const gecmis = db.talepler
     .filter((x) => (x.durum === 'onaylandi' || x.durum === 'reddedildi') && matchQ(x))
     .sort((a, b) => new Date((b.onay && b.onay.tarih) || 0).getTime() - new Date((a.onay && a.onay.tarih) || 0).getTime());
@@ -139,6 +149,81 @@ export function Onaylar() {
               <Icon name="onaylar" size={44} sw={1.5} />
               <h3>Onay sırası boş</h3>
               <p>Talep detayından &quot;Onaya Gönder&quot; dediğinizde buraya düşer.</p>
+            </div>
+          )}
+        </div>
+      </div>
+
+      <div className="panel">
+        <div className="panel-head">
+          <h2>Onay bekleyen taşıma talepleri</h2>
+          <div className="spacer" />
+          <span className="tag">{tasimaOnayda.length} adet</span>
+        </div>
+        <div className="panel-body flush">
+          {tasimaOnayda.length ? (
+            <table>
+              <thead>
+                <tr>
+                  <th>Sipariş No</th>
+                  <th>Güzergah</th>
+                  <th>Önerilen Firma</th>
+                  <th>Fiyat</th>
+                  <th>Mod</th>
+                  <th>Gönderim</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody>
+                {tasimaOnayda.map((x) => {
+                  const eff = tasimaEfektifFiyat(db, x);
+                  return (
+                    <tr key={x.id} className="t-row-click" onClick={() => go('tasimaTalepDetay', x.id)}>
+                      <td className="cell-strong">{x.siparisNo || x.talepNo}</td>
+                      <td>
+                        {x.kalkisYeri} → {x.varisYeri}
+                      </td>
+                      <td>{eff ? navlunFirmName(db, eff.firmaId) : '—'}</td>
+                      <td className="cell-strong">{eff ? money(eff.fiyat, eff.paraBirimi) : '—'}</td>
+                      <td>
+                        {eff ? (
+                          <span
+                            style={{
+                              display: 'inline-block',
+                              background: TASIMA_MOD_RENK[eff.mod],
+                              color: '#fff',
+                              fontSize: 10,
+                              fontWeight: 700,
+                              padding: '1px 8px',
+                              borderRadius: 10,
+                            }}
+                          >
+                            {TASIMA_MODLAR.find((m) => m.key === eff.mod)?.label}
+                          </span>
+                        ) : (
+                          '—'
+                        )}
+                      </td>
+                      <td>{x.onay && x.onay.gonderim ? dt(x.onay.gonderim) : '—'}</td>
+                      <td style={{ textAlign: 'right' }}>
+                        <button
+                          className="btn sm primary"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            openModal({ type: 'tasimaOnay', id: x.id });
+                          }}
+                        >
+                          Revize / Seç &amp; Onay
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          ) : (
+            <div className="empty" style={{ padding: 30 }}>
+              <p>Onay bekleyen taşıma talebi yok. Taşıma talebi detayından &quot;Onaya Gönder&quot; dediğinizde buraya düşer.</p>
             </div>
           )}
         </div>

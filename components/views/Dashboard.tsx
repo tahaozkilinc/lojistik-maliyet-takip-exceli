@@ -5,6 +5,7 @@ import { money, dt } from '@/lib/format';
 import { qTotal, bestQuoteId, firmName, navlunFirmName } from '@/lib/calc';
 import { tasimaEfektifFiyat } from '@/lib/tasima';
 import { Icon } from '@/components/Icon';
+import { TvQuote } from '@/components/TvQuote';
 
 interface Akaryakit {
   benzin: number;
@@ -35,6 +36,9 @@ export function Dashboard() {
 
   const bekleyen = db.talepler.filter((x) => x.durum === 'onayda');
   const bekleyenTasima = db.tasimaTalepleri.filter((x) => x.durum === 'onayda');
+  const toplananNakliye = db.talepler.filter((x) => x.durum === 'toplama');
+  const toplananTasima = db.tasimaTalepleri.filter((x) => x.durum === 'toplama');
+  const hicYok = !bekleyen.length && !bekleyenTasima.length && !toplananNakliye.length && !toplananTasima.length;
 
   return (
     <>
@@ -53,6 +57,11 @@ export function Dashboard() {
           </div>
           <div className="d">Adana · V/Max Diesel{akaryakit?.tarih ? ' · ' + dt(akaryakit.tarih) : ''}</div>
         </div>
+      </div>
+
+      <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap', margin: '4px 0 18px' }}>
+        <TvQuote symbol="TVC:UKOIL" href="https://www.tradingview.com/symbols/TVC-UKOIL/" label="Brent Petrol" />
+        <TvQuote symbol="INDEX:BDI" href="https://www.tradingview.com/symbols/INDEX-BDI/" label="Baltic Dry Index (BDI)" />
       </div>
 
       {bekleyen.length > 0 && (
@@ -163,11 +172,134 @@ export function Dashboard() {
         </div>
       )}
 
-      {!bekleyen.length && !bekleyenTasima.length && (
+      {toplananNakliye.length > 0 && (
+        <div className="panel">
+          <div className="panel-head">
+            <h2>Fiyat toplanan nakliye talepleri</h2>
+            <div className="spacer" />
+            <span className="tag">{toplananNakliye.length} adet</span>
+            <button className="btn sm" onClick={() => go('talepler')}>
+              Talepler →
+            </button>
+          </div>
+          <div className="panel-body flush">
+            <table>
+              <thead>
+                <tr>
+                  <th>Talep No</th>
+                  <th>Güzergah</th>
+                  <th>Yük</th>
+                  <th>Teklif</th>
+                  <th>En İyi (birim)</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody>
+                {toplananNakliye.map((x) => {
+                  const bq = x.teklifler.find((q) => q.id === bestQuoteId(db, x));
+                  return (
+                    <tr key={x.id} className="t-row-click" onClick={() => go('detail', x.id)}>
+                      <td className="cell-strong">{x.talepNo}</td>
+                      <td>
+                        {x.yuklemeNoktasi} → {x.teslimNoktasi}
+                      </td>
+                      <td>{x.yukTipi || '—'}</td>
+                      <td>
+                        <span className="tag">{x.teklifler.length} teklif</span>
+                      </td>
+                      <td className="cell-strong">
+                        {bq ? (
+                          <>
+                            {money(bq.fiyat, bq.paraBirimi)}
+                            <span style={{ color: 'var(--faint)', fontWeight: 400 }}>/{x.birim || 'ton'}</span>
+                          </>
+                        ) : (
+                          <span style={{ color: 'var(--faint)' }}>bekleniyor</span>
+                        )}
+                      </td>
+                      <td>
+                        <button
+                          className="btn sm ghost"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            go('detail', x.id);
+                          }}
+                        >
+                          Aç →
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {toplananTasima.length > 0 && (
+        <div className="panel">
+          <div className="panel-head">
+            <h2>Fiyat toplanan taşıma talepleri</h2>
+            <div className="spacer" />
+            <span className="tag">{toplananTasima.length} adet</span>
+            <button className="btn sm" onClick={() => go('tasimaTalepleri')}>
+              Taşıma Talepleri →
+            </button>
+          </div>
+          <div className="panel-body flush">
+            <table>
+              <thead>
+                <tr>
+                  <th>Sipariş No</th>
+                  <th>Güzergah</th>
+                  <th>Yük</th>
+                  <th>Teklif</th>
+                  <th>En İyi</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody>
+                {toplananTasima.map((x) => {
+                  const eff = tasimaEfektifFiyat(db, x);
+                  return (
+                    <tr key={x.id} className="t-row-click" onClick={() => go('tasimaTalepDetay', x.id)}>
+                      <td className="cell-strong">{x.siparisNo || x.talepNo}</td>
+                      <td>
+                        {x.kalkisYeri} → {x.varisYeri}
+                      </td>
+                      <td>{x.yukTipi || '—'}</td>
+                      <td>
+                        <span className="tag">{x.teklifler.length} teklif</span>
+                      </td>
+                      <td className="cell-strong">
+                        {eff ? money(eff.fiyat, eff.paraBirimi) : <span style={{ color: 'var(--faint)' }}>bekleniyor</span>}
+                      </td>
+                      <td>
+                        <button
+                          className="btn sm ghost"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            go('tasimaTalepDetay', x.id);
+                          }}
+                        >
+                          Aç →
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {hicYok && (
         <div className="empty" style={{ padding: 44 }}>
           <Icon name="onaylar" size={44} sw={1.5} />
-          <h3>Onay bekleyen talep yok</h3>
-          <p>Talep onaya gönderildiğinde burada listelenir.</p>
+          <h3>Bekleyen talep yok</h3>
+          <p>Fiyat toplanan veya onay bekleyen talepler burada listelenir.</p>
         </div>
       )}
     </>
