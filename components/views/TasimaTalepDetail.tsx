@@ -26,6 +26,9 @@ interface AddForm {
   konteynerTipi: string;
   navlun: string;
   lokal: string;
+  // Kara/hava modunda opsiyonel ek masraf kalemleri — ana fiyata eklenir.
+  ekLokal: string;
+  ekDiger: string;
 }
 
 const num = (v: string) => v.replace(',', '.').replace(/[^-0-9.]/g, '');
@@ -42,6 +45,8 @@ export function TasimaTalepDetail() {
     konteynerTipi: KONTEYNER_TIPLERI[0],
     navlun: '',
     lokal: '',
+    ekLokal: '',
+    ekDiger: '',
   });
   const [forms, setForms] = useState<Record<TasimaMod, AddForm>>({
     deniz: mkForm('USD'),
@@ -101,11 +106,17 @@ export function TasimaTalepDetail() {
       toast('Fiyat eklendi', 'ok');
       return;
     }
-    const fv = parseFloat(f.fiyat);
-    if (!isFinite(fv) || fv <= 0) {
+    const fv = parseFloat(f.fiyat) || 0;
+    const ekLokal = parseFloat(f.ekLokal) || 0;
+    const ekDiger = parseFloat(f.ekDiger) || 0;
+    const toplam = fv + ekLokal + ekDiger;
+    if (!isFinite(toplam) || toplam <= 0) {
       toast('Geçerli bir fiyat girin', 'err');
       return;
     }
+    const ekMasraflar: { ad: string; tutar: number }[] = [];
+    if (ekLokal > 0) ekMasraflar.push({ ad: 'Lokal', tutar: ekLokal });
+    if (ekDiger > 0) ekMasraflar.push({ ad: 'Diğer', tutar: ekDiger });
     mutate((d) => {
       const t = d.tasimaTalepleri.find((y) => y.id === x!.id);
       if (!t) return;
@@ -113,13 +124,14 @@ export function TasimaTalepDetail() {
         id: uid('ttk'),
         mod,
         firmaId: f.firmaId,
-        fiyat: fv,
+        fiyat: toplam,
         paraBirimi: f.para,
         notlar: f.not.trim(),
+        ekMasraflar: ekMasraflar.length ? ekMasraflar : null,
         createdAt: new Date().toISOString(),
       });
     });
-    setForm(mod, { fiyat: '', not: '' });
+    setForm(mod, { fiyat: '', not: '', ekLokal: '', ekDiger: '' });
     toast('Fiyat eklendi', 'ok');
   }
 
@@ -529,7 +541,14 @@ export function TasimaTalepDetail() {
                               {q.lokalFiyat != null ? money(q.lokalFiyat, q.paraBirimi) : '—'}
                             </td>
                           ) : null}
-                          <td style={{ textAlign: 'right', fontWeight: 700, whiteSpace: 'nowrap' }}>{money(q.fiyat, q.paraBirimi)}</td>
+                          <td style={{ textAlign: 'right', fontWeight: 700, whiteSpace: 'nowrap' }}>
+                            {money(q.fiyat, q.paraBirimi)}
+                            {q.ekMasraflar && q.ekMasraflar.length ? (
+                              <div style={{ fontSize: 10.5, fontWeight: 400, color: 'var(--muted)' }}>
+                                {q.ekMasraflar.map((e) => e.ad + ': ' + money(e.tutar, q.paraBirimi)).join(' · ')} dahil
+                              </div>
+                            ) : null}
+                          </td>
                           <td style={{ textAlign: 'right', whiteSpace: 'nowrap', color: 'var(--muted)' }}>
                             {money(toTRY(db, q.fiyat, q.paraBirimi), 'TRY')}
                           </td>
@@ -606,6 +625,18 @@ export function TasimaTalepDetail() {
                     <div className="field" style={{ marginBottom: 0, width: 110 }}>
                       <label style={{ fontSize: 11 }}>Fiyat</label>
                       <input inputMode="decimal" placeholder="0" value={f.fiyat} onChange={(e) => setForm(key, { fiyat: num(e.target.value) })} />
+                    </div>
+                  ) : null}
+                  {key !== 'deniz' ? (
+                    <div className="field" style={{ marginBottom: 0, width: 100 }}>
+                      <label style={{ fontSize: 11 }}>+ Lokal (opsiyonel)</label>
+                      <input inputMode="decimal" placeholder="0" value={f.ekLokal} onChange={(e) => setForm(key, { ekLokal: num(e.target.value) })} />
+                    </div>
+                  ) : null}
+                  {key !== 'deniz' ? (
+                    <div className="field" style={{ marginBottom: 0, width: 100 }}>
+                      <label style={{ fontSize: 11 }}>+ Diğer (opsiyonel)</label>
+                      <input inputMode="decimal" placeholder="0" value={f.ekDiger} onChange={(e) => setForm(key, { ekDiger: num(e.target.value) })} />
                     </div>
                   ) : null}
                   <div className="field" style={{ marginBottom: 0, width: 90 }}>

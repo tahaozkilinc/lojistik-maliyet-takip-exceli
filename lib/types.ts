@@ -273,6 +273,8 @@ export interface TasimaTeklif {
   navlunFiyat?: number | null;
   /** Yalnızca deniz modunda kullanılır: liman/elleçleme gibi yerel (lokal) masraflar. */
   lokalFiyat?: number | null;
+  /** Kara/hava modlarında opsiyonel ek masraf kalemleri (lokal, diğer vb.) — toplam `fiyat`a dahildir. */
+  ekMasraflar?: { ad: string; tutar: number }[] | null;
 }
 
 /** Deniz/kara/hava fiyatlarının tek talep altında toplandığı taşıma talebi. */
