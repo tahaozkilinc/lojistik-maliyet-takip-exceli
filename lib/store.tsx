@@ -128,6 +128,21 @@ export function useStore(): StoreValue {
   return ctx;
 }
 
+/**
+ * Derin kopya. `structuredClone` eski tarayıcılarda (özellikle iOS Safari
+ * 15.4 öncesi) TANIMSIZDIR; orada doğrudan çağırınca ReferenceError fırlatır
+ * ve talep ekleme gibi tüm mutasyonlar patlar. DB tamamen JSON'a çevrilebilir
+ * olduğundan güvenli evrensel yedek olarak JSON kopyası kullanılır.
+ */
+function deepClone<T>(obj: T): T {
+  try {
+    if (typeof structuredClone === 'function') return structuredClone(obj);
+  } catch {
+    /* structuredClone bazı değerlerde patlayabilir — JSON'a düş */
+  }
+  return JSON.parse(JSON.stringify(obj)) as T;
+}
+
 function saveLocalCache(db: DB) {
   try {
     localStorage.setItem(LS_KEY, JSON.stringify(db));
@@ -325,15 +340,27 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       .on(
         'postgres_changes',
         { event: 'UPDATE', schema: 'public', table: 'app_db', filter: `id=eq.${REMOTE_ROW_ID}` },
-        (payload) => {
+        () => {
           // Henüz merkeze kaydedilmemiş yerel bir değişiklik varsa, gelen (muhtemelen
           // eski/sıraya girmiş) güncellemeyi uygulamak o değişikliği üzerine yazıp
-          // kaybedebilir (talebin "kapanması"na yol açan tam da bu yarış durumuydu).
-          // Yerel değişiklik kaydı onaylanana kadar gelen olayı atla.
+          // kaybedebilir. Yerel değişiklik kaydı onaylanana kadar olayı atla.
           if (dirtyRef.current) return;
-          const incoming = normalizeDB((payload.new as { data: unknown }).data);
-          setDb(incoming);
-          saveLocalCache(incoming);
+          // ÖNEMLİ: Realtime olay yükü (payload.new.data) büyük JSONB satırlarında
+          // Supabase tarafından kırpılabilir; kırpılmış/eksik veriyi doğrudan
+          // uygulamak arayüzü boşaltır ("DB'den kopma"). Bunun yerine güvenilir tam
+          // satırı tablodan yeniden çekeriz.
+          (async () => {
+            try {
+              const remote = await fetchRemoteDB();
+              // Fetch sırasında yerel bir değişiklik başladıysa üzerine yazma.
+              if (remote && !dirtyRef.current) {
+                setDb(remote);
+                saveLocalCache(remote);
+              }
+            } catch {
+              /* geçici ağ hatası — yerel veriyle devam, sonraki olayda tekrar denenir */
+            }
+          })();
         },
       )
       .subscribe();
@@ -418,7 +445,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
 
   const mutate = useCallback(
     (fn: (db: DB) => void): DB => {
-      const next = structuredClone(dbRef.current);
+      const next = deepClone(dbRef.current);
       fn(next);
       dbRef.current = next;
       saveLocalCache(next);
@@ -431,7 +458,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
 
   const replaceDB = useCallback(
     (newDb: DB) => {
-      const cloned = structuredClone(newDb);
+      const cloned = deepClone(newDb);
       migrate(cloned);
       saveLocalCache(cloned);
       setDb(cloned);
