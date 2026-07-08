@@ -1,5 +1,5 @@
 'use client';
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useStore } from '@/lib/store';
 import { money, fmtTon, dt } from '@/lib/format';
 import { bestQuoteId, firmName, qTotal } from '@/lib/calc';
@@ -10,6 +10,12 @@ import { EmptyTalep } from './EmptyTalep';
 
 export function Talepler() {
   const { db, ui, setUi, go, openModal, toast, mutate, talepSel, setTalepSel } = useStore();
+
+  // Sayfaya her girişte varsayılan olarak "Fiyat toplanıyor" filtresini aç.
+  useEffect(() => {
+    setUi({ talepFilter: 'toplama' });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const q = ui.search.toLowerCase().trim();
   function visibleTalepler(): Talep[] {
@@ -94,11 +100,11 @@ export function Talepler() {
   }
 
   const chips: [string, string][] = [
-    ['all', 'Tümü'],
     ['toplama', 'Fiyat toplanıyor'],
     ['onayda', 'Onay bekleyen'],
     ['onaylandi', 'Onaylanan'],
     ['reddedildi', 'Reddedilen'],
+    ['all', 'Tümü'],
   ];
 
   return (
