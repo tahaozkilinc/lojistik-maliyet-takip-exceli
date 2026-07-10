@@ -9,7 +9,7 @@ import { StatusBadge } from '@/components/StatusBadge';
 import { Icon } from '@/components/Icon';
 
 export function Onaylar() {
-  const { db, ui, go, openModal, toast, setPrintJob, bulkSel, setBulkSel } = useStore();
+  const { db, ui, go, openModal, toast, setPrintJob, bulkSel, setBulkSel, mutate } = useStore();
   const q = ui.search.toLowerCase().trim();
   function matchQ(x: { talepNo: string; yuklemeNoktasi: string; teslimNoktasi: string; yukTipi?: string; teklifler: { firmaId: string }[] }) {
     if (!q) return true;
@@ -54,6 +54,16 @@ export function Onaylar() {
       return;
     }
     setPrintJob({ type: 'combined', ids });
+  }
+  function geriCekOnay(id: string) {
+    if (!confirm('Talep onaydan geri çekilip "fiyat toplama" durumuna alınacak. Fiyat revizesi yapabilirsiniz. Devam edilsin mi?')) return;
+    mutate((d) => {
+      const t = d.talepler.find((y) => y.id === id);
+      if (!t) return;
+      t.durum = 'toplama';
+      if (t.onay) t.onay.gonderim = null;
+    });
+    toast('Talep onaydan geri çekildi — fiyat revizesi yapabilirsiniz', 'ok');
   }
 
   return (
@@ -255,6 +265,7 @@ export function Onaylar() {
                   <th>Onaylayan</th>
                   <th>Tarih</th>
                   <th>Belge</th>
+                  <th></th>
                 </tr>
               </thead>
               <tbody>
@@ -287,6 +298,12 @@ export function Onaylar() {
                         ) : (
                           <span style={{ color: 'var(--faint)' }}>—</span>
                         )}
+                      </td>
+                      <td style={{ textAlign: 'right' }} onClick={(e) => e.stopPropagation()}>
+                        <button className="btn sm ghost" onClick={() => geriCekOnay(x.id)} title="Fiyat revizesi için onaydan geri çek">
+                          <Icon name="back" size={13} />
+                          Geri Çek
+                        </button>
                       </td>
                     </tr>
                   );

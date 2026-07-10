@@ -101,7 +101,7 @@ export function TalepDetail() {
     toast('Talep onaya gönderildi — tedarikçiyi onay ekranında seçin', 'ok');
   }
   function withdrawApproval() {
-    if (x!.durum !== 'onayda') return;
+    if (x!.durum === 'toplama') return;
     if (!confirm('Talep onaydan geri çekilip "fiyat toplama" durumuna alınacak. Fiyat revizesi yapabilirsiniz. Devam edilsin mi?'))
       return;
     mutate((d) => {
@@ -159,10 +159,10 @@ export function TalepDetail() {
             Onay İşlemi
           </button>
         )}
-        {x.durum === 'onayda' && (
+        {(x.durum === 'onayda' || x.durum === 'onaylandi' || x.durum === 'reddedildi') && (
           <button className="btn sm danger" onClick={withdrawApproval}>
             <Icon name="back" size={14} />
-            Onaydan Geri Çek
+            {x.durum === 'onayda' ? 'Onaydan Geri Çek' : 'Onaydan Geri Çek (revize et)'}
           </button>
         )}
         {(x.durum === 'onayda' || x.durum === 'onaylandi') && (
