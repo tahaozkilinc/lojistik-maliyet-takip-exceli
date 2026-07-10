@@ -27,9 +27,19 @@ export function TeklifModal({
   const son = t ? sonIslem(db, t.yuklemeLokasyonId, t.teslimLokasyonId, t.id) : null;
   const anlasmalar = t ? findAnlasmalar(db, t.yuklemeLokasyonId, t.teslimLokasyonId, t.yukTipi) : [];
 
-  const defFirma = q ? q.firmaId : presetFirma || (son ? son.firmaId : db.firmalar[0]?.id) || '';
-  const defFiyat = q ? String(q.fiyat) : presetFiyat != null ? String(presetFiyat) : son ? String(son.birimFiyat) : '';
-  const defPara = q ? q.paraBirimi : presetPara || (son ? son.paraBirimi : 'TRY');
+  // Bu hatta hiç geçmiş fiyat ("son") yoksa, sistemde kayıtlı anlaşmalı fiyatı otomatik öner.
+  const anlDef = anlasmalar[0] || null;
+  const defFirma = q ? q.firmaId : presetFirma || (son ? son.firmaId : anlDef ? anlDef.firma.id : db.firmalar[0]?.id) || '';
+  const defFiyat = q
+    ? String(q.fiyat)
+    : presetFiyat != null
+      ? String(presetFiyat)
+      : son
+        ? String(son.birimFiyat)
+        : anlDef
+          ? String(anlDef.anlasma.birimFiyat)
+          : '';
+  const defPara = q ? q.paraBirimi : presetPara || (son ? son.paraBirimi : anlDef ? anlDef.anlasma.paraBirimi : 'TRY');
 
   const [firma, setFirma] = useState(defFirma);
   const [fiyat, setFiyat] = useState(defFiyat);

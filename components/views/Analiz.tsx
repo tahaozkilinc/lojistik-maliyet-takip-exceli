@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { useStore } from '@/lib/store';
 import { money, fmt, dt } from '@/lib/format';
-import { toTRY, bestQuoteId, firmName, lokasyonStats } from '@/lib/calc';
+import { toTRY, bestQuoteId, firmName, lokasyonStats, findAnlasmalar } from '@/lib/calc';
 import { StatusBadge } from '@/components/StatusBadge';
 
 export function Analiz() {
@@ -14,6 +14,8 @@ export function Analiz() {
   // Kullanıcının seçtiği belirli güzergah (yükleme + teslim lokasyonu).
   const seciliGuzergah = yukSel !== '__all' && tesSel !== '__all';
   const guzergahStats = seciliGuzergah ? lokasyonStats(db, yukSel, tesSel) : null;
+  // Bu güzergahta geçmiş fiyat yoksa/azsa gösterilecek anlaşmalı fiyatlar.
+  const guzergahAnlasmalar = seciliGuzergah ? findAnlasmalar(db, yukSel, tesSel) : [];
   const guzergahTalepler = seciliGuzergah
     ? [...db.talepler]
         .filter((t) => t.yuklemeLokasyonId === yukSel && t.teslimLokasyonId === tesSel)
@@ -88,6 +90,42 @@ export function Analiz() {
               </select>
             </div>
           </div>
+
+          {seciliGuzergah && guzergahAnlasmalar.length > 0 && (
+            <div
+              style={{
+                marginTop: 16,
+                background: 'var(--surface-2)',
+                border: '1px solid var(--line)',
+                borderRadius: 8,
+                padding: '11px 13px',
+                fontSize: 12.5,
+              }}
+            >
+              <div style={{ fontWeight: 700, marginBottom: 6, color: 'var(--amber)' }}>
+                {guzergahStats && guzergahStats.fiyatli
+                  ? 'Bu güzergah için sistemde anlaşmalı fiyat(lar) da var'
+                  : 'Bu güzergahta geçmiş fiyat yok — sistemde kayıtlı anlaşmalı fiyat bulundu'}
+              </div>
+              {guzergahAnlasmalar.map((a) => (
+                <div
+                  key={a.anlasma.id || a.firma.id}
+                  style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '4px 0' }}
+                >
+                  <span className="tag" style={{ background: 'var(--gold-soft)', borderColor: 'var(--gold)', color: 'var(--amber)' }}>
+                    ANLAŞMALI
+                  </span>
+                  <b>{a.firma.ad}</b>
+                  <b>{money(a.anlasma.birimFiyat, a.anlasma.paraBirimi)}</b>
+                  {a.anlasma.yukTipi ? (
+                    <span style={{ color: 'var(--muted)' }}>· {a.anlasma.yukTipi}</span>
+                  ) : (
+                    <span style={{ color: 'var(--faint)' }}>· tüm ürünler</span>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
 
           {seciliGuzergah ? (
             guzergahStats && guzergahStats.sefer ? (
