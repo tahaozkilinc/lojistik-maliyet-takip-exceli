@@ -251,6 +251,10 @@ tbody tr:last-child td{border-bottom:none}
 /* print report */
 #printArea{display:none}
 @media print{
+  /* Tarayıcı "mürekkep tasarrufu" için arka plan renklerini basmayı atlayabilir —
+     bu, koyu lacivert başlıklardaki beyaz yazıyı ve sarı/yeşil vurguları görünmez
+     kılar. Renklerin tasarlandığı gibi (aynen) basılmasını zorunlu kılıyoruz. */
+  *{-webkit-print-color-adjust:exact !important;print-color-adjust:exact !important;color-adjust:exact !important}
   body *{visibility:hidden}
   #printArea,#printArea *{visibility:visible}
   #printArea{display:block !important;position:absolute;left:0;top:0;width:100%;padding:0}

@@ -99,14 +99,18 @@ export function PrintCombined({ ids }: { ids: string[] }) {
                   const isMin = toTRY(db, q.fiyat, q.paraBirimi) === minU;
                   const st: React.CSSProperties = { textAlign: 'right', whiteSpace: 'nowrap' };
                   if (isSel) {
-                    st.background = '#fff3cf';
+                    st.background = '#ffdd7a';
+                    st.color = '#5c4200';
                     st.fontWeight = 800;
+                    st.border = '1.5px solid #c9a227';
                   } else if (isMin) {
-                    st.color = '#14633a';
+                    st.background = '#dcf3e4';
+                    st.color = '#0f4d2b';
                     st.fontWeight = 700;
                   }
                   return (
                     <td key={fid} style={st}>
+                      {isSel ? '★ ' : ''}
                       {money(q.fiyat, q.paraBirimi)}
                     </td>
                   );
@@ -137,9 +141,13 @@ export function PrintCombined({ ids }: { ids: string[] }) {
         </tfoot>
       </table>
       <div style={{ fontSize: 10, color: '#8a98a8', marginTop: 4 }}>
-        <span style={{ background: '#fff3cf', padding: '1px 6px', border: '1px solid #c5d0db' }}>Sarı</span> = önerilen/seçilen teklif &nbsp;·&nbsp;{' '}
-        <span style={{ color: '#14633a', fontWeight: 700 }}>yeşil</span> = satırdaki en düşük fiyat &nbsp;·&nbsp; Tutarlar birim × tonaj olarak TRY&apos;ye
-        çevrilmiş, indirim girildiyse gerçekleşen fiyat esas alınmıştır. &nbsp;·&nbsp; Geniş tablo; gerekirse <b>yatay (landscape)</b> yazdırın.
+        <span style={{ background: '#ffdd7a', color: '#5c4200', fontWeight: 700, padding: '1px 6px', border: '1.5px solid #c9a227', borderRadius: 3 }}>
+          ★ sarı
+        </span>{' '}
+        = önerilen/seçilen teklif &nbsp;·&nbsp;{' '}
+        <span style={{ background: '#dcf3e4', color: '#0f4d2b', fontWeight: 700, padding: '1px 6px', borderRadius: 3 }}>yeşil</span> = satırdaki en
+        düşük fiyat &nbsp;·&nbsp; Tutarlar birim × tonaj olarak TRY&apos;ye çevrilmiş, indirim girildiyse gerçekleşen fiyat esas alınmıştır. &nbsp;·&nbsp;
+        Geniş tablo; gerekirse <b>yatay (landscape)</b> yazdırın.
       </div>
 
       <div style={{ marginTop: 24, display: 'flex', gap: 20, alignItems: 'stretch', breakInside: 'avoid' }}>
