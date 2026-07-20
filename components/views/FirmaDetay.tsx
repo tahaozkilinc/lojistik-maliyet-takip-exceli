@@ -4,7 +4,7 @@ import { useStore } from '@/lib/store';
 import { money, dt, initials } from '@/lib/format';
 import { toTRY, lokName } from '@/lib/calc';
 import { TIP_RENK } from '@/lib/constants';
-import { exportFirmaFiyat } from '@/lib/export';
+import { exportFirmaFiyat, openSignedFile } from '@/lib/export';
 import { Icon } from '@/components/Icon';
 
 function AnlDelta({ v, p }: { v: number; p: number | null }) {
@@ -47,6 +47,9 @@ export function FirmaDetay() {
         (lokName(db, a.yuklemeLokasyonId) || '').localeCompare(lokName(db, b.yuklemeLokasyonId) || '', 'tr') ||
         (a.yukTipi || '').localeCompare(b.yukTipi || '', 'tr'),
     );
+  const sozlesmeler = (f.sozlesmeler || [])
+    .slice()
+    .sort((a, b) => (b.tarih || b.createdAt || '').localeCompare(a.tarih || a.createdAt || ''));
 
   // Hat bazlı performans
   const perf: Record<
@@ -82,6 +85,14 @@ export function FirmaDetay() {
       if (ff) ff.anlasmalar = (ff.anlasmalar || []).filter((x) => x.id !== anlId);
     });
     toast('Anlaşma silindi');
+  }
+  function delSozlesme(szId: string) {
+    if (!confirm('Bu sözleşme belgesi silinsin mi?')) return;
+    mutate((d) => {
+      const ff = d.firmalar.find((x) => x.id === f!.id);
+      if (ff) ff.sozlesmeler = (ff.sozlesmeler || []).filter((x) => x.id !== szId);
+    });
+    toast('Sözleşme silindi');
   }
 
   return (
@@ -138,6 +149,7 @@ export function FirmaDetay() {
             <Stat n={teklifSay} l="Verilen Teklif" />
             <Stat n={secilme} l="Seçildi" color="var(--green)" />
             <Stat n={anls.length} l="Anlaşma" color="var(--amber)" />
+            <Stat n={sozlesmeler.length} l="Sözleşme" color="var(--blue)" />
           </div>
         </div>
       </div>
@@ -235,6 +247,61 @@ export function FirmaDetay() {
           ) : (
             <div className="empty" style={{ padding: 24 }}>
               <p>Bu firma henüz hiçbir talebe teklif vermemiş.</p>
+            </div>
+          )}
+        </div>
+      </div>
+
+      <div className="panel" style={{ marginBottom: 16 }}>
+        <div className="panel-head">
+          <h2>Sözleşmeler</h2>
+          <div style={{ flex: 1 }} />
+          <button className="btn sm primary" onClick={() => openModal({ type: 'sozlesme', firmaId: f.id })}>
+            <Icon name="plus" size={13} sw={2.4} />
+            Sözleşme Ekle
+          </button>
+        </div>
+        <div className="panel-body">
+          <div style={{ fontSize: 12, color: 'var(--faint)', marginBottom: 12 }}>
+            Firmayla imzalanan taranmış/fotoğraflanmış sözleşme belgelerini buraya yükleyip istediğiniz zaman görüntüleyebilirsiniz.
+          </div>
+          {sozlesmeler.length ? (
+            sozlesmeler.map((s) => (
+              <div
+                key={s.id}
+                className="file-chip"
+                style={{ cursor: 'pointer', marginBottom: 8 }}
+                onClick={() => {
+                  if (!openSignedFile(s.belge)) toast('Belge görüntülenemiyor', 'err');
+                }}
+              >
+                <div className="fi">
+                  <Icon name="file" size={16} />
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div className="fn">{s.baslik || 'Sözleşme'}</div>
+                  <div className="fs">
+                    {s.tarih ? dt(s.tarih) : 'tarih yok'}
+                    {s.belge.boyut ? ' · ' + s.belge.boyut : ''}
+                  </div>
+                </div>
+                <button
+                  className="btn sm ghost"
+                  style={{ color: 'var(--red)' }}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    delSozlesme(s.id);
+                  }}
+                >
+                  Sil
+                </button>
+              </div>
+            ))
+          ) : (
+            <div className="empty" style={{ padding: 22 }}>
+              <p>
+                Bu firmayla henüz sözleşme belgesi eklenmemiş. <b>Sözleşme Ekle</b> ile başlayın.
+              </p>
             </div>
           )}
         </div>

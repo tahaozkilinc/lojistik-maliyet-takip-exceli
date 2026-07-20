@@ -72,6 +72,10 @@ export function sanitizeBelgeUrls(db: DB): DB {
       if (t.onay) t.onay.imzaliBelge = null;
     }
   });
+  db.firmalar.forEach((f) => {
+    if (!Array.isArray(f.sozlesmeler)) return;
+    f.sozlesmeler = f.sozlesmeler.filter((s) => s.belge && s.belge.data && SAFE_FILE_DATA_URL.test(s.belge.data));
+  });
   return db;
 }
 

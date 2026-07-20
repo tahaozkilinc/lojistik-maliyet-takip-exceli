@@ -32,6 +32,16 @@ export interface Anlasma {
   gecmis?: AnlasmaGecmis[];
 }
 
+/** Bir nakliye firmasıyla imzalanan sözleşme belgesi (tarama/fotoğraf/PDF). */
+export interface Sozlesme {
+  id: string;
+  baslik?: string;
+  /** Sözleşme tarihi (imza tarihi). */
+  tarih?: string;
+  belge: ImzaliBelge;
+  createdAt?: string;
+}
+
 export interface Firma {
   id: string;
   ad: string;
@@ -42,6 +52,7 @@ export interface Firma {
   notlar?: string;
   calisanlar?: Calisan[];
   anlasmalar?: Anlasma[];
+  sozlesmeler?: Sozlesme[];
   createdAt?: string;
 }
 
