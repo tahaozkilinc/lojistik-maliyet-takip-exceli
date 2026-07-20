@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { useStore } from '@/lib/store';
 import { money, fmtTon, dt } from '@/lib/format';
-import { bestQuoteId, firmName, qTotal } from '@/lib/calc';
+import { firmName, efektifFiyat, efektifTotalTRY } from '@/lib/calc';
 import type { Talep } from '@/lib/types';
 import { StatusBadge } from '@/components/StatusBadge';
 import { Icon } from '@/components/Icon';
@@ -35,11 +35,8 @@ export function Talepler() {
   const list = visibleTalepler();
   const shown = list.slice(0, showAll ? list.length : 10);
 
-  // Görünen listedeki taleplerin en iyi teklif tutarları toplamı (TRY).
-  const toplamTutar = list.reduce((sum, x) => {
-    const bq = x.teklifler.find((t) => t.id === bestQuoteId(db, x));
-    return sum + (bq ? qTotal(db, bq, x) : 0);
-  }, 0);
+  // Görünen listedeki taleplerin nihai (indirim varsa indirimli) tutarları toplamı (TRY).
+  const toplamTutar = list.reduce((sum, x) => sum + efektifTotalTRY(db, x), 0);
 
   const cnt = (d: string) => db.talepler.filter((x) => d === 'all' || x.durum === d).length;
   const nSel = [...talepSel].filter((id) => {
@@ -182,7 +179,7 @@ export function Talepler() {
                 </thead>
                 <tbody>
                   {shown.map((x) => {
-                    const bq = x.teklifler.find((t) => t.id === bestQuoteId(db, x));
+                    const eff = efektifFiyat(db, x);
                     const canSel = x.durum === 'toplama';
                     return (
                       <tr key={x.id} className="t-row-click" onClick={() => go('detail', x.id)}>
@@ -214,10 +211,13 @@ export function Talepler() {
                           <span className="tag">{x.teklifler.length}</span>
                         </td>
                         <td className="cell-strong">
-                          {bq ? (
+                          {eff ? (
                             <>
-                              {money(bq.fiyat, bq.paraBirimi)}
+                              {money(eff.birimFiyat, eff.paraBirimi)}
                               <span style={{ color: 'var(--faint)', fontWeight: 400 }}>/{x.birim || 'ton'}</span>
+                              {eff.indirimli && (
+                                <span style={{ marginLeft: 5, fontSize: 10, color: 'var(--green)', fontWeight: 700 }}>İNDİRİMLİ</span>
+                              )}
                             </>
                           ) : (
                             <span style={{ color: 'var(--faint)' }}>—</span>

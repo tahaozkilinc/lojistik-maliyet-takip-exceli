@@ -101,6 +101,29 @@ export function gercTotalTRY(db: DB, t: Talep): number {
   return g ? toTRY(db, g.birimFiyat, g.paraBirimi) * (Number(t.miktar) || 0) : 0;
 }
 
+/**
+ * Bir talebin liste/özet ekranlarında gösterilecek "nihai" birim fiyatı:
+ * teklif seçilmişse ve gerçekleşen (indirimli) fiyat girildiyse o fiyat;
+ * seçilmişse ama indirim girilmediyse seçilen teklif; hiç seçim yapılmadıysa
+ * en uygun (en düşük) teklif. Talep listeleri, Onay Merkezi ve Fiyat
+ * Analizi'nde "fiyat" gösterilen HER yerde bu fonksiyon kullanılmalıdır —
+ * aksi halde girilen indirim yok sayılıp orijinal (indirimsiz) teklif fiyatı
+ * gösterilir.
+ */
+export function efektifFiyat(db: DB, t: Talep): GerceklesenBirim | null {
+  const g = gerceklesenBirim(t);
+  if (g) return g;
+  const q = t.teklifler.find((x) => x.id === bestQuoteId(db, t));
+  if (!q) return null;
+  return { firmaId: q.firmaId, birimFiyat: q.fiyat, paraBirimi: q.paraBirimi, indirimli: false, orijinal: q.fiyat, orijinalPara: q.paraBirimi };
+}
+
+/** efektifFiyat()'ın tonaj ile çarpılmış TRY karşılığı (talep listelerindeki "Toplam Tutar" içindir). */
+export function efektifTotalTRY(db: DB, t: Talep): number {
+  const e = efektifFiyat(db, t);
+  return e ? toTRY(db, e.birimFiyat, e.paraBirimi) * (Number(t.miktar) || 0) : 0;
+}
+
 export function indirimYuzde(db: DB, t: Talep): number | null {
   const g = gerceklesenBirim(t);
   if (!g || !g.indirimli) return null;
@@ -125,10 +148,8 @@ export function lokasyonStats(db: DB, locId: string, teslimId?: string): Lokasyo
   );
   const prices: number[] = [];
   ts.forEach((t) => {
-    const q =
-      t.teklifler.find((q) => q.id === t.secilenTeklifId) ||
-      t.teklifler.find((q) => q.id === bestQuoteId(db, t));
-    if (q) prices.push(toTRY(db, q.fiyat, q.paraBirimi));
+    const e = efektifFiyat(db, t);
+    if (e) prices.push(toTRY(db, e.birimFiyat, e.paraBirimi));
   });
   return {
     sefer: ts.length,
@@ -156,15 +177,9 @@ export function lokasyonStatsByProduct(db: DB, locId: string): UrunStat[] {
       const k = (t.yukTipi || 'Diğer').trim() || 'Diğer';
       if (!m[k]) m[k] = { prices: [], sefer: 0, son: 0 };
       m[k].sefer++;
-      let v: number | null = null;
-      if (t.secilenTeklifId) {
-        const g = gerceklesenBirim(t);
-        if (g) v = toTRY(db, g.birimFiyat, g.paraBirimi);
-      } else {
-        const q = t.teklifler.find((q) => q.id === bestQuoteId(db, t));
-        if (q) v = toTRY(db, q.fiyat, q.paraBirimi);
-      }
-      if (v != null) {
+      const e = efektifFiyat(db, t);
+      if (e) {
+        const v = toTRY(db, e.birimFiyat, e.paraBirimi);
         m[k].prices.push(v);
         m[k].son = v;
       }

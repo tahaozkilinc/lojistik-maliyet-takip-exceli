@@ -3,7 +3,7 @@ import React from 'react';
 import { useStore } from '@/lib/store';
 import { money, dt } from '@/lib/format';
 import { navlunFirmName } from '@/lib/calc';
-import { tasimaBestQuoteId, tasimaModLabel, TASIMA_MOD_RENK } from '@/lib/tasima';
+import { tasimaEfektifFiyat, tasimaModLabel, TASIMA_MOD_RENK } from '@/lib/tasima';
 import { StatusBadge } from '@/components/StatusBadge';
 import { Icon } from '@/components/Icon';
 
@@ -90,7 +90,7 @@ export function TasimaTalepleri() {
               </thead>
               <tbody>
                 {list.map((x) => {
-                  const bq = x.teklifler.find((t) => t.id === tasimaBestQuoteId(db, x));
+                  const eff = tasimaEfektifFiyat(db, x);
                   return (
                     <tr key={x.id} className="t-row-click" onClick={() => go('tasimaTalepDetay', x.id)}>
                       <td className="cell-strong">{x.siparisNo || x.talepNo}</td>
@@ -106,13 +106,13 @@ export function TasimaTalepleri() {
                         <span className="tag">{x.teklifler.length}</span>
                       </td>
                       <td className="cell-strong">
-                        {bq ? (
+                        {eff ? (
                           <>
-                            {money(bq.fiyat, bq.paraBirimi)}{' '}
+                            {money(eff.fiyat, eff.paraBirimi)}{' '}
                             <span
                               style={{
                                 display: 'inline-block',
-                                background: TASIMA_MOD_RENK[bq.mod],
+                                background: TASIMA_MOD_RENK[eff.mod],
                                 color: '#fff',
                                 fontSize: 10,
                                 fontWeight: 700,
@@ -121,8 +121,11 @@ export function TasimaTalepleri() {
                                 verticalAlign: 1,
                               }}
                             >
-                              {tasimaModLabel(bq.mod)}
+                              {tasimaModLabel(eff.mod)}
                             </span>
+                            {eff.indirimli && (
+                              <span style={{ marginLeft: 5, fontSize: 10, color: 'var(--green)', fontWeight: 700 }}>İNDİRİMLİ</span>
+                            )}
                           </>
                         ) : (
                           <span style={{ color: 'var(--faint)' }}>—</span>

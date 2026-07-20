@@ -2,7 +2,7 @@
 import React, { useEffect, useState } from 'react';
 import { useStore } from '@/lib/store';
 import { money, dt } from '@/lib/format';
-import { qTotal, bestQuoteId, firmName, navlunFirmName } from '@/lib/calc';
+import { firmName, navlunFirmName, efektifFiyat, efektifTotalTRY } from '@/lib/calc';
 import { tasimaEfektifFiyat } from '@/lib/tasima';
 import { Icon } from '@/components/Icon';
 import { TvQuote } from '@/components/TvQuote';
@@ -87,17 +87,26 @@ export function Dashboard() {
               </thead>
               <tbody>
                 {bekleyen.map((x) => {
-                  const q =
-                    x.teklifler.find((q) => q.id === x.secilenTeklifId) ||
-                    x.teklifler.find((q) => q.id === bestQuoteId(db, x));
+                  const eff = efektifFiyat(db, x);
                   return (
                     <tr key={x.id} className="t-row-click" onClick={() => go('detail', x.id)}>
                       <td className="cell-strong">{x.talepNo}</td>
                       <td>
                         {x.yuklemeNoktasi} → {x.teslimNoktasi}
                       </td>
-                      <td>{q ? firmName(db, q.firmaId) : '—'}</td>
-                      <td className="cell-strong">{q ? money(qTotal(db, q, x), 'TRY') : '—'}</td>
+                      <td>{eff ? firmName(db, eff.firmaId) : '—'}</td>
+                      <td className="cell-strong">
+                        {eff ? (
+                          <>
+                            {money(efektifTotalTRY(db, x), 'TRY')}
+                            {eff.indirimli && (
+                              <span style={{ marginLeft: 5, fontSize: 10, color: 'var(--green)', fontWeight: 700 }}>İNDİRİMLİ</span>
+                            )}
+                          </>
+                        ) : (
+                          '—'
+                        )}
+                      </td>
                       <td>{dt(x.createdAt)}</td>
                       <td>
                         <button
@@ -196,7 +205,7 @@ export function Dashboard() {
               </thead>
               <tbody>
                 {toplananNakliye.map((x) => {
-                  const bq = x.teklifler.find((q) => q.id === bestQuoteId(db, x));
+                  const eff = efektifFiyat(db, x);
                   return (
                     <tr key={x.id} className="t-row-click" onClick={() => go('detail', x.id)}>
                       <td className="cell-strong">{x.talepNo}</td>
@@ -208,10 +217,13 @@ export function Dashboard() {
                         <span className="tag">{x.teklifler.length} teklif</span>
                       </td>
                       <td className="cell-strong">
-                        {bq ? (
+                        {eff ? (
                           <>
-                            {money(bq.fiyat, bq.paraBirimi)}
+                            {money(eff.birimFiyat, eff.paraBirimi)}
                             <span style={{ color: 'var(--faint)', fontWeight: 400 }}>/{x.birim || 'ton'}</span>
+                            {eff.indirimli && (
+                              <span style={{ marginLeft: 5, fontSize: 10, color: 'var(--green)', fontWeight: 700 }}>İNDİRİMLİ</span>
+                            )}
                           </>
                         ) : (
                           <span style={{ color: 'var(--faint)' }}>bekleniyor</span>

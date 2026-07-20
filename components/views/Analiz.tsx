@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { useStore } from '@/lib/store';
 import { money, fmt, dt } from '@/lib/format';
-import { toTRY, bestQuoteId, firmName, lokasyonStats, findAnlasmalar, lokRouteKmInfo } from '@/lib/calc';
+import { toTRY, firmName, lokasyonStats, findAnlasmalar, lokRouteKmInfo, efektifFiyat } from '@/lib/calc';
 import { StatusBadge } from '@/components/StatusBadge';
 
 export function Analiz() {
@@ -32,8 +32,8 @@ export function Analiz() {
       const k = t.yuklemeNoktasi + ' → ' + t.teslimNoktasi;
       if (!routes[k]) routes[k] = { count: 0, prices: [] };
       routes[k].count++;
-      const q = t.teklifler.find((q) => q.id === t.secilenTeklifId) || t.teklifler.find((q) => q.id === bestQuoteId(db, t));
-      if (q) routes[k].prices.push(toTRY(db, q.fiyat, q.paraBirimi));
+      const eff = efektifFiyat(db, t);
+      if (eff) routes[k].prices.push(toTRY(db, eff.birimFiyat, eff.paraBirimi));
     });
   const rkeys = Object.keys(routes).sort((a, b) => routes[b].count - routes[a].count);
 
@@ -179,14 +179,23 @@ export function Analiz() {
                   </thead>
                   <tbody>
                     {guzergahTalepler.map((t) => {
-                      const q = t.teklifler.find((q) => q.id === t.secilenTeklifId) || t.teklifler.find((q) => q.id === bestQuoteId(db, t));
+                      const eff = efektifFiyat(db, t);
                       return (
                         <tr key={t.id} className="t-row-click" onClick={() => go('detail', t.id)}>
                           <td className="cell-strong">{t.talepNo}</td>
                           <td>{dt(t.yuklemeTarihi || t.createdAt)}</td>
-                          <td>{q ? firmName(db, q.firmaId) : '—'}</td>
+                          <td>{eff ? firmName(db, eff.firmaId) : '—'}</td>
                           <td style={{ textAlign: 'right' }} className="cell-strong">
-                            {q ? money(toTRY(db, q.fiyat, q.paraBirimi), 'TRY') : '—'}
+                            {eff ? (
+                              <>
+                                {money(toTRY(db, eff.birimFiyat, eff.paraBirimi), 'TRY')}
+                                {eff.indirimli && (
+                                  <span style={{ marginLeft: 5, fontSize: 10, color: 'var(--green)', fontWeight: 700 }}>İNDİRİMLİ</span>
+                                )}
+                              </>
+                            ) : (
+                              '—'
+                            )}
                           </td>
                           <td>
                             <StatusBadge durum={t.durum} />

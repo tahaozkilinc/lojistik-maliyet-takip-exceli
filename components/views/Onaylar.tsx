@@ -2,7 +2,7 @@
 import React from 'react';
 import { useStore } from '@/lib/store';
 import { money, dt } from '@/lib/format';
-import { qTotal, bestQuoteId, firmName, navlunFirmName } from '@/lib/calc';
+import { firmName, navlunFirmName, efektifFiyat, efektifTotalTRY } from '@/lib/calc';
 import { tasimaEfektifFiyat, TASIMA_MODLAR, TASIMA_MOD_RENK } from '@/lib/tasima';
 import { openSignedFile } from '@/lib/export';
 import { StatusBadge } from '@/components/StatusBadge';
@@ -108,8 +108,7 @@ export function Onaylar() {
                 </thead>
                 <tbody>
                   {onayda.map((x) => {
-                    const q =
-                      x.teklifler.find((q) => q.id === x.secilenTeklifId) || x.teklifler.find((q) => q.id === bestQuoteId(db, x));
+                    const eff = efektifFiyat(db, x);
                     return (
                       <tr key={x.id} className="t-row-click" onClick={() => go('detail', x.id)}>
                         <td style={{ textAlign: 'center' }} onClick={(e) => e.stopPropagation()}>
@@ -119,8 +118,19 @@ export function Onaylar() {
                         <td>
                           {x.yuklemeNoktasi} → {x.teslimNoktasi}
                         </td>
-                        <td>{q ? firmName(db, q.firmaId) : '—'}</td>
-                        <td className="cell-strong">{q ? money(qTotal(db, q, x), 'TRY') : '—'}</td>
+                        <td>{eff ? firmName(db, eff.firmaId) : '—'}</td>
+                        <td className="cell-strong">
+                          {eff ? (
+                            <>
+                              {money(efektifTotalTRY(db, x), 'TRY')}
+                              {eff.indirimli && (
+                                <span style={{ marginLeft: 5, fontSize: 10, color: 'var(--green)', fontWeight: 700 }}>İNDİRİMLİ</span>
+                              )}
+                            </>
+                          ) : (
+                            '—'
+                          )}
+                        </td>
                         <td>
                           <span className="tag">{x.teklifler.length} teklif</span>
                         </td>
@@ -270,15 +280,26 @@ export function Onaylar() {
               </thead>
               <tbody>
                 {gecmis.map((x) => {
-                  const q = x.teklifler.find((q) => q.id === x.secilenTeklifId);
+                  const eff = efektifFiyat(db, x);
                   return (
                     <tr key={x.id} className="t-row-click" onClick={() => go('detail', x.id)}>
                       <td className="cell-strong">{x.talepNo}</td>
                       <td>
                         {x.yuklemeNoktasi} → {x.teslimNoktasi}
                       </td>
-                      <td>{q ? firmName(db, q.firmaId) : '—'}</td>
-                      <td className="cell-strong">{q ? money(q.fiyat, q.paraBirimi) : '—'}</td>
+                      <td>{eff ? firmName(db, eff.firmaId) : '—'}</td>
+                      <td className="cell-strong">
+                        {eff ? (
+                          <>
+                            {money(eff.birimFiyat, eff.paraBirimi)}
+                            {eff.indirimli && (
+                              <span style={{ marginLeft: 5, fontSize: 10, color: 'var(--green)', fontWeight: 700 }}>İNDİRİMLİ</span>
+                            )}
+                          </>
+                        ) : (
+                          '—'
+                        )}
+                      </td>
                       <td>
                         <StatusBadge durum={x.durum} />
                       </td>
