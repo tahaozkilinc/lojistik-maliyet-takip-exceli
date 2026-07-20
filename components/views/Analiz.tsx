@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { useStore } from '@/lib/store';
 import { money, fmt, dt } from '@/lib/format';
-import { toTRY, bestQuoteId, firmName, lokasyonStats, findAnlasmalar } from '@/lib/calc';
+import { toTRY, bestQuoteId, firmName, lokasyonStats, findAnlasmalar, lokRouteKmInfo } from '@/lib/calc';
 import { StatusBadge } from '@/components/StatusBadge';
 
 export function Analiz() {
@@ -16,21 +16,25 @@ export function Analiz() {
   const guzergahStats = seciliGuzergah ? lokasyonStats(db, yukSel, tesSel) : null;
   // Bu güzergahta geçmiş fiyat yoksa/azsa gösterilecek anlaşmalı fiyatlar.
   const guzergahAnlasmalar = seciliGuzergah ? findAnlasmalar(db, yukSel, tesSel) : [];
+  // Seçili güzergahın mesafesi (varsa geçmişteki kesin OSRM ölçümü, yoksa kuş uçuşu tahmini).
+  const guzergahKm = seciliGuzergah ? lokRouteKmInfo(db, yukSel, tesSel) : null;
   const guzergahTalepler = seciliGuzergah
     ? [...db.talepler]
         .filter((t) => t.yuklemeLokasyonId === yukSel && t.teslimLokasyonId === tesSel)
         .sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime())
     : [];
 
-  // Güzergah bazlı
+  // Güzergah bazlı — bir güzergah filtrelenmişse yalnızca o güzergahı içerir.
   const routes: Record<string, { count: number; prices: number[] }> = {};
-  db.talepler.forEach((t) => {
-    const k = t.yuklemeNoktasi + ' → ' + t.teslimNoktasi;
-    if (!routes[k]) routes[k] = { count: 0, prices: [] };
-    routes[k].count++;
-    const q = t.teklifler.find((q) => q.id === t.secilenTeklifId) || t.teklifler.find((q) => q.id === bestQuoteId(db, t));
-    if (q) routes[k].prices.push(toTRY(db, q.fiyat, q.paraBirimi));
-  });
+  db.talepler
+    .filter((t) => !seciliGuzergah || (t.yuklemeLokasyonId === yukSel && t.teslimLokasyonId === tesSel))
+    .forEach((t) => {
+      const k = t.yuklemeNoktasi + ' → ' + t.teslimNoktasi;
+      if (!routes[k]) routes[k] = { count: 0, prices: [] };
+      routes[k].count++;
+      const q = t.teklifler.find((q) => q.id === t.secilenTeklifId) || t.teklifler.find((q) => q.id === bestQuoteId(db, t));
+      if (q) routes[k].prices.push(toTRY(db, q.fiyat, q.paraBirimi));
+    });
   const rkeys = Object.keys(routes).sort((a, b) => routes[b].count - routes[a].count);
 
   // Firma performans
@@ -90,6 +94,18 @@ export function Analiz() {
               </select>
             </div>
           </div>
+
+          {seciliGuzergah && guzergahKm && (
+            <div style={{ marginTop: 14, fontSize: 13, color: 'var(--muted)' }}>
+              Mesafe: <b style={{ color: 'var(--text)' }}>{fmt(guzergahKm.km)} km</b>
+              {guzergahKm.approx ? ' (tahmini, kuş uçuşu bazlı)' : ' (en kısa karayolu)'}
+            </div>
+          )}
+          {seciliGuzergah && !guzergahKm && (
+            <div style={{ marginTop: 14, fontSize: 12.5, color: 'var(--faint)' }}>
+              Mesafe hesaplanamadı — iki lokasyonun da konumu (lat/lng) girilmeli.
+            </div>
+          )}
 
           {seciliGuzergah && guzergahAnlasmalar.length > 0 && (
             <div
@@ -197,7 +213,7 @@ export function Analiz() {
 
       <div className="panel">
         <div className="panel-head">
-          <h2>Tüm güzergahların fiyat geçmişi</h2>
+          <h2>{seciliGuzergah ? 'Seçili Güzergahın Fiyat Geçmişi' : 'Tüm Güzergahların Fiyat Geçmişi'}</h2>
           <div className="spacer" />
           <span className="tag">TRY karşılığı</span>
         </div>
@@ -233,7 +249,11 @@ export function Analiz() {
             </table>
           ) : (
             <div className="empty" style={{ padding: 34 }}>
-              <p>Veri biriktikçe aynı güzergahın geçmiş fiyatları burada karşılaştırılır.</p>
+              <p>
+                {seciliGuzergah
+                  ? 'Bu güzergahta henüz fiyatlı talep yok.'
+                  : 'Veri biriktikçe aynı güzergahın geçmiş fiyatları burada karşılaştırılır.'}
+              </p>
             </div>
           )}
         </div>

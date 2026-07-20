@@ -303,3 +303,17 @@ export function routeKmInfo(db: DB, t: Talep): RouteKm | null {
     return { km: Math.round(haversine(yL, tL) * 1.3 * 10) / 10, approx: true };
   return null;
 }
+
+/**
+ * Bir lokasyon çifti için mesafe: bu hatta daha önce kesin (OSRM) mesafesi
+ * hesaplanmış bir talep varsa onu kullanır; yoksa kuş uçuşu × 1.3 tahmini verir.
+ */
+export function lokRouteKmInfo(db: DB, yukId: string, tesId: string): RouteKm | null {
+  const withExact = db.talepler.find((t) => t.yuklemeLokasyonId === yukId && t.teslimLokasyonId === tesId && t.mesafeKm);
+  if (withExact && withExact.mesafeKm) return { km: withExact.mesafeKm, approx: false };
+  const yL = lokById(db, yukId);
+  const tL = lokById(db, tesId);
+  if (yL && tL && hasCoord(yL) && hasCoord(tL))
+    return { km: Math.round(haversine(yL, tL) * 1.3 * 10) / 10, approx: true };
+  return null;
+}
