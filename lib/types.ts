@@ -5,6 +5,20 @@
 export type Durum = 'toplama' | 'onayda' | 'onaylandi' | 'reddedildi';
 export type LimanDurum = 'devam' | 'tamamlandi' | 'iptal';
 
+/**
+ * Kullanıcı yetki rolü — Supabase'de ayrı bir `profiles` tablosunda tutulur
+ * (asla auth kullanıcı meta verisinde değil, bkz. lib/auth.ts).
+ * goruntuleyici: yalnızca görüntüler. yonetici: tüm operasyonel işlemler.
+ * admin: yonetici + kullanıcı rollerini yönetir.
+ */
+export type AppRole = 'admin' | 'yonetici' | 'goruntuleyici';
+
+export interface Profile {
+  id: string;
+  email: string;
+  role: AppRole;
+}
+
 /** Para birimi kodları; veri farklı kodlar da içerebileceğinden string tabanı korunur. */
 export type ParaBirimi = 'TRY' | 'USD' | 'EUR' | (string & {});
 

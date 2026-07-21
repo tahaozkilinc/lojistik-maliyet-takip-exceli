@@ -12,6 +12,7 @@
    Users → Add user. Uygulama içinde kayıt ekranı yoktur ve OLMAYACAKTIR.
    ============================================================ */
 import { supabase } from './supabaseClient';
+import type { AppRole, Profile } from './types';
 
 export interface AuthUser {
   id: string;
@@ -74,4 +75,39 @@ export async function changePassword(current: string, next: string): Promise<{ o
 /** Görünen adı günceller (Supabase kullanıcı meta verisinde tutulur). */
 export async function updateDisplayName(name: string): Promise<void> {
   await supabase.auth.updateUser({ data: { displayName: name.trim() } });
+}
+
+/**
+ * Geçerli kullanıcının yetki rolünü döndürür. Rol `profiles` tablosunda
+ * tutulur (kullanıcı meta verisinde DEĞİL — bkz. dosya başındaki not);
+ * satır bulunamazsa (örn. profil tetikleyicisi henüz çalışmadıysa) en az
+ * yetkili role (goruntuleyici) güvenli varsayılan olarak döner.
+ */
+export async function getMyRole(): Promise<AppRole | null> {
+  const { data: userData } = await supabase.auth.getUser();
+  const uid = userData.user?.id;
+  if (!uid) return null;
+  const { data, error } = await supabase.from('profiles').select('role').eq('id', uid).maybeSingle();
+  if (error || !data) return 'goruntuleyici';
+  return data.role as AppRole;
+}
+
+/** Tüm kullanıcı profillerini (e-posta + rol) döndürür — Kullanıcı Rolleri ekranı içindir. */
+export async function listProfiles(): Promise<Profile[]> {
+  const { data, error } = await supabase.from('profiles').select('id, email, role').order('email');
+  if (error || !data) return [];
+  return data as Profile[];
+}
+
+/**
+ * Bir kullanıcının rolünü değiştirir. Sunucu tarafında (RLS) yalnızca admin
+ * rolündeki kullanıcılar bu işlemi yapabilir; başkası çağırırsa Supabase
+ * sessizce hiçbir satır güncellemez (0 satır etkilenir) — bu durumda hata
+ * döndürülür.
+ */
+export async function updateUserRole(userId: string, role: AppRole): Promise<{ ok: boolean; error?: string }> {
+  const { data, error } = await supabase.from('profiles').update({ role }).eq('id', userId).select('id');
+  if (error) return { ok: false, error: error.message || 'Rol güncellenemedi.' };
+  if (!data || !data.length) return { ok: false, error: 'Bu işlem için yetkiniz yok (yalnızca admin rol değiştirebilir).' };
+  return { ok: true };
 }

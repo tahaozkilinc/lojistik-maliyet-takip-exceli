@@ -34,14 +34,20 @@ const NAV: { group: string; items: { view: ViewKey; label: string; icon: IconNam
   },
 ];
 
+const YONETIM_GROUP: { group: string; items: { view: ViewKey; label: string; icon: IconName; badge?: 'talep' | 'onay' | 'tasima' }[] } = {
+  group: 'Yönetim',
+  items: [{ view: 'kullaniciRolleri', label: 'Kullanıcı Rolleri', icon: 'lock' }],
+};
+
 export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void }) {
-  const { db, ui, go, toggleTheme, openModal, logout } = useStore();
+  const { db, ui, go, toggleTheme, openModal, logout, role } = useStore();
 
   const navTalep = db.talepler.filter((x) => x.durum === 'toplama').length;
   const navOnay =
     db.talepler.filter((x) => x.durum === 'onayda').length +
     db.tasimaTalepleri.filter((x) => x.durum === 'onayda').length;
   const navTasima = db.tasimaTalepleri.filter((x) => x.durum === 'toplama').length;
+  const nav = role === 'admin' ? [...NAV, YONETIM_GROUP] : NAV;
 
   return (
     <aside className={'sidebar' + (open ? ' open' : '')} id="sidebar">
@@ -55,7 +61,7 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
         </div>
       </div>
       <nav className="nav">
-        {NAV.map((g) => (
+        {nav.map((g) => (
           <React.Fragment key={g.group}>
             <div className="nav-label">{g.group}</div>
             {g.items.map((it) => (

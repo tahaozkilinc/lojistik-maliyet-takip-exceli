@@ -89,7 +89,8 @@ export type ViewKey =
   | 'karaNavlun'
   | 'navlunFirmalar'
   | 'tasimaTalepleri'
-  | 'tasimaTalepDetay';
+  | 'tasimaTalepDetay'
+  | 'kullaniciRolleri';
 
 export const TITLES: Record<string, [string, string]> = {
   dashboard: ['Panel', 'Genel bakış ve özet'],
@@ -109,4 +110,17 @@ export const TITLES: Record<string, [string, string]> = {
   tasimaTalepleri: ['Taşıma Talepleri', 'Deniz · Kara · Hava fiyat toplama ve karşılaştırma'],
   tasimaTalepDetay: ['Taşıma Talebi Detayı', ''],
   detail: ['Talep Detayı', ''],
+  kullaniciRolleri: ['Kullanıcı Rolleri', 'Admin · Yönetici · Görüntüleyici yetkilerini yönetin'],
+};
+
+/** Rol etiketleri (Türkçe görünen ad) ve açıklamaları — Kullanıcı Rolleri ekranı ve Profil içindir. */
+export const ROL_ETIKET: Record<string, string> = {
+  admin: 'Admin',
+  yonetici: 'Yönetici',
+  goruntuleyici: 'Görüntüleyici',
+};
+export const ROL_ACIKLAMA: Record<string, string> = {
+  admin: 'Tüm yetkiler + kullanıcı rollerini yönetir',
+  yonetici: 'Talep, teklif, onay, fiyat — tüm operasyonel işlemler',
+  goruntuleyici: 'Yalnızca görüntüler; hiçbir kayıt ekleyemez/değiştiremez',
 };

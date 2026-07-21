@@ -5,9 +5,10 @@ import { ModalShell, ModalHead } from '@/components/Modal';
 import { Icon } from '@/components/Icon';
 import { exportData } from '@/lib/export';
 import { normalizeDB, emptyDB } from '@/lib/seed';
+import { ROL_ETIKET, ROL_ACIKLAMA } from '@/lib/constants';
 
 export function ProfilModal() {
-  const { db, replaceDB, go, closeModal, toast, displayName, updateDisplayName, changePassword } = useStore();
+  const { db, replaceDB, go, closeModal, toast, displayName, updateDisplayName, changePassword, role } = useStore();
   const fileRef = useRef<HTMLInputElement>(null);
 
   const [name, setName] = useState(displayName);
@@ -17,6 +18,7 @@ export function ProfilModal() {
   const [next2, setNext2] = useState('');
   const [pwErr, setPwErr] = useState('');
   const [pwBusy, setPwBusy] = useState(false);
+  const canWrite = role === 'admin' || role === 'yonetici';
 
   async function saveName() {
     await updateDisplayName(name);
@@ -86,6 +88,11 @@ export function ProfilModal() {
           <label>Ad Soyad</label>
           <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Adınızı girin" />
         </div>
+        {role && (
+          <div className="hint" style={{ marginBottom: 12 }}>
+            <b>Rolünüz:</b> {ROL_ETIKET[role] || role} — {ROL_ACIKLAMA[role]}
+          </div>
+        )}
         <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 4 }}>
           <button className="btn sm primary" onClick={saveName}>
             Kaydet
@@ -123,41 +130,49 @@ export function ProfilModal() {
           Tüm verilerinizi (talepler, firmalar, lokasyonlar…) JSON olarak yedekleyin veya önceki bir yedeği geri yükleyin.
         </div>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-          <button className="btn primary" onClick={() => { replaceDB(db); toast('Veriler buluta kaydediliyor…', 'ok'); }}>
-            <Icon name="upload" size={14} />
-            Buluta Kaydet (Supabase)
-          </button>
+          {canWrite && (
+            <button className="btn primary" onClick={() => { replaceDB(db); toast('Veriler buluta kaydediliyor…', 'ok'); }}>
+              <Icon name="upload" size={14} />
+              Buluta Kaydet (Supabase)
+            </button>
+          )}
           <button className="btn" onClick={handleExport}>
             <Icon name="download" size={14} />
             Yedek İndir
           </button>
-          <button className="btn" onClick={() => fileRef.current?.click()}>
-            <Icon name="upload" size={14} />
-            Yedek Geri Yükle
-          </button>
+          {canWrite && (
+            <button className="btn" onClick={() => fileRef.current?.click()}>
+              <Icon name="upload" size={14} />
+              Yedek Geri Yükle
+            </button>
+          )}
         </div>
         <input ref={fileRef} type="file" accept=".json" style={{ display: 'none' }} onChange={handleImport} />
 
-        <div className="section-divider" style={{ marginTop: 18 }}>
-          <Icon name="warning" size={14} />
-          Tehlikeli Bölge
-        </div>
-        <div className="hint" style={{ marginBottom: 10 }}>
-          Tüm kayıtları kalıcı olarak siler. Bu işlem geri alınamaz — önce yedek almanızı öneririz.
-        </div>
-        <button
-          className="btn danger"
-          onClick={() => {
-            if (!confirm('TÜM veri silinecek: talepler, firmalar, lokasyonlar, navlun kayıtları. Bu işlem GERİ ALINAMAZ. Devam edilsin mi?')) return;
-            if (!confirm('Son onay: gerçekten her şey silinsin mi?')) return;
-            replaceDB(emptyDB());
-            go('dashboard');
-            closeModal();
-            toast('Tüm veriler silindi', 'ok');
-          }}
-        >
-          Tüm Verileri Sil
-        </button>
+        {canWrite && (
+          <>
+            <div className="section-divider" style={{ marginTop: 18 }}>
+              <Icon name="warning" size={14} />
+              Tehlikeli Bölge
+            </div>
+            <div className="hint" style={{ marginBottom: 10 }}>
+              Tüm kayıtları kalıcı olarak siler. Bu işlem geri alınamaz — önce yedek almanızı öneririz.
+            </div>
+            <button
+              className="btn danger"
+              onClick={() => {
+                if (!confirm('TÜM veri silinecek: talepler, firmalar, lokasyonlar, navlun kayıtları. Bu işlem GERİ ALINAMAZ. Devam edilsin mi?')) return;
+                if (!confirm('Son onay: gerçekten her şey silinsin mi?')) return;
+                replaceDB(emptyDB());
+                go('dashboard');
+                closeModal();
+                toast('Tüm veriler silindi', 'ok');
+              }}
+            >
+              Tüm Verileri Sil
+            </button>
+          </>
+        )}
       </div>
       <div className="modal-foot">
         <button className="btn" onClick={closeModal}>

@@ -92,7 +92,10 @@ export function MainMap() {
           ? ''
           : (() => {
               const st = lokasyonStats(db, l.id, fabrikaId);
-              return st.fiyatli ? `<br><b>Fabrikaya ort:</b> ${money(st.avg, 'TRY')} · ${st.sefer} sefer` : '';
+              if (!st.fiyatli) return '';
+              const usd = db.kur.USD ? st.avg / db.kur.USD : null;
+              const tutar = usd != null ? money(usd, 'USD') : money(st.avg, 'TRY');
+              return `<br><b>Fabrikaya ort:</b> ${tutar}${usd != null ? ` <span style="color:#8a98a8">(${money(st.avg, 'TRY')})</span>` : ''} · ${st.sefer} sefer`;
             })();
         m.bindPopup(
           `<b>${escapeHtml(l.ad)}</b>${l.fabrika ? ' ★' : ''}<br>${escapeHtml(

@@ -13,7 +13,7 @@ import React, {
   useRef,
   useState,
 } from 'react';
-import type { DB } from './types';
+import type { AppRole, DB, Profile } from './types';
 import { LS_KEY, THEME_KEY, EMBED_FLAG_KEY, DIRTY_KEY, type ViewKey } from './constants';
 import { emptyDB, migrate, normalizeDB, seedIfEmpty } from './seed';
 import { embeddedData, EMBED_VERSION } from './seedData';
@@ -25,6 +25,9 @@ import {
   updateDisplayName as authUpdateDisplayName,
   getCurrentUser,
   onAuthChange,
+  getMyRole,
+  listProfiles,
+  updateUserRole as authUpdateUserRole,
 } from './auth';
 
 const REMOTE_ROW_ID = 1;
@@ -99,6 +102,12 @@ export interface StoreValue {
   displayName: string;
   /** Görünen adı günceller. */
   updateDisplayName: (name: string) => Promise<void>;
+  /** Geçerli kullanıcının yetki rolü — bilinene kadar (giriş sonrası kısa bir süre) null. */
+  role: AppRole | null;
+  /** Tüm kullanıcı profilleri (Kullanıcı Rolleri ekranı içindir). */
+  profiles: Profile[];
+  /** Bir kullanıcının rolünü değiştirir — sunucu tarafında (RLS) yalnızca admin yapabilir. */
+  updateUserRole: (userId: string, role: AppRole) => Promise<{ ok: boolean; error?: string }>;
   ui: UIState;
   setUi: (p: Partial<UIState>) => void;
   go: (view: ViewKey, id?: string) => void;
@@ -212,6 +221,8 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   const [talepSel, setTalepSel] = useState<Set<string>>(new Set());
   const [authed, setAuthed] = useState(false);
   const [displayName, setDisplayNameState] = useState('');
+  const [role, setRole] = useState<AppRole | null>(null);
+  const [profiles, setProfiles] = useState<Profile[]>([]);
   const toastId = useRef(0);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   /** Henüz merkezi veritabanına onaylanmış şekilde kaydedilmemiş yerel değişiklik var mı. */
@@ -220,6 +231,8 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   const historyInitRef = useRef(false);
   const isPoppingRef = useRef(false);
   const dbRef = useRef<DB>(emptyDB());
+  /** mutate()/replaceDB() içinde senkron erişim için — role state'i asenkron güncellenir. */
+  const roleRef = useRef<AppRole | null>(null);
 
   const [ui, setUiState] = useState<UIState>({
     view: 'dashboard',
@@ -240,6 +253,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
 
   // dbRef'i her render sonrası güncel tut (mutate için senkron erişim).
   useEffect(() => { dbRef.current = db; });
+  useEffect(() => { roleRef.current = role; });
 
   // Tema (auth'tan bağımsız, anında uygulanır).
   useEffect(() => {
@@ -261,13 +275,18 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       if (!active) return;
       setAuthed(!!user);
       setDisplayNameState(user?.displayName || '');
-      if (!user) setReady(true);
+      if (!user) {
+        setRole(null);
+        setReady(true);
+      }
     })();
     const unsubscribe = onAuthChange((user) => {
       setAuthed(!!user);
       setDisplayNameState(user?.displayName || '');
       if (!user) {
         setDb(emptyDB());
+        setRole(null);
+        setProfiles([]);
         setReady(true);
       }
     });
@@ -325,6 +344,15 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         const local = loadLocalCache();
         if (!cancelled) setDb(local);
       } finally {
+        // Rol, uygulama etkileşimli hale gelmeden ÖNCE bilinmeli — aksi halde
+        // mutate() kısa bir süre için rol kontrolünü (henüz null olduğu için)
+        // hatalı biçimde reddedebilir/izin verebilir.
+        try {
+          const r = await getMyRole();
+          if (!cancelled) setRole(r);
+        } catch {
+          if (!cancelled) setRole('goruntuleyici');
+        }
         if (!cancelled) setReady(true);
       }
     })();
@@ -370,6 +398,43 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     };
   }, [authed]);
 
+  // Kullanıcı listesi yalnızca Kullanıcı Rolleri ekranı (admin) içindir; admin
+  // olunduğunda arka planda yüklenir, uygulamanın hazır olmasını beklemez.
+  useEffect(() => {
+    if (!authed || role !== 'admin') return;
+    let cancelled = false;
+    listProfiles().then((list) => {
+      if (!cancelled) setProfiles(list);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [authed, role]);
+
+  // Rol değişikliklerini (kendi rolümüz dahil) anında yansıt.
+  useEffect(() => {
+    if (!authed) return;
+    const channel = supabase
+      .channel('profiles_changes')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' }, () => {
+        (async () => {
+          try {
+            const r = await getMyRole();
+            setRole(r);
+            if (roleRef.current === 'admin' || r === 'admin') {
+              setProfiles(await listProfiles());
+            }
+          } catch {
+            /* geçici ağ hatası — bir sonraki olayda tekrar denenir */
+          }
+        })();
+      })
+      .subscribe();
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [authed]);
+
   const login = useCallback(async (email: string, password: string): Promise<{ ok: boolean; error?: string }> => {
     return authLogin(email, password);
   }, []);
@@ -392,6 +457,16 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   const updateDisplayName = useCallback(async (name: string) => {
     await authUpdateDisplayName(name);
     setDisplayNameState(name.trim());
+  }, []);
+
+  const updateUserRole = useCallback(async (userId: string, newRole: AppRole): Promise<{ ok: boolean; error?: string }> => {
+    const res = await authUpdateUserRole(userId, newRole);
+    if (res.ok) {
+      setProfiles(await listProfiles());
+      const { data } = await supabase.auth.getUser();
+      if (data.user?.id === userId) setRole(newRole);
+    }
+    return res;
   }, []);
 
   const setUi = useCallback((p: Partial<UIState>) => {
@@ -444,8 +519,20 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     [toast],
   );
 
+  // Güvenlik: görüntüleyici rolü hiçbir veri değiştiremez. Bu kontrol yalnızca
+  // arayüzde anında geri bildirim (toast) içindir — asıl zorlama Supabase RLS
+  // politikalarıyla (bkz. supabase/migrations/0004_kullanici_rolleri.sql)
+  // sunucu tarafında yapılır; biri istemciyi atlayıp doğrudan Supabase'e
+  // yazmaya çalışsa bile veritabanı reddeder.
+  const canWrite = useCallback((): boolean => {
+    if (roleRef.current === 'admin' || roleRef.current === 'yonetici') return true;
+    toast('Görüntüleyici yetkisiyle değişiklik yapamazsınız.', 'err');
+    return false;
+  }, [toast]);
+
   const mutate = useCallback(
     (fn: (db: DB) => void): DB => {
+      if (!canWrite()) return dbRef.current;
       const next = deepClone(dbRef.current);
       fn(next);
       dbRef.current = next;
@@ -454,18 +541,19 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       scheduleRemoteSave(next);
       return next;
     },
-    [scheduleRemoteSave],
+    [scheduleRemoteSave, canWrite],
   );
 
   const replaceDB = useCallback(
     (newDb: DB) => {
+      if (!canWrite()) return;
       const cloned = deepClone(newDb);
       migrate(cloned);
       saveLocalCache(cloned);
       setDb(cloned);
       scheduleRemoteSave(cloned);
     },
-    [scheduleRemoteSave],
+    [scheduleRemoteSave, canWrite],
   );
 
   const toggleTheme = useCallback(() => {
@@ -551,6 +639,9 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       changePassword,
       displayName,
       updateDisplayName,
+      role,
+      profiles,
+      updateUserRole,
       ui,
       setUi,
       go,
@@ -579,6 +670,9 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       changePassword,
       displayName,
       updateDisplayName,
+      role,
+      profiles,
+      updateUserRole,
       ui,
       setUi,
       go,
