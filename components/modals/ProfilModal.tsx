@@ -6,9 +6,12 @@ import { Icon } from '@/components/Icon';
 import { exportData } from '@/lib/export';
 import { normalizeDB, emptyDB } from '@/lib/seed';
 import { ROL_ETIKET, ROL_ACIKLAMA } from '@/lib/constants';
+import type { AppRole } from '@/lib/types';
+
+const ROLLER: AppRole[] = ['admin', 'yonetici', 'goruntuleyici'];
 
 export function ProfilModal() {
-  const { db, replaceDB, go, closeModal, toast, displayName, updateDisplayName, changePassword, role } = useStore();
+  const { db, replaceDB, go, closeModal, toast, displayName, updateDisplayName, changePassword, role, profiles, updateUserRole } = useStore();
   const fileRef = useRef<HTMLInputElement>(null);
 
   const [name, setName] = useState(displayName);
@@ -48,6 +51,15 @@ export function ProfilModal() {
     }
   }
 
+  async function changeRole(userId: string, current: AppRole, next: string, email: string) {
+    if (next === current) return;
+    const label = ROL_ETIKET[next] || next;
+    if (!confirm(`${email} kullanıcısının rolü "${label}" olarak değiştirilsin mi?`)) return;
+    const res = await updateUserRole(userId, next as AppRole);
+    if (res.ok) toast('Rol güncellendi', 'ok');
+    else toast(res.error || 'Rol güncellenemedi', 'err');
+  }
+
   function handleExport() {
     const ts = exportData(db);
     toast('Yedek indirildi: ' + ts + ' itibarıyla', 'ok');
@@ -77,7 +89,7 @@ export function ProfilModal() {
   }
 
   return (
-    <ModalShell onClose={closeModal} style={{ maxWidth: 480 }}>
+    <ModalShell onClose={closeModal} style={{ maxWidth: role === 'admin' ? 620 : 480 }}>
       <ModalHead title="Profil" onClose={closeModal} />
       <div className="modal-body">
         <div className="section-divider">
@@ -98,6 +110,58 @@ export function ProfilModal() {
             Kaydet
           </button>
         </div>
+
+        {role === 'admin' && (
+          <>
+            <div className="section-divider" style={{ marginTop: 18 }}>
+              <Icon name="users" size={14} />
+              Kullanıcı Yetkileri
+            </div>
+            <div className="hint" style={{ marginBottom: 10 }}>
+              Admin olarak diğer kullanıcıların rolünü buradan değiştirebilirsiniz. Roller sunucu tarafında
+              (Supabase RLS) zorunlu kılınır.
+            </div>
+            {profiles.length ? (
+              <div style={{ border: '1px solid var(--line)', borderRadius: 10, overflow: 'hidden', marginBottom: 4 }}>
+                <table>
+                  <thead>
+                    <tr>
+                      <th>E-posta</th>
+                      <th>Rol</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {profiles.map((p) => (
+                      <tr key={p.id}>
+                        <td className="cell-strong" style={{ wordBreak: 'break-all' }}>
+                          {p.email}
+                        </td>
+                        <td style={{ textAlign: 'right' }}>
+                          <select
+                            value={p.role}
+                            style={{ fontSize: 12.5, padding: '5px 8px' }}
+                            onChange={(e) => changeRole(p.id, p.role, e.target.value, p.email)}
+                          >
+                            {ROLLER.map((r) => (
+                              <option key={r} value={r}>
+                                {ROL_ETIKET[r]}
+                              </option>
+                            ))}
+                          </select>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <div className="hint" style={{ marginBottom: 10 }}>
+                Henüz başka kullanıcı yok. Yeni kullanıcı eklemek için Supabase Dashboard → Authentication → Users →
+                Add user kullanın; kullanıcı otomatik olarak &quot;Görüntüleyici&quot; rolüyle burada listelenir.
+              </div>
+            )}
+          </>
+        )}
 
         <div className="section-divider">
           <Icon name="lock" size={14} />

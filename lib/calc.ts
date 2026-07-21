@@ -42,15 +42,24 @@ export interface NavlunFirmaTeklifItem {
 
 /**
  * Bir navlun firmasının verdiği tüm teklifleri (deniz + kara) döner.
- * Hem çok-teklif kıyaslama akışında eklenen kayıtları hem de kıyaslama
- * kullanılmadan doğrudan bu firmaya atanan kayıtları kapsar — aksi halde
- * doğrudan atanan (kıyaslamasız) kayıtlar sayılmadığı için "Verilen Teklif"
- * sayısı gerçek kullanım biçiminde hep 0 görünürdü.
+ * Üç kaynağı kapsar: (1) çok-teklif kıyaslama akışında eklenen kayıtlar,
+ * (2) kıyaslama kullanılmadan doğrudan bu firmaya (firmaId ile) atanan
+ * kayıtlar, (3) Navlun Firmaları listesi eklenmeden ÖNCE girilmiş, taşıyıcısı
+ * yalnızca serbest metin (tasiyici) olarak tutulan eski kayıtlar — bunlar
+ * firmanın adıyla (büyük/küçük harf ve boşluk gözetmeksizin) birebir
+ * eşleşiyorsa sayılır. Bu kapsam olmasaydı hem doğrudan atanan hem de eski
+ * (firma listesi öncesi) kayıtlar sayılmadığından "Verilen Teklif" sayısı
+ * gerçek kullanım biçiminde hep 0 görünürdü.
  */
 export function navlunFirmaTeklifleri(db: DB, firmaId: string): NavlunFirmaTeklifItem[] {
   const out: NavlunFirmaTeklifItem[] = [];
   const hatOf = (n: { hat?: string; kalkisYeri?: string; varisYeri?: string }) =>
     n.hat || [n.kalkisYeri, n.varisYeri].filter(Boolean).join(' → ') || '—';
+  const firma = db.navlunFirmalari.find((x) => x.id === firmaId);
+  const norm = (s: string) => s.trim().toLocaleLowerCase('tr-TR');
+  const adNorm = firma ? norm(firma.ad) : '';
+  const eskiKayitEslesir = (n: { firmaId?: string; tasiyici?: string }) =>
+    !n.firmaId && !!n.tasiyici && !!adNorm && norm(n.tasiyici) === adNorm;
 
   db.denizNavlun.forEach((n) => {
     const teklifler = (n.teklifler || []).filter((t) => t.firmaId === firmaId);
@@ -68,7 +77,7 @@ export function navlunFirmaTeklifleri(db: DB, firmaId: string): NavlunFirmaTekli
           secildi: n.secilenTeklifId === t.id,
         });
       });
-    } else if (n.firmaId === firmaId) {
+    } else if (n.firmaId === firmaId || eskiKayitEslesir(n)) {
       out.push({
         id: n.id,
         kayitId: n.id,
@@ -99,7 +108,7 @@ export function navlunFirmaTeklifleri(db: DB, firmaId: string): NavlunFirmaTekli
           secildi: n.secilenTeklifId === t.id,
         });
       });
-    } else if (n.firmaId === firmaId) {
+    } else if (n.firmaId === firmaId || eskiKayitEslesir(n)) {
       out.push({
         id: n.id,
         kayitId: n.id,
