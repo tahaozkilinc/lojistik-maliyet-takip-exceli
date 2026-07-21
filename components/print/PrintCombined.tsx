@@ -85,9 +85,9 @@ export function PrintCombined({ ids }: { ids: string[] }) {
                 <td style={{ textAlign: 'right', whiteSpace: 'nowrap', color: '#5f6f80' }}>
                   {onc ? (
                     <>
-                      {money(onc.birimFiyat, onc.paraBirimi)}
+                      <span style={{ fontWeight: 700, color: '#15212e' }}>{money(onc.birimFiyat, onc.paraBirimi)}</span>
                       <br />
-                      <span style={{ fontWeight: 400, fontSize: 8.5 }}>{firmName(db, onc.firmaId)}</span>
+                      <span style={{ fontWeight: 700, fontSize: 9.5, color: '#173a5e' }}>{firmName(db, onc.firmaId)}</span>
                     </>
                   ) : (
                     '—'
@@ -128,8 +128,14 @@ export function PrintCombined({ ids }: { ids: string[] }) {
                   ) : null}
                 </td>
                 <td style={{ textAlign: 'right', whiteSpace: 'nowrap', fontWeight: 800 }}>
-                  {money(tot, 'TRY')}
-                  <div style={{ fontWeight: 400, fontSize: 8.5, color: '#8a98a8' }}>(öngörülen)</div>
+                  {tot > 0 ? (
+                    <>
+                      {money(tot, 'TRY')}
+                      <div style={{ fontWeight: 400, fontSize: 8.5, color: '#8a98a8' }}>(öngörülen)</div>
+                    </>
+                  ) : (
+                    <span style={{ color: '#c7d0db' }}>—</span>
+                  )}
                 </td>
               </tr>
             );
