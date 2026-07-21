@@ -79,16 +79,26 @@ export async function updateDisplayName(name: string): Promise<void> {
 
 /**
  * Geçerli kullanıcının yetki rolünü döndürür. Rol `profiles` tablosunda
- * tutulur (kullanıcı meta verisinde DEĞİL — bkz. dosya başındaki not);
- * satır bulunamazsa (örn. profil tetikleyicisi henüz çalışmadıysa) en az
- * yetkili role (goruntuleyici) güvenli varsayılan olarak döner.
+ * tutulur (kullanıcı meta verisinde DEĞİL — bkz. dosya başındaki not).
+ *
+ * ÖNEMLİ: rol sistemi SQL betiği (supabase/migrations/0004_...) henüz
+ * çalıştırılmadıysa `profiles` tablosu hiç yoktur — bu durumda "yonetici"
+ * (tam, kısıtlamasız yetki) döner ki uygulama kodu dağıtıldığı an, betik
+ * çalıştırılana kadar kimse erişimini kaybetmesin (eski/kısıtlamasız
+ * davranış korunur). Tablo VARSA ama bu kullanıcı için satır yoksa (örn.
+ * beklenmedik bir durum) en az yetkili rol (goruntuleyici) güvenli
+ * varsayılan olarak döner.
  */
 export async function getMyRole(): Promise<AppRole | null> {
   const { data: userData } = await supabase.auth.getUser();
   const uid = userData.user?.id;
   if (!uid) return null;
   const { data, error } = await supabase.from('profiles').select('role').eq('id', uid).maybeSingle();
-  if (error || !data) return 'goruntuleyici';
+  if (error) {
+    const tableMissing = error.code === '42P01' || /relation .*profiles.* does not exist|schema cache/i.test(error.message || '');
+    return tableMissing ? 'yonetici' : 'goruntuleyici';
+  }
+  if (!data) return 'goruntuleyici';
   return data.role as AppRole;
 }
 
