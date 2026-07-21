@@ -15,7 +15,7 @@ export function PrintCombined({ ids }: { ids: string[] }) {
   firmIds.sort((a, b) => firmName(db, a).localeCompare(firmName(db, b), 'tr'));
 
   let grand = 0;
-  const preColspan = 5 + firmIds.length + 1;
+  const preColspan = 5 + firmIds.length;
 
   return (
     <div className="report-sheet wideform landscape">
@@ -52,11 +52,6 @@ export function PrintCombined({ ids }: { ids: string[] }) {
                 <span style={{ fontWeight: 400, color: '#cfe0f0', fontSize: 8.5 }}>₺/birim</span>
               </th>
             ))}
-            <th style={{ textAlign: 'right' }}>
-              Birim
-              <br />
-              Fiyat
-            </th>
             <th style={{ textAlign: 'right' }}>
               Toplam
               <br />
@@ -117,21 +112,16 @@ export function PrintCombined({ ids }: { ids: string[] }) {
                   );
                 })}
                 <td style={{ textAlign: 'right', whiteSpace: 'nowrap', fontWeight: 800 }}>
-                  {eff ? money(eff.birimFiyat, eff.paraBirimi) : '—'}
-                  {eff && eff.indirimli ? (
-                    <>
-                      <br />
-                      <span style={{ fontWeight: 500, color: '#14633a', fontSize: 9.5 }}>
-                        indirimli{indy != null ? ' ▼' + indy.toFixed(1) + '%' : ''}
-                      </span>
-                    </>
-                  ) : null}
-                </td>
-                <td style={{ textAlign: 'right', whiteSpace: 'nowrap', fontWeight: 800 }}>
                   {tot > 0 ? (
                     <>
                       {money(tot, 'TRY')}
-                      <div style={{ fontWeight: 400, fontSize: 8.5, color: '#8a98a8' }}>(öngörülen)</div>
+                      {eff && eff.indirimli ? (
+                        <div style={{ fontWeight: 500, color: '#14633a', fontSize: 9.5 }}>
+                          indirimli{indy != null ? ' ▼' + indy.toFixed(1) + '%' : ''}
+                        </div>
+                      ) : (
+                        <div style={{ fontWeight: 400, fontSize: 8.5, color: '#8a98a8' }}>(öngörülen)</div>
+                      )}
                     </>
                   ) : (
                     <span style={{ color: '#c7d0db' }}>—</span>
