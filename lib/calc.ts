@@ -2,7 +2,7 @@
    İş mantığı / hesaplamalar — orijinal uygulamadan birebir.
    Global DB yerine saf fonksiyonlara `db` parametre olarak verilir.
    ============================================================ */
-import type { DB, Talep, Teklif, Lokasyon, Anlasma, Firma } from './types';
+import type { DB, Talep, Teklif, Lokasyon, Anlasma, Firma, Durum } from './types';
 import { hasCoord, haversine } from './geo';
 
 export function lokById(db: DB, id: string): Lokasyon | undefined {
@@ -26,6 +26,95 @@ export function firmName(db: DB, id: string): string {
 export function navlunFirmName(db: DB, id: string): string {
   const f = db.navlunFirmalari.find((x) => x.id === id);
   return f ? f.ad : '(silinmiş firma)';
+}
+
+export interface NavlunFirmaTeklifItem {
+  id: string;
+  kayitId: string;
+  tur: 'deniz' | 'kara';
+  hat: string;
+  tarih?: string;
+  fiyat: number;
+  paraBirimi: string;
+  durum: Durum;
+  secildi: boolean;
+}
+
+/**
+ * Bir navlun firmasının verdiği tüm teklifleri (deniz + kara) döner.
+ * Hem çok-teklif kıyaslama akışında eklenen kayıtları hem de kıyaslama
+ * kullanılmadan doğrudan bu firmaya atanan kayıtları kapsar — aksi halde
+ * doğrudan atanan (kıyaslamasız) kayıtlar sayılmadığı için "Verilen Teklif"
+ * sayısı gerçek kullanım biçiminde hep 0 görünürdü.
+ */
+export function navlunFirmaTeklifleri(db: DB, firmaId: string): NavlunFirmaTeklifItem[] {
+  const out: NavlunFirmaTeklifItem[] = [];
+  const hatOf = (n: { hat?: string; kalkisYeri?: string; varisYeri?: string }) =>
+    n.hat || [n.kalkisYeri, n.varisYeri].filter(Boolean).join(' → ') || '—';
+
+  db.denizNavlun.forEach((n) => {
+    const teklifler = (n.teklifler || []).filter((t) => t.firmaId === firmaId);
+    if (teklifler.length) {
+      teklifler.forEach((t) => {
+        out.push({
+          id: t.id,
+          kayitId: n.id,
+          tur: 'deniz',
+          hat: hatOf(n),
+          tarih: t.createdAt || n.tarih,
+          fiyat: (t.c40 ?? t.c20 ?? 0) as number,
+          paraBirimi: t.paraBirimi || 'USD',
+          durum: n.durum || 'toplama',
+          secildi: n.secilenTeklifId === t.id,
+        });
+      });
+    } else if (n.firmaId === firmaId) {
+      out.push({
+        id: n.id,
+        kayitId: n.id,
+        tur: 'deniz',
+        hat: hatOf(n),
+        tarih: n.tarih,
+        fiyat: (n.c40 ?? n.c20 ?? 0) as number,
+        paraBirimi: n.paraBirimi || 'USD',
+        durum: n.durum || 'toplama',
+        secildi: true,
+      });
+    }
+  });
+
+  db.karaNavlun.forEach((n) => {
+    const teklifler = (n.teklifler || []).filter((t) => t.firmaId === firmaId);
+    if (teklifler.length) {
+      teklifler.forEach((t) => {
+        out.push({
+          id: t.id,
+          kayitId: n.id,
+          tur: 'kara',
+          hat: hatOf(n),
+          tarih: t.createdAt || n.tarih,
+          fiyat: t.fiyat ?? 0,
+          paraBirimi: t.paraBirimi || 'TRY',
+          durum: n.durum || 'toplama',
+          secildi: n.secilenTeklifId === t.id,
+        });
+      });
+    } else if (n.firmaId === firmaId) {
+      out.push({
+        id: n.id,
+        kayitId: n.id,
+        tur: 'kara',
+        hat: hatOf(n),
+        tarih: n.tarih,
+        fiyat: n.fiyat ?? 0,
+        paraBirimi: n.paraBirimi || 'TRY',
+        durum: n.durum || 'toplama',
+        secildi: true,
+      });
+    }
+  });
+
+  return out.sort((a, b) => (b.tarih || '').localeCompare(a.tarih || ''));
 }
 
 export function lokName(db: DB, id: string): string {

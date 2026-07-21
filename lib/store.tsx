@@ -76,6 +76,7 @@ export interface UIState {
   firmaId: string | null;
   lokasyonId: string | null;
   limanTalepId: string | null;
+  navlunFirmaId: string | null;
   talepFilter: string;
   lokFilter: string;
   haritaFilter: string;
@@ -240,10 +241,11 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     firmaId: null,
     lokasyonId: null,
     limanTalepId: null,
+    navlunFirmaId: null,
     talepFilter: 'all',
     lokFilter: 'all',
     haritaFilter: 'all',
-    tasimaFilter: 'all',
+    tasimaFilter: 'toplama',
     navlunYil: new Date().getFullYear(),
     navlunHat: '__all',
     karaNavlunYil: new Date().getFullYear(),
@@ -593,6 +595,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       firmaId: ui.firmaId,
       lokasyonId: ui.lokasyonId,
       limanTalepId: ui.limanTalepId,
+      navlunFirmaId: ui.navlunFirmaId,
     };
     if (!historyInitRef.current) {
       history.replaceState(histState, '');
@@ -612,6 +615,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         firmaId?: string | null;
         lokasyonId?: string | null;
         limanTalepId?: string | null;
+        navlunFirmaId?: string | null;
       } | null;
       if (!s?.view) return;
       isPoppingRef.current = true;
@@ -622,6 +626,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         firmaId: s.firmaId ?? null,
         lokasyonId: s.lokasyonId ?? null,
         limanTalepId: s.limanTalepId ?? null,
+        navlunFirmaId: s.navlunFirmaId ?? null,
       }));
       setModal(null);
     };

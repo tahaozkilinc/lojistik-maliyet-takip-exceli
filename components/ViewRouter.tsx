@@ -19,6 +19,7 @@ import { NavlunFirmalar } from './views/NavlunFirmalar';
 import { TasimaTalepleri } from './views/TasimaTalepleri';
 import { TasimaTalepDetail } from './views/TasimaTalepDetail';
 import { KullaniciRolleri } from './views/KullaniciRolleri';
+import { NavlunFirmaDetay } from './views/NavlunFirmaDetay';
 
 export function ViewRouter() {
   const { ui } = useStore();
@@ -53,6 +54,8 @@ export function ViewRouter() {
       return <KaraNavlun />;
     case 'navlunFirmalar':
       return <NavlunFirmalar />;
+    case 'navlunFirmaDetay':
+      return <NavlunFirmaDetay />;
     case 'tasimaTalepleri':
       return <TasimaTalepleri />;
     case 'tasimaTalepDetay':

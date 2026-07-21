@@ -2,10 +2,11 @@
 import React from 'react';
 import { useStore } from '@/lib/store';
 import { initials } from '@/lib/format';
+import { navlunFirmaTeklifleri } from '@/lib/calc';
 import { Icon } from '@/components/Icon';
 
 export function NavlunFirmalar() {
-  const { db, ui, openModal } = useStore();
+  const { db, ui, go, setUi, openModal } = useStore();
   const q = ui.search.toLowerCase().trim();
 
   if (!db.navlunFirmalari.length) {
@@ -44,22 +45,16 @@ export function NavlunFirmalar() {
       </div>
       <div className="firm-grid">
         {list.map((f) => {
-          const denizTeklif = db.denizNavlun.reduce((s, n) => s + (n.teklifler || []).filter((t) => t.firmaId === f.id).length, 0);
-          const karaTeklif = db.karaNavlun.reduce((s, n) => s + (n.teklifler || []).filter((t) => t.firmaId === f.id).length, 0);
-          const secilme =
-            db.denizNavlun.filter((n) => {
-              const t = (n.teklifler || []).find((x) => x.id === n.secilenTeklifId);
-              return t && t.firmaId === f.id;
-            }).length +
-            db.karaNavlun.filter((n) => {
-              const t = (n.teklifler || []).find((x) => x.id === n.secilenTeklifId);
-              return t && t.firmaId === f.id;
-            }).length;
+          const teklifler = navlunFirmaTeklifleri(db, f.id);
+          const secilme = teklifler.filter((t) => t.secildi).length;
           return (
             <div
               key={f.id}
               className="firm-card"
-              onClick={() => openModal({ type: 'navlunFirma', id: f.id })}
+              onClick={() => {
+                setUi({ navlunFirmaId: f.id });
+                go('navlunFirmaDetay');
+              }}
               style={{ cursor: 'pointer' }}
             >
               <div className="fc-head">
@@ -124,7 +119,7 @@ export function NavlunFirmalar() {
               </div>
               <div className="fc-foot">
                 <div className="fc-stat" style={{ flex: 1 }}>
-                  <span className="num">{denizTeklif + karaTeklif}</span>
+                  <span className="num">{teklifler.length}</span>
                   <span className="lbl">Verilen Teklif</span>
                 </div>
                 <div className="fc-stat" style={{ flex: 1 }}>

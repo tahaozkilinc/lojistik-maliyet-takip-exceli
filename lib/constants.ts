@@ -88,6 +88,7 @@ export type ViewKey =
   | 'denizNavlun'
   | 'karaNavlun'
   | 'navlunFirmalar'
+  | 'navlunFirmaDetay'
   | 'tasimaTalepleri'
   | 'tasimaTalepDetay'
   | 'kullaniciRolleri';
@@ -107,6 +108,7 @@ export const TITLES: Record<string, [string, string]> = {
   denizNavlun: ['Deniz Navlun Takibi', "20′ ve 40′ konteyner navlunları — aylık & yıllık"],
   karaNavlun: ['Kara Navlun Takibi', 'Kara nakliyesi fiyat karşılaştırması — aylık & yıllık'],
   navlunFirmalar: ['Navlun Firmaları', 'Deniz/kara navlun tekliflerinde kullanılan firmalar'],
+  navlunFirmaDetay: ['Navlun Firması Detayı', 'Verilen teklifler ve geçmiş'],
   tasimaTalepleri: ['Taşıma Talepleri', 'Deniz · Kara · Hava fiyat toplama ve karşılaştırma'],
   tasimaTalepDetay: ['Taşıma Talebi Detayı', ''],
   detail: ['Talep Detayı', ''],
