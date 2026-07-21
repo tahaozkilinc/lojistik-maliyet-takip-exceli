@@ -1,8 +1,8 @@
 'use client';
 import React from 'react';
 import { useStore } from '@/lib/store';
-import { money, fmtTon } from '@/lib/format';
-import { firmName, toTRY, bestQuoteId, indirimYuzde, efektifFiyat, efektifTotalTRY, sonIslem } from '@/lib/calc';
+import { money, fmt, fmtTon } from '@/lib/format';
+import { firmName, toTRY, bestQuoteId, indirimYuzde, efektifFiyat, efektifTotalTRY, sonIslem, routeKmInfo } from '@/lib/calc';
 
 export function PrintCombined({ ids }: { ids: string[] }) {
   const { db } = useStore();
@@ -69,11 +69,20 @@ export function PrintCombined({ ids }: { ids: string[] }) {
             grand += tot;
             const unitTRYs = t.teklifler.map((q) => toTRY(db, q.fiyat, q.paraBirimi));
             const minU = unitTRYs.length ? Math.min(...unitTRYs) : null;
+            const rk = routeKmInfo(db, t);
             return (
               <tr key={t.id}>
                 <td style={{ textAlign: 'center' }}>{i + 1}</td>
                 <td style={{ whiteSpace: 'nowrap' }}>
                   <b>{t.yuklemeNoktasi}</b> → <b>{t.teslimNoktasi}</b>
+                  {rk ? (
+                    <>
+                      <br />
+                      <span style={{ fontWeight: 400, color: '#5f6f80', fontSize: 8.5 }}>
+                        {fmt(rk.km)} km{rk.approx ? '~' : ''}
+                      </span>
+                    </>
+                  ) : null}
                 </td>
                 <td>{t.yukTipi || '—'}</td>
                 <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>{t.miktar ? fmtTon(t.miktar) + ' ' + (t.birim || '') : '—'}</td>
