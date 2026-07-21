@@ -16,6 +16,7 @@ import React, {
 import type { AppRole, DB, Profile } from './types';
 import { LS_KEY, THEME_KEY, EMBED_FLAG_KEY, DIRTY_KEY, type ViewKey } from './constants';
 import { emptyDB, migrate, normalizeDB, seedIfEmpty } from './seed';
+import { mergeDB } from './merge';
 import { embeddedData, EMBED_VERSION } from './seedData';
 import { supabase } from './supabaseClient';
 import {
@@ -234,6 +235,12 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   const dbRef = useRef<DB>(emptyDB());
   /** mutate()/replaceDB() içinde senkron erişim için — role state'i asenkron güncellenir. */
   const roleRef = useRef<AppRole | null>(null);
+  /**
+   * Son bilinen, sunucuyla eşleşen ortak durum ("base") — üç yönlü birleştirme
+   * için gereklidir. Yalnızca sunucudan gerçekten doğrulanmış bir veri alındığında
+   * (ilk yükleme, canlı eşitleme veya başarılı bir kaydetme sonrası) güncellenir.
+   */
+  const baseRef = useRef<DB | null>(null);
 
   const [ui, setUiState] = useState<UIState>({
     view: 'dashboard',
@@ -318,9 +325,20 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
           const local = loadLocalCache();
           if (cancelled) return;
           dirtyRef.current = true;
+          dbRef.current = local;
           setDb(local);
           try {
-            await pushRemoteDB(local);
+            // Bu oturumdan önceki bir kaydetme hiç merkeze ulaşmamış olabilir; ama
+            // merkezdeki veri de bu arada başkası tarafından değiştirilmiş olabilir.
+            // Körlemesine üzerine yazmak yerine, bilinen bir ortak "base" olmadan
+            // (base=null → birleşim + çakışmada yerel kazanır) üç yönlü birleştir.
+            const remote = await fetchRemoteDB();
+            const merged = remote ? mergeDB(null, local, remote) : local;
+            await pushRemoteDB(merged);
+            baseRef.current = merged;
+            dbRef.current = merged;
+            setDb(merged);
+            saveLocalCache(merged);
             dirtyRef.current = false;
             markDirty(false);
           } catch {
@@ -333,13 +351,17 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         const remote = await fetchRemoteDB();
         if (cancelled) return;
         if (remote) {
+          dbRef.current = remote;
+          baseRef.current = remote;
           setDb(remote);
           saveLocalCache(remote);
           try { localStorage.setItem(EMBED_FLAG_KEY, EMBED_VERSION); } catch { /* yok say */ }
         } else {
           const local = loadLocalCache();
+          dbRef.current = local;
           setDb(local);
           await pushRemoteDB(local);
+          baseRef.current = local;
         }
       } catch {
         // Ağ/izin hatası: yerel önbellekle devam et (çevrimdışı erişim kaybolmaz).
@@ -385,6 +407,8 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
               const remote = await fetchRemoteDB();
               // Fetch sırasında yerel bir değişiklik başladıysa üzerine yazma.
               if (remote && !dirtyRef.current) {
+                dbRef.current = remote;
+                baseRef.current = remote;
                 setDb(remote);
                 saveLocalCache(remote);
               }
@@ -492,34 +516,56 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     }, 3050);
   }, []);
 
-  const scheduleRemoteSave = useCallback(
-    (next: DB) => {
-      dirtyRef.current = true;
-      markDirty(true);
-      if (saveTimer.current) clearTimeout(saveTimer.current);
-      saveTimer.current = setTimeout(() => {
-        pushRemoteDB(next)
-          .then(() => {
-            dirtyRef.current = false;
-            markDirty(false);
-            saveFailNotified.current = false;
-          })
-          .catch(() => {
-            // Kaydedilemedi: yerel veri (ve dirty işareti) korunur, kısa süre sonra
-            // otomatik tekrar denenir; kullanıcı yalnızca bir kez uyarılır.
-            if (!saveFailNotified.current) {
-              saveFailNotified.current = true;
-              toast(
-                'Değişiklik sunucuya kaydedilemedi. Yerel verileriniz korunuyor, bağlantı sağlanınca otomatik olarak yeniden denenecek.',
-                'err',
-              );
-            }
-            saveTimer.current = setTimeout(() => scheduleRemoteSave(next), 4000);
-          });
-      }, 600);
-    },
-    [toast],
-  );
+  /**
+   * Kaydetmeden hemen önce sunucudaki güncel veriyi yeniden çekip üç yönlü
+   * birleştirir (bkz. lib/merge.ts). Böylece iki kullanıcı/sekme birbirine
+   * yakın zamanda kaydettiğinde biri diğerinin eklediği/değiştirdiği
+   * kayıtları (fiyatlar dahil) körlemesine silmez — ikisi de korunur.
+   */
+  const doRemoteSave = useCallback(() => {
+    const localSnapshot = dbRef.current;
+    (async () => {
+      try {
+        const remote = await fetchRemoteDB();
+        const merged: DB = remote ? mergeDB(baseRef.current, localSnapshot, remote) : localSnapshot;
+        await pushRemoteDB(merged);
+        baseRef.current = merged;
+        // Bu kaydetme sürerken (fetch/push beklenirken) yeni bir mutate()/replaceDB()
+        // çalıştıysa dbRef.current artık farklı bir nesneyi gösterir — o durumda
+        // ESKİ (localSnapshot tabanlı) sonucu ekrana/dbRef'e yazıp daha yeni yerel
+        // değişikliği EZMEYİZ; o değişiklik zaten kendi zamanlanmış kaydını
+        // (scheduleRemoteSave) bekliyor ve bir sonraki turda bu güncel base'e göre
+        // yeniden birleştirilecek.
+        if (dbRef.current === localSnapshot) {
+          dbRef.current = merged;
+          setDb(merged);
+          saveLocalCache(merged);
+          dirtyRef.current = false;
+          markDirty(false);
+        }
+        saveFailNotified.current = false;
+      } catch {
+        // Kaydedilemedi: yerel veri (ve dirty işareti) korunur, kısa süre sonra
+        // otomatik tekrar denenir (yeniden çekip yeniden birleştirerek); kullanıcı
+        // yalnızca bir kez uyarılır.
+        if (!saveFailNotified.current) {
+          saveFailNotified.current = true;
+          toast(
+            'Değişiklik sunucuya kaydedilemedi. Yerel verileriniz korunuyor, bağlantı sağlanınca otomatik olarak yeniden denenecek.',
+            'err',
+          );
+        }
+        saveTimer.current = setTimeout(doRemoteSave, 4000);
+      }
+    })();
+  }, [toast]);
+
+  const scheduleRemoteSave = useCallback(() => {
+    dirtyRef.current = true;
+    markDirty(true);
+    if (saveTimer.current) clearTimeout(saveTimer.current);
+    saveTimer.current = setTimeout(doRemoteSave, 600);
+  }, [doRemoteSave]);
 
   // Güvenlik: görüntüleyici rolü hiçbir veri değiştiremez. Bu kontrol yalnızca
   // arayüzde anında geri bildirim (toast) içindir — asıl zorlama Supabase RLS
@@ -540,7 +586,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       dbRef.current = next;
       saveLocalCache(next);
       setDb(next);
-      scheduleRemoteSave(next);
+      scheduleRemoteSave();
       return next;
     },
     [scheduleRemoteSave, canWrite],
@@ -551,9 +597,10 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       if (!canWrite()) return;
       const cloned = deepClone(newDb);
       migrate(cloned);
+      dbRef.current = cloned;
       saveLocalCache(cloned);
       setDb(cloned);
-      scheduleRemoteSave(cloned);
+      scheduleRemoteSave();
     },
     [scheduleRemoteSave, canWrite],
   );
