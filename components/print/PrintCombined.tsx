@@ -1,8 +1,8 @@
 'use client';
 import React from 'react';
 import { useStore } from '@/lib/store';
-import { money, fmt, fmtTon } from '@/lib/format';
-import { firmName, toTRY, bestQuoteId, routeKmInfo, gerceklesenBirim, indirimYuzde, gercTotalTRY, sonIslem } from '@/lib/calc';
+import { money, fmtTon } from '@/lib/format';
+import { firmName, toTRY, bestQuoteId, indirimYuzde, efektifFiyat, efektifTotalTRY, sonIslem } from '@/lib/calc';
 
 export function PrintCombined({ ids }: { ids: string[] }) {
   const { db } = useStore();
@@ -67,31 +67,32 @@ export function PrintCombined({ ids }: { ids: string[] }) {
         <tbody>
           {list.map((t, i) => {
             const sel = t.secilenTeklifId || bestQuoteId(db, t);
-            const g = gerceklesenBirim(t);
+            const eff = efektifFiyat(db, t);
             const indy = indirimYuzde(db, t);
             const onc = sonIslem(db, t.yuklemeLokasyonId, t.teslimLokasyonId, t.id);
-            const tot = gercTotalTRY(db, t);
+            const tot = efektifTotalTRY(db, t);
             grand += tot;
             const unitTRYs = t.teklifler.map((q) => toTRY(db, q.fiyat, q.paraBirimi));
             const minU = unitTRYs.length ? Math.min(...unitTRYs) : null;
-            const rk = routeKmInfo(db, t);
             return (
               <tr key={t.id}>
                 <td style={{ textAlign: 'center' }}>{i + 1}</td>
                 <td style={{ whiteSpace: 'nowrap' }}>
                   <b>{t.yuklemeNoktasi}</b> → <b>{t.teslimNoktasi}</b>
-                  {rk ? (
-                    <>
-                      <br />
-                      <span style={{ fontWeight: 400, color: '#5f6f80', fontSize: 8.5 }}>
-                        {fmt(rk.km)} km{rk.approx ? '~' : ''} (en kısa karayolu)
-                      </span>
-                    </>
-                  ) : null}
                 </td>
                 <td>{t.yukTipi || '—'}</td>
                 <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>{t.miktar ? fmtTon(t.miktar) + ' ' + (t.birim || '') : '—'}</td>
-                <td style={{ textAlign: 'right', whiteSpace: 'nowrap', color: '#5f6f80' }}>{onc ? money(onc.birimFiyat, onc.paraBirimi) : '—'}</td>
+                <td style={{ textAlign: 'right', whiteSpace: 'nowrap', color: '#5f6f80' }}>
+                  {onc ? (
+                    <>
+                      {money(onc.birimFiyat, onc.paraBirimi)}
+                      <br />
+                      <span style={{ fontWeight: 400, fontSize: 8.5 }}>{firmName(db, onc.firmaId)}</span>
+                    </>
+                  ) : (
+                    '—'
+                  )}
+                </td>
                 {firmIds.map((fid) => {
                   const q = t.teklifler.find((x) => x.firmaId === fid);
                   if (!q) return <td key={fid} style={{ textAlign: 'right', color: '#c7d0db' }}>—</td>;
@@ -116,8 +117,8 @@ export function PrintCombined({ ids }: { ids: string[] }) {
                   );
                 })}
                 <td style={{ textAlign: 'right', whiteSpace: 'nowrap', fontWeight: 800 }}>
-                  {g ? money(g.birimFiyat, g.paraBirimi) : '—'}
-                  {g && g.indirimli ? (
+                  {eff ? money(eff.birimFiyat, eff.paraBirimi) : '—'}
+                  {eff && eff.indirimli ? (
                     <>
                       <br />
                       <span style={{ fontWeight: 500, color: '#14633a', fontSize: 9.5 }}>
@@ -126,7 +127,10 @@ export function PrintCombined({ ids }: { ids: string[] }) {
                     </>
                   ) : null}
                 </td>
-                <td style={{ textAlign: 'right', whiteSpace: 'nowrap', fontWeight: 800 }}>{money(tot, 'TRY')}</td>
+                <td style={{ textAlign: 'right', whiteSpace: 'nowrap', fontWeight: 800 }}>
+                  {money(tot, 'TRY')}
+                  <div style={{ fontWeight: 400, fontSize: 8.5, color: '#8a98a8' }}>(öngörülen)</div>
+                </td>
               </tr>
             );
           })}
@@ -140,15 +144,6 @@ export function PrintCombined({ ids }: { ids: string[] }) {
           </tr>
         </tfoot>
       </table>
-      <div style={{ fontSize: 10, color: '#8a98a8', marginTop: 4 }}>
-        <span style={{ background: '#ffdd7a', color: '#5c4200', fontWeight: 700, padding: '1px 6px', border: '1.5px solid #c9a227', borderRadius: 3 }}>
-          ★ sarı
-        </span>{' '}
-        = önerilen/seçilen teklif &nbsp;·&nbsp;{' '}
-        <span style={{ background: '#dcf3e4', color: '#0f4d2b', fontWeight: 700, padding: '1px 6px', borderRadius: 3 }}>yeşil</span> = satırdaki en
-        düşük fiyat &nbsp;·&nbsp; Tutarlar birim × tonaj olarak TRY&apos;ye çevrilmiş, indirim girildiyse gerçekleşen fiyat esas alınmıştır. &nbsp;·&nbsp;
-        Geniş tablo; gerekirse <b>yatay (landscape)</b> yazdırın.
-      </div>
 
       <div style={{ marginTop: 24, display: 'flex', gap: 20, alignItems: 'stretch', breakInside: 'avoid' }}>
         <div className="sign-box" style={{ flex: 1 }}>
