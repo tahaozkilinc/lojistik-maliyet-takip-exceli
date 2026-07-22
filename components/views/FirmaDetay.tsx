@@ -6,6 +6,7 @@ import { toTRY, lokName } from '@/lib/calc';
 import { TIP_RENK } from '@/lib/constants';
 import { exportFirmaFiyat, openSignedFile } from '@/lib/export';
 import { Icon } from '@/components/Icon';
+import { FirmaAvatar } from '@/components/FirmaAvatar';
 
 function AnlDelta({ v, p }: { v: number; p: number | null }) {
   if (p == null || p === 0) return null;
@@ -122,9 +123,12 @@ export function FirmaDetay() {
 
       <div className="panel" style={{ marginBottom: 16 }}>
         <div className="panel-body" style={{ display: 'flex', gap: 18, alignItems: 'flex-start', flexWrap: 'wrap' }}>
-          <div className="fc-avatar" style={{ width: 56, height: 56, fontSize: 21, background: 'var(--navy)', color: '#fff', border: 'none' }}>
-            {initials(f.ad)}
-          </div>
+          <FirmaAvatar
+            logo={f.logo}
+            ad={f.ad}
+            className="fc-avatar"
+            style={{ width: 56, height: 56, fontSize: 21, background: 'var(--navy)', color: '#fff', border: 'none', borderRadius: 12 }}
+          />
           <div style={{ flex: 1, minWidth: 220 }}>
             <div style={{ fontSize: 21, fontWeight: 800 }}>{f.ad}</div>
             <div style={{ color: 'var(--muted)', fontSize: 13, marginTop: 2 }}>

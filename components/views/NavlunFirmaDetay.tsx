@@ -3,8 +3,10 @@ import React from 'react';
 import { useStore } from '@/lib/store';
 import { money, dt, initials } from '@/lib/format';
 import { navlunFirmaTeklifleri } from '@/lib/calc';
+import { TASIMA_MOD_RENK, tasimaModLabel } from '@/lib/tasima';
 import { StatusBadge } from '@/components/StatusBadge';
 import { Icon } from '@/components/Icon';
+import { FirmaAvatar } from '@/components/FirmaAvatar';
 
 function Stat({ n, l, color }: { n: number; l: string; color?: string }) {
   return (
@@ -36,6 +38,7 @@ export function NavlunFirmaDetay() {
   const secilme = teklifler.filter((t) => t.secildi).length;
   const denizSay = teklifler.filter((t) => t.tur === 'deniz').length;
   const karaSay = teklifler.filter((t) => t.tur === 'kara').length;
+  const havaSay = teklifler.filter((t) => t.tur === 'hava').length;
 
   function delFirma() {
     if (!confirm('Bu navlun firması silinsin mi? Geçmiş tekliflerdeki adı korunmaz.')) return;
@@ -63,9 +66,12 @@ export function NavlunFirmaDetay() {
 
       <div className="panel" style={{ marginBottom: 16 }}>
         <div className="panel-body" style={{ display: 'flex', gap: 18, alignItems: 'flex-start', flexWrap: 'wrap' }}>
-          <div className="fc-avatar" style={{ width: 56, height: 56, fontSize: 21, background: 'var(--navy)', color: '#fff', border: 'none' }}>
-            {initials(f.ad)}
-          </div>
+          <FirmaAvatar
+            logo={f.logo}
+            ad={f.ad}
+            className="fc-avatar"
+            style={{ width: 56, height: 56, fontSize: 21, background: 'var(--navy)', color: '#fff', border: 'none', borderRadius: 12 }}
+          />
           <div style={{ flex: 1, minWidth: 220 }}>
             <div style={{ fontSize: 21, fontWeight: 800 }}>{f.ad}</div>
             {f.telefon && (
@@ -105,11 +111,12 @@ export function NavlunFirmaDetay() {
             ) : null}
             {f.notlar && <div style={{ marginTop: 9, fontSize: 12.5, color: 'var(--muted)', fontStyle: 'italic' }}>{f.notlar}</div>}
           </div>
-          <div style={{ display: 'flex', gap: 22 }}>
+          <div style={{ display: 'flex', gap: 22, flexWrap: 'wrap' }}>
             <Stat n={teklifler.length} l="Verilen Teklif" />
             <Stat n={secilme} l="Seçildi / Onaylandı" color="var(--green)" />
-            <Stat n={denizSay} l="Deniz" color="var(--blue)" />
-            <Stat n={karaSay} l="Kara" color="var(--amber)" />
+            <Stat n={denizSay} l="Deniz" color={TASIMA_MOD_RENK.deniz} />
+            <Stat n={karaSay} l="Kara" color={TASIMA_MOD_RENK.kara} />
+            <Stat n={havaSay} l="Hava" color={TASIMA_MOD_RENK.hava} />
           </div>
         </div>
       </div>
@@ -136,17 +143,20 @@ export function NavlunFirmaDetay() {
                   <tr
                     key={t.id}
                     className="t-row-click"
-                    onClick={() => openModal({ type: t.tur === 'deniz' ? 'navlun' : 'karaNavlun', id: t.kayitId })}
+                    onClick={() => {
+                      if (t.kaynak === 'tasimaTalep') openModal({ type: 'tasimaTalep', id: t.kayitId });
+                      else openModal({ type: t.kaynak === 'denizNavlun' ? 'navlun' : 'karaNavlun', id: t.kayitId });
+                    }}
                   >
                     <td>
                       <span
                         className="tag"
                         style={{
-                          background: (t.tur === 'deniz' ? 'var(--blue)' : 'var(--amber)') + '1f',
-                          color: t.tur === 'deniz' ? 'var(--blue)' : 'var(--amber)',
+                          background: TASIMA_MOD_RENK[t.tur] + '1f',
+                          color: TASIMA_MOD_RENK[t.tur],
                         }}
                       >
-                        {t.tur === 'deniz' ? 'Deniz' : 'Kara'}
+                        {tasimaModLabel(t.tur)}
                       </span>
                     </td>
                     <td className="cell-strong">{t.hat}</td>

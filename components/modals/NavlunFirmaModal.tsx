@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import { useStore } from '@/lib/store';
 import { ModalShell, ModalHead } from '@/components/Modal';
 import { Icon } from '@/components/Icon';
+import { LogoUpload } from '@/components/LogoUpload';
 import { TEL_PH } from '@/lib/constants';
 import { uid, telFmt } from '@/lib/format';
 import type { Calisan } from '@/lib/types';
@@ -14,6 +15,7 @@ export function NavlunFirmaModal({ id }: { id?: string }) {
   const [ad, setAd] = useState(f ? f.ad : '');
   const [tel, setTel] = useState(f && f.telefon ? f.telefon : '+90 ');
   const [notlar, setNotlar] = useState(f ? f.notlar || '' : '');
+  const [logo, setLogo] = useState<string | null>(f?.logo || null);
   const [emps, setEmps] = useState<Calisan[]>(
     f && f.calisanlar && f.calisanlar.length ? f.calisanlar.map((c) => ({ ...c })) : [{ ad: '', unvan: '', email: '', telefon: '' }],
   );
@@ -43,6 +45,7 @@ export function NavlunFirmaModal({ id }: { id?: string }) {
       telefon: tel.trim(),
       notlar: notlar.trim(),
       calisanlar,
+      logo,
     };
     mutate((d) => {
       if (id) {
@@ -73,6 +76,7 @@ export function NavlunFirmaModal({ id }: { id?: string }) {
           Bu liste, Nakliye Talepleri modülündeki ana Firmalar listesinden bağımsızdır — yalnızca deniz/kara navlun
           tekliflerinde kullanılır.
         </div>
+        <LogoUpload value={logo} onChange={setLogo} toast={toast} />
         <div className="grid-2">
           <div className="field">
             <label>

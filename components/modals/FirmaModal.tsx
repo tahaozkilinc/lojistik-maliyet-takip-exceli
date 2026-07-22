@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import { useStore } from '@/lib/store';
 import { ModalShell, ModalHead } from '@/components/Modal';
 import { Icon } from '@/components/Icon';
+import { LogoUpload } from '@/components/LogoUpload';
 import { TEL_PH } from '@/lib/constants';
 import { uid, telFmt } from '@/lib/format';
 import type { Calisan } from '@/lib/types';
@@ -17,6 +18,7 @@ export function FirmaModal({ id }: { id?: string }) {
   const [tel, setTel] = useState(f && f.telefon ? f.telefon : '+90 ');
   const [adres, setAdres] = useState(f ? f.adres || '' : '');
   const [notlar, setNotlar] = useState(f ? f.notlar || '' : '');
+  const [logo, setLogo] = useState<string | null>(f?.logo || null);
   const [emps, setEmps] = useState<Calisan[]>(
     f && f.calisanlar && f.calisanlar.length ? f.calisanlar.map((c) => ({ ...c })) : [{ ad: '', unvan: '', email: '', telefon: '' }],
   );
@@ -48,6 +50,7 @@ export function FirmaModal({ id }: { id?: string }) {
       adres: adres.trim(),
       notlar: notlar.trim(),
       calisanlar,
+      logo,
     };
     mutate((d) => {
       if (id) {
@@ -75,6 +78,7 @@ export function FirmaModal({ id }: { id?: string }) {
     <ModalShell onClose={closeModal} size="xwide">
       <ModalHead title={f ? 'Firmayı Düzenle' : 'Yeni Nakliye Firması'} onClose={closeModal} />
       <div className="modal-body">
+        <LogoUpload value={logo} onChange={setLogo} toast={toast} />
         <div className="grid-2">
           <div className="field">
             <label>

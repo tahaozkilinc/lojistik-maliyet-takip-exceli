@@ -68,6 +68,8 @@ export interface Firma {
   anlasmalar?: Anlasma[];
   sozlesmeler?: Sozlesme[];
   createdAt?: string;
+  /** data: URL (yalnızca görsel — bkz. SAFE_IMAGE_MIME). */
+  logo?: string | null;
 }
 
 export interface Lokasyon {
@@ -165,6 +167,8 @@ export interface NavlunFirma {
   /** Firma iletişim kişileri. */
   calisanlar?: Calisan[];
   createdAt?: string;
+  /** data: URL (yalnızca görsel — bkz. SAFE_IMAGE_MIME). */
+  logo?: string | null;
 }
 
 /** Bir deniz navlun kaydı için firmadan alınan fiyat teklifi. */

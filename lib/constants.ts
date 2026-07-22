@@ -50,6 +50,11 @@ export const TEL_PH = '+90 5XX XXX XX XX';
 export const SAFE_FILE_MIME = /^(image\/(png|jpe?g|gif|webp|bmp|avif)|application\/pdf)$/i;
 export const SAFE_FILE_DATA_URL = /^data:(image\/(png|jpe?g|gif|webp|bmp|avif)|application\/pdf)(;base64)?,/i;
 
+/** Firma logoları için: PDF hariç, yalnızca görsel (aynı SVG hariç tutma nedeniyle). */
+export const SAFE_IMAGE_MIME = /^image\/(png|jpe?g|gif|webp|bmp|avif)$/i;
+export const SAFE_IMAGE_DATA_URL = /^data:image\/(png|jpe?g|gif|webp|bmp|avif)(;base64)?,/i;
+export const LOGO_MAX_BYTES = 800 * 1024;
+
 export const AYLAR = [
   'Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran',
   'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık',

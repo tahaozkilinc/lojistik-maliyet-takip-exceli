@@ -31,7 +31,9 @@ export function navlunFirmName(db: DB, id: string): string {
 export interface NavlunFirmaTeklifItem {
   id: string;
   kayitId: string;
-  tur: 'deniz' | 'kara';
+  /** Kaydın bulunduğu koleksiyon — detay ekranında doğru düzenleme penceresini açmak için. */
+  kaynak: 'denizNavlun' | 'karaNavlun' | 'tasimaTalep';
+  tur: 'deniz' | 'kara' | 'hava';
   hat: string;
   tarih?: string;
   fiyat: number;
@@ -41,15 +43,17 @@ export interface NavlunFirmaTeklifItem {
 }
 
 /**
- * Bir navlun firmasının verdiği tüm teklifleri (deniz + kara) döner.
- * Üç kaynağı kapsar: (1) çok-teklif kıyaslama akışında eklenen kayıtlar,
- * (2) kıyaslama kullanılmadan doğrudan bu firmaya (firmaId ile) atanan
- * kayıtlar, (3) Navlun Firmaları listesi eklenmeden ÖNCE girilmiş, taşıyıcısı
- * yalnızca serbest metin (tasiyici) olarak tutulan eski kayıtlar — bunlar
- * firmanın adıyla (büyük/küçük harf ve boşluk gözetmeksizin) birebir
- * eşleşiyorsa sayılır. Bu kapsam olmasaydı hem doğrudan atanan hem de eski
- * (firma listesi öncesi) kayıtlar sayılmadığından "Verilen Teklif" sayısı
- * gerçek kullanım biçiminde hep 0 görünürdü.
+ * Bir navlun firmasının verdiği tüm teklifleri döner. Dört kaynağı kapsar:
+ * (1) Deniz/Kara Navlun'daki çok-teklif kıyaslama akışında eklenen kayıtlar,
+ * (2) kıyaslama kullanılmadan doğrudan bu firmaya (firmaId ile) atanan Deniz/
+ * Kara Navlun kayıtları, (3) Navlun Firmaları listesi eklenmeden ÖNCE
+ * girilmiş, taşıyıcısı yalnızca serbest metin (tasiyici) olarak tutulan eski
+ * kayıtlar — firmanın adıyla (büyük/küçük harf ve boşluk gözetmeksizin)
+ * birebir eşleşiyorsa sayılır — (4) Taşıma Talepleri (deniz/kara/hava)
+ * modülündeki teklifler; TasimaTeklif.firmaId de yalnızca Navlun
+ * Firmaları'ndan seçildiğinden bu da sayılmalıdır. (4) kapsam dışı
+ * bırakılsaydı Taşıma Talepleri üzerinden toplanan fiyatlar "Verilen Teklif"
+ * sayısına hiç yansımazdı.
  */
 export function navlunFirmaTeklifleri(db: DB, firmaId: string): NavlunFirmaTeklifItem[] {
   const out: NavlunFirmaTeklifItem[] = [];
@@ -68,6 +72,7 @@ export function navlunFirmaTeklifleri(db: DB, firmaId: string): NavlunFirmaTekli
         out.push({
           id: t.id,
           kayitId: n.id,
+          kaynak: 'denizNavlun',
           tur: 'deniz',
           hat: hatOf(n),
           tarih: t.createdAt || n.tarih,
@@ -81,6 +86,7 @@ export function navlunFirmaTeklifleri(db: DB, firmaId: string): NavlunFirmaTekli
       out.push({
         id: n.id,
         kayitId: n.id,
+        kaynak: 'denizNavlun',
         tur: 'deniz',
         hat: hatOf(n),
         tarih: n.tarih,
@@ -99,6 +105,7 @@ export function navlunFirmaTeklifleri(db: DB, firmaId: string): NavlunFirmaTekli
         out.push({
           id: t.id,
           kayitId: n.id,
+          kaynak: 'karaNavlun',
           tur: 'kara',
           hat: hatOf(n),
           tarih: t.createdAt || n.tarih,
@@ -112,6 +119,7 @@ export function navlunFirmaTeklifleri(db: DB, firmaId: string): NavlunFirmaTekli
       out.push({
         id: n.id,
         kayitId: n.id,
+        kaynak: 'karaNavlun',
         tur: 'kara',
         hat: hatOf(n),
         tarih: n.tarih,
@@ -121,6 +129,27 @@ export function navlunFirmaTeklifleri(db: DB, firmaId: string): NavlunFirmaTekli
         secildi: true,
       });
     }
+  });
+
+  // Taşıma Talepleri (deniz/kara/hava) — teklifler her zaman doğrudan bu
+  // firma listesinden (firmaId zorunlu alan) seçildiğinden eski kayıt/serbest
+  // metin eşleşmesine gerek yoktur.
+  db.tasimaTalepleri.forEach((t) => {
+    const teklifler = (t.teklifler || []).filter((q) => q.firmaId === firmaId);
+    teklifler.forEach((q) => {
+      out.push({
+        id: q.id,
+        kayitId: t.id,
+        kaynak: 'tasimaTalep',
+        tur: q.mod,
+        hat: `${t.kalkisYeri} → ${t.varisYeri}`,
+        tarih: q.createdAt || t.tarih,
+        fiyat: q.fiyat ?? 0,
+        paraBirimi: q.paraBirimi || 'USD',
+        durum: t.durum || 'toplama',
+        secildi: t.secilenTeklifId === q.id,
+      });
+    });
   });
 
   return out.sort((a, b) => (b.tarih || '').localeCompare(a.tarih || ''));

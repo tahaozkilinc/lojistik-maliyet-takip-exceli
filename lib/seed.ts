@@ -3,7 +3,7 @@
    ============================================================ */
 import type { DB } from './types';
 import { uid } from './format';
-import { SAFE_FILE_DATA_URL } from './constants';
+import { SAFE_FILE_DATA_URL, SAFE_IMAGE_DATA_URL } from './constants';
 
 export function emptyDB(): DB {
   return {
@@ -73,8 +73,13 @@ export function sanitizeBelgeUrls(db: DB): DB {
     }
   });
   db.firmalar.forEach((f) => {
-    if (!Array.isArray(f.sozlesmeler)) return;
-    f.sozlesmeler = f.sozlesmeler.filter((s) => s.belge && s.belge.data && SAFE_FILE_DATA_URL.test(s.belge.data));
+    if (Array.isArray(f.sozlesmeler)) {
+      f.sozlesmeler = f.sozlesmeler.filter((s) => s.belge && s.belge.data && SAFE_FILE_DATA_URL.test(s.belge.data));
+    }
+    if (f.logo && !SAFE_IMAGE_DATA_URL.test(f.logo)) f.logo = null;
+  });
+  db.navlunFirmalari.forEach((f) => {
+    if (f.logo && !SAFE_IMAGE_DATA_URL.test(f.logo)) f.logo = null;
   });
   return db;
 }

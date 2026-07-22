@@ -4,6 +4,7 @@ import { useStore } from '@/lib/store';
 import { initials } from '@/lib/format';
 import { navlunFirmaTeklifleri } from '@/lib/calc';
 import { Icon } from '@/components/Icon';
+import { FirmaAvatar } from '@/components/FirmaAvatar';
 
 export function NavlunFirmalar() {
   const { db, ui, go, setUi, openModal } = useStore();
@@ -58,7 +59,7 @@ export function NavlunFirmalar() {
               style={{ cursor: 'pointer' }}
             >
               <div className="fc-head">
-                <div className="fc-avatar">{initials(f.ad)}</div>
+                <FirmaAvatar logo={f.logo} ad={f.ad} className="fc-avatar" />
                 <div style={{ flex: 1 }}>
                   <div className="fc-name">{f.ad}</div>
                 </div>
