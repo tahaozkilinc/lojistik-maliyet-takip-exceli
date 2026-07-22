@@ -4,7 +4,7 @@ import 'leaflet/dist/leaflet.css';
 import type { Map as LeafletMap, TileLayer } from 'leaflet';
 import { useStore } from '@/lib/store';
 import { hasCoord } from '@/lib/geo';
-import { lokasyonStats } from '@/lib/calc';
+import { lokasyonStats, limanMasrafStats } from '@/lib/calc';
 import { money, escapeHtml } from '@/lib/format';
 import { TIP_RENK } from '@/lib/constants';
 import type { Lokasyon } from '@/lib/types';
@@ -97,16 +97,28 @@ export function MainMap() {
               const tutar = usd != null ? money(usd, 'USD') : money(st.avg, 'TRY');
               return `<br><b>Fabrikaya ort:</b> ${tutar}${usd != null ? ` <span style="color:#8a98a8">(${money(st.avg, 'TRY')})</span>` : ''} · ${st.sefer} sefer`;
             })();
+        const extra = (() => {
+          if (l.tip === 'Liman') {
+            const lm = limanMasrafStats(db, l.id);
+            if (!lm.seferSayisi) return '';
+            return `<br><b>Liman masrafı:</b> ${money(lm.toplamTRY, 'TRY')} toplam · ${lm.seferSayisi} kayıt`;
+          }
+          if (l.tip === 'Depo' && l.depolamaMaliyeti) {
+            const dm = l.depolamaMaliyeti;
+            return `<br><b>Depolama:</b> ${money(dm.fiyat, dm.paraBirimi)}${dm.birim ? ' / ' + escapeHtml(dm.birim) : ''}`;
+          }
+          return '';
+        })();
         m.bindPopup(
           `<b>${escapeHtml(l.ad)}</b>${l.fabrika ? ' ★' : ''}<br>${escapeHtml(
             [l.ilce, l.il].filter(Boolean).join(' / ') || l.sehir || '',
-          )}${l.tip ? ' · ' + escapeHtml(l.tip) : ''}${s}`,
+          )}${l.tip ? ' · ' + escapeHtml(l.tip) : ''}${s}${extra}`,
         );
         pts.push([l.lat as number, l.lng as number]);
       });
     if (pts.length) map.fitBounds(pts, { padding: [50, 50], maxZoom: 12 });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mapReady, db.lokasyonlar, db.talepler, ui.haritaFilter, ui.search]);
+  }, [mapReady, db.lokasyonlar, db.talepler, db.limanTalepleri, ui.haritaFilter, ui.search]);
 
   if (failed) {
     return (

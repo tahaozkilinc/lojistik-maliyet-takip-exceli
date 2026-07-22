@@ -31,6 +31,10 @@ const NAV: { group: string; items: { view: ViewKey; label: string; icon: IconNam
       { view: 'navlunFirmalar', label: 'Navlun Firmaları', icon: 'users' },
     ],
   },
+  {
+    group: 'Liman',
+    items: [{ view: 'limanTalepleri', label: 'Liman Masrafları', icon: 'ship' }],
+  },
 ];
 
 const YONETIM_GROUP: { group: string; items: { view: ViewKey; label: string; icon: IconName; badge?: 'talep' | 'onay' | 'tasima' }[] } = {

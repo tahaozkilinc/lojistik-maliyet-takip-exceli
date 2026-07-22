@@ -72,6 +72,14 @@ export interface Firma {
   logo?: string | null;
 }
 
+/** Bir depo/antrepo lokasyonunun depolama maliyeti (tek, güncel değer). */
+export interface DepolamaMaliyeti {
+  fiyat: number;
+  paraBirimi: ParaBirimi;
+  /** örn. "ton/ay", "palet/gün", "m²/ay" — serbest metin birim. */
+  birim?: string;
+}
+
 export interface Lokasyon {
   id: string;
   ad: string;
@@ -88,6 +96,10 @@ export interface Lokasyon {
   lat?: number | null;
   lng?: number | null;
   createdAt?: string;
+  /** Lokasyonla (örn. liman, depo) imzalanan sözleşme belgeleri. */
+  sozlesmeler?: Sozlesme[];
+  /** Yalnızca depo/antrepo tipi lokasyonlar için anlamlıdır. */
+  depolamaMaliyeti?: DepolamaMaliyeti | null;
 }
 
 export interface Teklif {

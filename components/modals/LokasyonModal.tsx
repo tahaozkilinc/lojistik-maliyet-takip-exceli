@@ -4,7 +4,7 @@ import { useStore } from '@/lib/store';
 import { ModalShell, ModalHead } from '@/components/Modal';
 import { Icon } from '@/components/Icon';
 import { ModalMap } from '@/components/maps/ModalMap';
-import { LOK_TIP, TEL_PH } from '@/lib/constants';
+import { LOK_TIP, TEL_PH, PARA_KODLARI } from '@/lib/constants';
 import { uid, telFmt } from '@/lib/format';
 
 export function LokasyonModal({ id }: { id?: string }) {
@@ -25,6 +25,9 @@ export function LokasyonModal({ id }: { id?: string }) {
   const [lat, setLat] = useState(hasC ? String(l!.lat) : '');
   const [lng, setLng] = useState(hasC ? String(l!.lng) : '');
   const [flyToken, setFlyToken] = useState(0);
+  const [depoFiyat, setDepoFiyat] = useState(l?.depolamaMaliyeti?.fiyat != null ? String(l.depolamaMaliyeti.fiyat) : '');
+  const [depoPara, setDepoPara] = useState(l?.depolamaMaliyeti?.paraBirimi || 'TRY');
+  const [depoBirim, setDepoBirim] = useState(l?.depolamaMaliyeti?.birim || '');
 
   const tipList = l && l.tip && !LOK_TIP.includes(l.tip) ? [l.tip, ...LOK_TIP] : LOK_TIP;
 
@@ -56,6 +59,7 @@ export function LokasyonModal({ id }: { id?: string }) {
     }
     const ilt = il.trim();
     const konumVar = mapLat != null && mapLng != null;
+    const depoFiyatNum = depoFiyat.trim() ? Number(depoFiyat.replace(',', '.')) : null;
     const data = {
       ad: adt,
       il: ilt,
@@ -70,6 +74,10 @@ export function LokasyonModal({ id }: { id?: string }) {
       fabrika,
       lat: konumVar ? mapLat : null,
       lng: konumVar ? mapLng : null,
+      depolamaMaliyeti:
+        tip === 'Depo' && depoFiyatNum != null
+          ? { fiyat: depoFiyatNum, paraBirimi: depoPara, birim: depoBirim.trim() }
+          : null,
     };
     mutate((d) => {
       if (fabrika) d.lokasyonlar.forEach((x) => { if (x.id !== id) x.fabrika = false; });
@@ -153,6 +161,32 @@ export function LokasyonModal({ id }: { id?: string }) {
           <label>Adres</label>
           <input value={adres} onChange={(e) => setAdres(e.target.value)} />
         </div>
+        {tip === 'Depo' && (
+          <>
+            <div className="section-divider">
+              <Icon name="save" size={14} />
+              Depolama Maliyeti
+            </div>
+            <div className="grid-3">
+              <div className="field">
+                <label>Fiyat</label>
+                <input inputMode="decimal" placeholder="0" value={depoFiyat} onChange={(e) => setDepoFiyat(e.target.value.replace(/[^-0-9.,]/g, ''))} />
+              </div>
+              <div className="field">
+                <label>Para Birimi</label>
+                <select value={depoPara} onChange={(e) => setDepoPara(e.target.value)}>
+                  {PARA_KODLARI.map((p) => (
+                    <option key={p}>{p}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="field">
+                <label>Birim</label>
+                <input placeholder="örn. ton/ay" value={depoBirim} onChange={(e) => setDepoBirim(e.target.value)} />
+              </div>
+            </div>
+          </>
+        )}
         <div className="section-divider">
           <Icon name="mappin" size={14} />
           Harita Konumu (Enlem / Boylam)

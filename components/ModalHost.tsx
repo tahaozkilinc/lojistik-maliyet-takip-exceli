@@ -10,6 +10,7 @@ import { LokasyonModal } from './modals/LokasyonModal';
 import { LokasyonTopluModal } from './modals/LokasyonTopluModal';
 import { AnlasmaModal } from './modals/AnlasmaModal';
 import { SozlesmeModal } from './modals/SozlesmeModal';
+import { LokasyonSozlesmeModal } from './modals/LokasyonSozlesmeModal';
 import { NavlunModal } from './modals/NavlunModal';
 import { KaraNavlunModal } from './modals/KaraNavlunModal';
 import { NavlunFirmaModal } from './modals/NavlunFirmaModal';
@@ -51,6 +52,8 @@ export function ModalHost() {
       return <AnlasmaModal firmaId={modal.firmaId} anlId={modal.anlId} />;
     case 'sozlesme':
       return <SozlesmeModal firmaId={modal.firmaId} />;
+    case 'lokasyonSozlesme':
+      return <LokasyonSozlesmeModal lokasyonId={modal.lokasyonId} />;
     case 'navlun':
       return <NavlunModal id={modal.id} />;
     case 'karaNavlun':
@@ -64,7 +67,7 @@ export function ModalHost() {
     case 'tasimaOnay':
       return <TasimaOnayModal id={modal.id} />;
     case 'limanTalep':
-      return <LimanTalepModal id={modal.id} />;
+      return <LimanTalepModal id={modal.id} presetLimanId={modal.presetLimanId} />;
     case 'limanMasraf':
       return <LimanMasrafModal talepId={modal.talepId} masrafId={modal.masrafId} />;
     case 'kur':

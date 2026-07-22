@@ -6,7 +6,7 @@ import { YUK_TIPLERI, KONTEYNER_TIPLERI } from '@/lib/constants';
 import { uid } from '@/lib/format';
 import type { LimanDurum } from '@/lib/types';
 
-export function LimanTalepModal({ id }: { id?: string }) {
+export function LimanTalepModal({ id, presetLimanId }: { id?: string; presetLimanId?: string }) {
   const { db, mutate, closeModal, toast, go, setUi } = useStore();
   const x = id ? db.limanTalepleri.find((lt) => lt.id === id) : null;
 
@@ -16,7 +16,7 @@ export function LimanTalepModal({ id }: { id?: string }) {
     : 'LT-' + new Date().getFullYear() + '-' + String(db.limanTalepleri.length + 1).padStart(3, '0');
 
   const [talepNo, setTalepNo] = useState(nextNo);
-  const [limanId, setLimanId] = useState(x ? x.limanId : limanlar[0]?.id || '');
+  const [limanId, setLimanId] = useState(x ? x.limanId : presetLimanId || limanlar[0]?.id || '');
   const [gemiAdi, setGemiAdi] = useState(x ? x.gemiAdi || '' : '');
   const [seferNo, setSeferNo] = useState(x ? x.seferNo || '' : '');
   const [yukTipiSel, setYukTipiSel] = useState(() => {

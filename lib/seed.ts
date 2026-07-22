@@ -81,6 +81,11 @@ export function sanitizeBelgeUrls(db: DB): DB {
   db.navlunFirmalari.forEach((f) => {
     if (f.logo && !SAFE_IMAGE_DATA_URL.test(f.logo)) f.logo = null;
   });
+  db.lokasyonlar.forEach((l) => {
+    if (Array.isArray(l.sozlesmeler)) {
+      l.sozlesmeler = l.sozlesmeler.filter((s) => s.belge && s.belge.data && SAFE_FILE_DATA_URL.test(s.belge.data));
+    }
+  });
   return db;
 }
 

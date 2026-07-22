@@ -5,6 +5,7 @@ import { money, dt } from '@/lib/format';
 import { toTRY } from '@/lib/calc';
 import { TIP_RENK } from '@/lib/constants';
 import { Icon } from '@/components/Icon';
+import { openSignedFile } from '@/lib/export';
 import type { Teklif, Talep } from '@/lib/types';
 
 const DURUM_LABEL: Record<string, string> = {
@@ -24,7 +25,7 @@ type Row = {
 };
 
 export function LokasyonDetay() {
-  const { db, ui, go, setUi, openModal } = useStore();
+  const { db, ui, go, setUi, openModal, mutate, toast } = useStore();
   const lok = db.lokasyonlar.find((l) => l.id === ui.lokasyonId);
   const [sirala, setSirala] = useState<'tarih' | 'fiyat'>('tarih');
   const [firma, setFirma] = useState<string>('all');
@@ -43,6 +44,18 @@ export function LokasyonDetay() {
   }
 
   const renk = lok.fabrika ? '#c9a227' : TIP_RENK[lok.tip || ''] || '#1d4d7e';
+  const sozlesmeler = (lok.sozlesmeler || [])
+    .slice()
+    .sort((a, b) => (b.tarih || b.createdAt || '').localeCompare(a.tarih || a.createdAt || ''));
+
+  function delSozlesme(szId: string) {
+    if (!confirm('Bu sözleşme belgesi silinsin mi?')) return;
+    mutate((d) => {
+      const loc = d.lokasyonlar.find((x) => x.id === lok!.id);
+      if (loc) loc.sozlesmeler = (loc.sozlesmeler || []).filter((x) => x.id !== szId);
+    });
+    toast('Sözleşme silindi');
+  }
 
   const rows: Row[] = [];
   db.talepler.forEach((t) => {
@@ -122,6 +135,13 @@ export function LokasyonDetay() {
               <div className="fc-line" style={{ marginTop: 8 }}>
                 <Icon name="mappin" size={14} />
                 {lok.adres}
+              </div>
+            )}
+            {lok.tip === 'Depo' && lok.depolamaMaliyeti && (
+              <div className="fc-line" style={{ marginTop: 6 }}>
+                <Icon name="save" size={14} />
+                <b>Depolama Maliyeti:</b>&nbsp;{money(lok.depolamaMaliyeti.fiyat, lok.depolamaMaliyeti.paraBirimi)}
+                {lok.depolamaMaliyeti.birim ? ' / ' + lok.depolamaMaliyeti.birim : ''}
               </div>
             )}
           </div>
@@ -240,6 +260,62 @@ export function LokasyonDetay() {
         </div>
       </div>
 
+      <div className="panel" style={{ marginTop: 16 }}>
+        <div className="panel-head">
+          <h2>Sözleşmeler</h2>
+          <div style={{ flex: 1 }} />
+          <button className="btn sm primary" onClick={() => openModal({ type: 'lokasyonSozlesme', lokasyonId: lok.id })}>
+            <Icon name="plus" size={13} sw={2.4} />
+            Sözleşme Ekle
+          </button>
+        </div>
+        <div className="panel-body">
+          <div style={{ fontSize: 12, color: 'var(--faint)', marginBottom: 12 }}>
+            Bu lokasyonla (örn. liman, depo) imzalanan taranmış/fotoğraflanmış sözleşme belgelerini buraya yükleyip
+            istediğiniz zaman görüntüleyebilirsiniz.
+          </div>
+          {sozlesmeler.length ? (
+            sozlesmeler.map((s) => (
+              <div
+                key={s.id}
+                className="file-chip"
+                style={{ cursor: 'pointer', marginBottom: 8 }}
+                onClick={() => {
+                  if (!openSignedFile(s.belge)) toast('Belge görüntülenemiyor', 'err');
+                }}
+              >
+                <div className="fi">
+                  <Icon name="file" size={16} />
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div className="fn">{s.baslik || 'Sözleşme'}</div>
+                  <div className="fs">
+                    {s.tarih ? dt(s.tarih) : 'tarih yok'}
+                    {s.belge.boyut ? ' · ' + s.belge.boyut : ''}
+                  </div>
+                </div>
+                <button
+                  className="btn sm ghost"
+                  style={{ color: 'var(--red)' }}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    delSozlesme(s.id);
+                  }}
+                >
+                  Sil
+                </button>
+              </div>
+            ))
+          ) : (
+            <div className="empty" style={{ padding: 22 }}>
+              <p>
+                Bu lokasyonla henüz sözleşme belgesi eklenmemiş. <b>Sözleşme Ekle</b> ile başlayın.
+              </p>
+            </div>
+          )}
+        </div>
+      </div>
+
       {lok.tip === 'Liman' && (() => {
         const limanKayitlari = db.limanTalepleri.filter((lt) => lt.limanId === lok.id);
         return (
@@ -250,7 +326,7 @@ export function LokasyonDetay() {
                 &nbsp;Liman Masraf Kayıtları
               </h2>
               <div style={{ flex: 1 }} />
-              <button className="btn sm primary" onClick={() => openModal({ type: 'limanTalep' })}>
+              <button className="btn sm primary" onClick={() => openModal({ type: 'limanTalep', presetLimanId: lok.id })}>
                 <Icon name="plus" size={13} sw={2.4} />
                 Yeni Kayıt
               </button>

@@ -288,6 +288,23 @@ export function lokasyonStats(db: DB, locId: string, teslimId?: string): Lokasyo
   };
 }
 
+export interface LimanMasrafStats {
+  seferSayisi: number;
+  toplamTRY: number;
+}
+
+/** Bir limanın tüm kayıtlarındaki masraf kalemlerinin (TRY) toplamı ve sefer sayısı — harita popup'u içindir. */
+export function limanMasrafStats(db: DB, limanId: string): LimanMasrafStats {
+  const kayitlar = db.limanTalepleri.filter((lt) => lt.limanId === limanId);
+  let toplamTRY = 0;
+  kayitlar.forEach((lt) => {
+    (lt.masraflar || []).forEach((m) => {
+      toplamTRY += toTRY(db, m.fiyat, m.paraBirimi);
+    });
+  });
+  return { seferSayisi: kayitlar.length, toplamTRY };
+}
+
 export interface UrunStat {
   urun: string;
   sefer: number;
