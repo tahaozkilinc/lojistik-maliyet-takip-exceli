@@ -115,3 +115,58 @@ export function navlunDelta(cur: number | null, prev: number | null): number | n
   if (cur == null || prev == null || prev === 0) return null;
   return ((cur - prev) / prev) * 100;
 }
+
+export interface FirmaAySeri {
+  firmaId: string;
+  firmaAd: string;
+  /** 12 ay, her biri o ayki ortalama fiyat (USD) ya da veri yoksa null. */
+  aylar: (number | null)[];
+}
+
+/**
+ * Seçilen yıl + hat + konteyner tipi (20′/40′) için, her ayda HER FİRMANIN
+ * ortalama fiyatını (USD'ye çevrilmiş) döner — Navlun Paneli'ndeki firma
+ * karşılaştırma grafiği içindir. Hem çok-teklif kıyaslama akışında eklenen
+ * firma tekliflerini hem kıyaslama kullanılmadan doğrudan bir firmaya
+ * atanan kayıtları (firmaId ile ya da eski kayıtlarda yalnızca serbest metin
+ * taşıyıcı adıyla, firma adına birebir eşleşiyorsa) kapsar.
+ */
+export function navlunFirmaAySeri(db: DB, yil: number, hat: string, tip: 'c20' | 'c40'): FirmaAySeri[] {
+  const perFirma = new Map<string, number[][]>();
+  const ensure = (fid: string) => {
+    if (!perFirma.has(fid)) perFirma.set(fid, Array.from({ length: 12 }, () => [] as number[]));
+    return perFirma.get(fid)!;
+  };
+  const toUSD = (amount: number, cur: string) => toTRY(db, amount, cur) / (db.kur.USD || 1);
+  const norm = (s: string) => s.trim().toLocaleLowerCase('tr-TR');
+  const firmaIdByAd = new Map(db.navlunFirmalari.map((f) => [norm(f.ad), f.id]));
+
+  navlunFiltered(db, yil, hat).forEach((r) => {
+    const m = +(r.donem || '').slice(5, 7) - 1;
+    if (m < 0 || m > 11) return;
+    const teklifler = r.teklifler || [];
+    if (teklifler.length) {
+      teklifler.forEach((t) => {
+        if (!t.firmaId) return;
+        const v = t[tip];
+        if (v == null) return;
+        ensure(t.firmaId)[m].push(toUSD(v, t.paraBirimi || 'USD'));
+      });
+      return;
+    }
+    const fid = r.firmaId || (r.tasiyici ? firmaIdByAd.get(norm(r.tasiyici)) : undefined);
+    if (!fid) return;
+    const v = r[tip];
+    if (v == null) return;
+    ensure(fid)[m].push(toUSD(v, r.paraBirimi || 'USD'));
+  });
+
+  return [...perFirma.entries()]
+    .map(([firmaId, aylar]) => ({
+      firmaId,
+      firmaAd: db.navlunFirmalari.find((f) => f.id === firmaId)?.ad || '(silinmiş firma)',
+      aylar: aylar.map((arr) => (arr.length ? arr.reduce((a, b) => a + b, 0) / arr.length : null)),
+    }))
+    .filter((s) => s.aylar.some((v) => v != null))
+    .sort((a, b) => a.firmaAd.localeCompare(b.firmaAd, 'tr'));
+}

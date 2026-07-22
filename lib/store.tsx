@@ -84,6 +84,9 @@ export interface UIState {
   tasimaFilter: string;
   navlunYil: number;
   navlunHat: string;
+  navlunPanelYil: number;
+  navlunPanelHat: string;
+  navlunPanelTip: 'c20' | 'c40';
   karaNavlunYil: number;
   karaNavlunHat: string;
   search: string;
@@ -255,6 +258,9 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     tasimaFilter: 'toplama',
     navlunYil: new Date().getFullYear(),
     navlunHat: '__all',
+    navlunPanelYil: new Date().getFullYear(),
+    navlunPanelHat: '__all',
+    navlunPanelTip: 'c20',
     karaNavlunYil: new Date().getFullYear(),
     karaNavlunHat: '__all',
     search: '',
