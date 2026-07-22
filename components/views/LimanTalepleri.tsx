@@ -18,7 +18,7 @@ const DURUM_LABEL: Record<string, string> = {
 };
 
 export function LimanTalepleri() {
-  const { db, ui, setUi, go, openModal } = useStore();
+  const { db, ui, setUi, go, openModal, ensureLimanMasrafKaydi } = useStore();
 
   const limanlar = db.lokasyonlar.filter((l) => l.tip === 'Liman' || l.tip === 'Depo');
 
@@ -88,10 +88,20 @@ export function LimanTalepleri() {
             );
           })}
         </div>
-        <button className="btn primary" onClick={() => openModal({ type: 'limanTalep' })}>
-          <Icon name="plus" size={13} sw={2.4} />
-          Yeni Kayıt
-        </button>
+        {limanFilter ? (
+          <button
+            className="btn primary"
+            onClick={() => openModal({ type: 'limanMasraf', talepId: ensureLimanMasrafKaydi(limanFilter) })}
+          >
+            <Icon name="plus" size={13} sw={2.4} />
+            Masraf Ekle
+          </button>
+        ) : (
+          <button className="btn primary" onClick={() => openModal({ type: 'limanTalep' })}>
+            <Icon name="plus" size={13} sw={2.4} />
+            Yeni Kayıt
+          </button>
+        )}
       </div>
 
       {!list.length ? (

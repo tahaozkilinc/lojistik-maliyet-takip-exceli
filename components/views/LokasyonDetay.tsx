@@ -25,7 +25,7 @@ type Row = {
 };
 
 export function LokasyonDetay() {
-  const { db, ui, go, setUi, openModal, mutate, toast } = useStore();
+  const { db, ui, go, setUi, openModal, mutate, toast, ensureLimanMasrafKaydi } = useStore();
   const lok = db.lokasyonlar.find((l) => l.id === ui.lokasyonId);
   const [sirala, setSirala] = useState<'tarih' | 'fiyat'>('tarih');
   const [firma, setFirma] = useState<string>('all');
@@ -326,9 +326,19 @@ export function LokasyonDetay() {
                 &nbsp;{lok.tip === 'Depo' ? 'Depo Masraf Kayıtları' : 'Liman Masraf Kayıtları'}
               </h2>
               <div style={{ flex: 1 }} />
-              <button className="btn sm primary" onClick={() => openModal({ type: 'limanTalep', presetLimanId: lok.id })}>
+              <button
+                className="btn sm primary"
+                onClick={() => openModal({ type: 'limanMasraf', talepId: ensureLimanMasrafKaydi(lok.id) })}
+              >
                 <Icon name="plus" size={13} sw={2.4} />
-                Yeni Kayıt
+                Masraf Ekle
+              </button>
+              <button
+                className="btn sm ghost"
+                title="Gemi/sefer bilgisiyle ayrı bir kayıt açmak istediğinizde kullanın"
+                onClick={() => openModal({ type: 'limanTalep', presetLimanId: lok.id })}
+              >
+                Detaylı Kayıt
               </button>
               {limanKayitlari.length > 0 && (
                 <button

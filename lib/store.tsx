@@ -16,6 +16,7 @@ import React, {
 import type { AppRole, DB, Profile } from './types';
 import { LS_KEY, THEME_KEY, EMBED_FLAG_KEY, DIRTY_KEY, type ViewKey } from './constants';
 import { emptyDB, migrate, normalizeDB, seedIfEmpty } from './seed';
+import { uid } from './format';
 import { mergeDB } from './merge';
 import { embeddedData, EMBED_VERSION } from './seedData';
 import { supabase } from './supabaseClient';
@@ -121,6 +122,8 @@ export interface StoreValue {
   mutate: (fn: (db: DB) => void) => DB;
   /** Tüm veriyi değiştirir (yedek geri yükleme / içe aktarma). */
   replaceDB: (db: DB) => void;
+  /** Bir liman/depo için masraf eklenebilecek kaydın id'sini döndürür; yoksa sessizce oluşturur. */
+  ensureLimanMasrafKaydi: (limanId: string) => string;
   toast: (msg: string, type?: '' | 'ok' | 'err') => void;
   toasts: ToastItem[];
   theme: 'light' | 'dark';
@@ -612,6 +615,38 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     [scheduleRemoteSave, canWrite],
   );
 
+  /**
+   * Bir liman/depo için masraf eklenecek kaydı döndürür — gemi/sefer/tarih
+   * bilgisiyle kayıt açma zorunluluğu olmadan doğrudan masraf girilebilsin
+   * diye: o lokasyon için "devam ediyor" durumunda açık bir kayıt varsa onu
+   * kullanır, yoksa arka planda otomatik olarak minimal (yalnızca talep no)
+   * bir kayıt oluşturur.
+   */
+  const ensureLimanMasrafKaydi = useCallback(
+    (limanId: string): string => {
+      const acik = dbRef.current.limanTalepleri
+        .filter((lt) => lt.limanId === limanId && lt.durum === 'devam')
+        .sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''))[0];
+      if (acik) return acik.id;
+      const newId = uid('lt');
+      mutate((d) => {
+        d.limanTalepleri.push({
+          id: newId,
+          talepNo: 'LT-' + new Date().getFullYear() + '-' + String(d.limanTalepleri.length + 1).padStart(3, '0'),
+          limanId,
+          masraflar: [],
+          durum: 'devam',
+          createdAt: new Date().toISOString(),
+        });
+      });
+      // Görüntüleyici rolünde mutate() sessizce engellenmiş olabilir (canWrite
+      // uyarı toast'ı zaten gösterir) — o durumda var olmayan bir kayda
+      // modal açmamak için gerçekten eklenip eklenmediği doğrulanır.
+      return dbRef.current.limanTalepleri.some((lt) => lt.id === newId) ? newId : '';
+    },
+    [mutate],
+  );
+
   const toggleTheme = useCallback(() => {
     setTheme((prev) => {
       const next = prev === 'dark' ? 'light' : 'dark';
@@ -706,6 +741,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       go,
       mutate,
       replaceDB,
+      ensureLimanMasrafKaydi,
       toast,
       toasts,
       theme,
@@ -737,6 +773,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       go,
       mutate,
       replaceDB,
+      ensureLimanMasrafKaydi,
       toast,
       toasts,
       theme,
