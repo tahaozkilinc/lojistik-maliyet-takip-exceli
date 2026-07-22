@@ -90,6 +90,7 @@ export type ViewKey =
   | 'limanTalepDetay'
   | 'haritalar'
   | 'analiz'
+  | 'navlunPanel'
   | 'denizNavlun'
   | 'karaNavlun'
   | 'navlunFirmalar'
@@ -110,6 +111,7 @@ export const TITLES: Record<string, [string, string]> = {
   limanTalepDetay: ['Liman Masraf Detayı', ''],
   haritalar: ['Haritalar', 'Tüm lokasyonlar harita üzerinde'],
   analiz: ['Fiyat Analizi', 'Güzergah ve firma performansı'],
+  navlunPanel: ['Navlun Paneli', 'Navlun fiyat analizi'],
   denizNavlun: ['Deniz Navlun Takibi', "20′ ve 40′ konteyner navlunları — aylık & yıllık"],
   karaNavlun: ['Kara Navlun Takibi', 'Kara nakliyesi fiyat karşılaştırması — aylık & yıllık'],
   navlunFirmalar: ['Navlun Firmaları', 'Deniz/kara navlun tekliflerinde kullanılan firmalar'],

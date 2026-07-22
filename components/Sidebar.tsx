@@ -25,11 +25,10 @@ const NAV: { group: string; items: { view: ViewKey; label: string; icon: IconNam
   {
     group: 'Navlun Takibi',
     items: [
+      { view: 'navlunPanel', label: 'Panel', icon: 'panel' },
       { view: 'tasimaTalepleri', label: 'Taşıma Talepleri', icon: 'send', badge: 'tasima' },
       { view: 'denizNavlun', label: 'Deniz Navlun', icon: 'ship' },
-      { view: 'karaNavlun', label: 'Kara Navlun', icon: 'truck' },
       { view: 'navlunFirmalar', label: 'Navlun Firmaları', icon: 'users' },
-      { view: 'limanTalepleri', label: 'Liman Masrafları', icon: 'ship' },
     ],
   },
 ];
