@@ -24,7 +24,7 @@ export function LimanTalepDetay() {
     return (
       <>
         <button className="btn sm ghost" onClick={() => go('limanTalepleri')}>
-          ← Liman Masrafları
+          ← Liman ve Depo Masrafı
         </button>
         <div className="empty" style={{ marginTop: 18 }}>
           <h3>Kayıt bulunamadı</h3>
@@ -61,7 +61,7 @@ export function LimanTalepDetay() {
     <>
       <div style={{ display: 'flex', alignItems: 'center', gap: 9, marginBottom: 14, flexWrap: 'wrap' }}>
         <button className="btn sm ghost" onClick={() => go('limanTalepleri')}>
-          ← Liman Masrafları
+          ← Liman ve Depo Masrafı
         </button>
         <div style={{ flex: 1 }} />
         <button className="btn sm" onClick={() => openModal({ type: 'limanTalep', id: lt.id })}>
@@ -94,7 +94,7 @@ export function LimanTalepDetay() {
                 </span>
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: '6px 20px', fontSize: 13 }}>
-                <InfoRow icon="mappin" label="Liman" value={liman?.ad || '—'} />
+                <InfoRow icon="mappin" label={liman?.tip || 'Liman'} value={liman?.ad || '—'} />
                 {lt.gemiAdi && <InfoRow icon="ship" label="Gemi" value={lt.gemiAdi} />}
                 {lt.seferNo && <InfoRow icon="tag" label="Sefer No" value={lt.seferNo} />}
                 {lt.yukTipi && <InfoRow icon="box" label="Yük Tipi" value={lt.yukTipi} />}

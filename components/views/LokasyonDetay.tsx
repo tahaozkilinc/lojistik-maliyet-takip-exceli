@@ -316,14 +316,14 @@ export function LokasyonDetay() {
         </div>
       </div>
 
-      {lok.tip === 'Liman' && (() => {
+      {(lok.tip === 'Liman' || lok.tip === 'Depo') && (() => {
         const limanKayitlari = db.limanTalepleri.filter((lt) => lt.limanId === lok.id);
         return (
           <div className="panel" style={{ marginTop: 16 }}>
             <div className="panel-head">
               <h2>
                 <Icon name="ship" size={15} />
-                &nbsp;Liman Masraf Kayıtları
+                &nbsp;{lok.tip === 'Depo' ? 'Depo Masraf Kayıtları' : 'Liman Masraf Kayıtları'}
               </h2>
               <div style={{ flex: 1 }} />
               <button className="btn sm primary" onClick={() => openModal({ type: 'limanTalep', presetLimanId: lok.id })}>
@@ -384,7 +384,7 @@ export function LokasyonDetay() {
                 </table>
               ) : (
                 <div className="empty" style={{ padding: 20 }}>
-                  <p>Bu liman için henüz masraf kaydı yok.</p>
+                  <p>Bu {lok.tip === 'Depo' ? 'depo' : 'liman'} için henüz masraf kaydı yok.</p>
                 </div>
               )}
             </div>

@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { useStore } from '@/lib/store';
 import { ModalShell, ModalHead } from '@/components/Modal';
-import { YUK_TIPLERI, KONTEYNER_TIPLERI } from '@/lib/constants';
+import { YUK_TIPLERI } from '@/lib/constants';
 import { uid } from '@/lib/format';
 import type { LimanDurum } from '@/lib/types';
 
@@ -10,7 +10,7 @@ export function LimanTalepModal({ id, presetLimanId }: { id?: string; presetLima
   const { db, mutate, closeModal, toast, go, setUi } = useStore();
   const x = id ? db.limanTalepleri.find((lt) => lt.id === id) : null;
 
-  const limanlar = db.lokasyonlar.filter((l) => l.tip === 'Liman');
+  const limanlar = db.lokasyonlar.filter((l) => l.tip === 'Liman' || l.tip === 'Depo');
   const nextNo = x
     ? x.talepNo
     : 'LT-' + new Date().getFullYear() + '-' + String(db.limanTalepleri.length + 1).padStart(3, '0');
@@ -27,8 +27,6 @@ export function LimanTalepModal({ id, presetLimanId }: { id?: string; presetLima
     if (!x?.yukTipi) return '';
     return !YUK_TIPLERI.includes(x.yukTipi) ? x.yukTipi : '';
   });
-  const [konteynerSayisi, setKonteynerSayisi] = useState(x?.konteynerSayisi != null ? String(x.konteynerSayisi) : '');
-  const [konteynerTipi, setKonteynerTipi] = useState(x ? x.konteynerTipi || '' : '');
   const [girisTarihi, setGirisTarihi] = useState(x ? x.girisTarihi || '' : '');
   const [cikisTarihi, setCikisTarihi] = useState(x ? x.cikisTarihi || '' : '');
   const [durum, setDurum] = useState<LimanDurum>(x ? x.durum : 'devam');
@@ -37,10 +35,10 @@ export function LimanTalepModal({ id, presetLimanId }: { id?: string; presetLima
   if (!limanlar.length) {
     return (
       <ModalShell onClose={closeModal} style={{ maxWidth: 480 }}>
-        <ModalHead title="Liman Kaydı" onClose={closeModal} />
+        <ModalHead title="Liman / Depo Kaydı" onClose={closeModal} />
         <div className="modal-body">
           <div className="hint">
-            Liman masrafı eklemek için önce <b>Lokasyonlar</b> bölümünden <b>Liman</b> tipinde bir lokasyon tanımlamanız gerekiyor.
+            Masraf eklemek için önce <b>Lokasyonlar</b> bölümünden <b>Liman</b> ya da <b>Depo</b> tipinde bir lokasyon tanımlamanız gerekiyor.
           </div>
         </div>
         <div className="modal-foot">
@@ -61,7 +59,6 @@ export function LimanTalepModal({ id, presetLimanId }: { id?: string; presetLima
       return;
     }
     const yukTipi = (yukTipiSel === '__other' ? yukTipiOther : yukTipiSel).trim();
-    const ksay = konteynerSayisi.trim() ? Number(konteynerSayisi) : null;
     const now = new Date().toISOString();
     if (x) {
       mutate((d) => {
@@ -72,8 +69,6 @@ export function LimanTalepModal({ id, presetLimanId }: { id?: string; presetLima
         t.gemiAdi = gemiAdi.trim();
         t.seferNo = seferNo.trim();
         t.yukTipi = yukTipi;
-        t.konteynerSayisi = ksay;
-        t.konteynerTipi = konteynerTipi;
         t.girisTarihi = girisTarihi;
         t.cikisTarihi = cikisTarihi;
         t.durum = durum;
@@ -91,8 +86,6 @@ export function LimanTalepModal({ id, presetLimanId }: { id?: string; presetLima
           gemiAdi: gemiAdi.trim(),
           seferNo: seferNo.trim(),
           yukTipi,
-          konteynerSayisi: ksay,
-          konteynerTipi,
           masraflar: [],
           durum,
           notlar: notlar.trim(),
@@ -110,7 +103,7 @@ export function LimanTalepModal({ id, presetLimanId }: { id?: string; presetLima
 
   return (
     <ModalShell onClose={closeModal} style={{ maxWidth: 520 }}>
-      <ModalHead title={x ? 'Kaydı Düzenle' : 'Yeni Liman Kaydı'} onClose={closeModal} />
+      <ModalHead title={x ? 'Kaydı Düzenle' : 'Yeni Liman / Depo Kaydı'} onClose={closeModal} />
       <div className="modal-body">
         <div className="field-row">
           <div className="field">
@@ -127,12 +120,12 @@ export function LimanTalepModal({ id, presetLimanId }: { id?: string; presetLima
           </div>
         </div>
         <div className="field">
-          <label>Liman *</label>
+          <label>Liman / Depo *</label>
           <select value={limanId} onChange={(e) => setLimanId(e.target.value)}>
             <option value="">— Seçin —</option>
             {limanlar.map((l) => (
               <option key={l.id} value={l.id}>
-                {l.ad}{l.il ? ' / ' + l.il : ''}
+                {l.ad} ({l.tip}){l.il ? ' / ' + l.il : ''}
               </option>
             ))}
           </select>
@@ -166,29 +159,6 @@ export function LimanTalepModal({ id, presetLimanId }: { id?: string; presetLima
               placeholder="Yük tipini yazın"
             />
           )}
-        </div>
-        <div className="field-row">
-          <div className="field">
-            <label>Konteyner Sayısı</label>
-            <input
-              type="number"
-              min="0"
-              value={konteynerSayisi}
-              onChange={(e) => setKonteynerSayisi(e.target.value)}
-              placeholder="0"
-            />
-          </div>
-          <div className="field">
-            <label>Konteyner Tipi</label>
-            <select value={konteynerTipi} onChange={(e) => setKonteynerTipi(e.target.value)}>
-              <option value="">— Seçin —</option>
-              {KONTEYNER_TIPLERI.map((k) => (
-                <option key={k} value={k}>
-                  {k}
-                </option>
-              ))}
-            </select>
-          </div>
         </div>
         <div className="field-row">
           <div className="field">

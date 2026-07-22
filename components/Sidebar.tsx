@@ -32,8 +32,8 @@ const NAV: { group: string; items: { view: ViewKey; label: string; icon: IconNam
     ],
   },
   {
-    group: 'Liman',
-    items: [{ view: 'limanTalepleri', label: 'Liman Masrafları', icon: 'ship' }],
+    group: 'Liman ve Depo',
+    items: [{ view: 'limanTalepleri', label: 'Liman ve Depo Masrafı', icon: 'ship' }],
   },
 ];
 

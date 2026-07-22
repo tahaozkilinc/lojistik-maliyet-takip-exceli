@@ -98,16 +98,17 @@ export function MainMap() {
               return `<br><b>Fabrikaya ort:</b> ${tutar}${usd != null ? ` <span style="color:#8a98a8">(${money(st.avg, 'TRY')})</span>` : ''} · ${st.sefer} sefer`;
             })();
         const extra = (() => {
-          if (l.tip === 'Liman') {
-            const lm = limanMasrafStats(db, l.id);
-            if (!lm.seferSayisi) return '';
-            return `<br><b>Liman masrafı:</b> ${money(lm.toplamTRY, 'TRY')} toplam · ${lm.seferSayisi} kayıt`;
-          }
+          if (l.tip !== 'Liman' && l.tip !== 'Depo') return '';
+          let out = '';
           if (l.tip === 'Depo' && l.depolamaMaliyeti) {
             const dm = l.depolamaMaliyeti;
-            return `<br><b>Depolama:</b> ${money(dm.fiyat, dm.paraBirimi)}${dm.birim ? ' / ' + escapeHtml(dm.birim) : ''}`;
+            out += `<br><b>Depolama:</b> ${money(dm.fiyat, dm.paraBirimi)}${dm.birim ? ' / ' + escapeHtml(dm.birim) : ''}`;
           }
-          return '';
+          const lm = limanMasrafStats(db, l.id);
+          if (lm.seferSayisi) {
+            out += `<br><b>Liman/depo masrafı:</b> ${money(lm.toplamTRY, 'TRY')} toplam · ${lm.seferSayisi} kayıt`;
+          }
+          return out;
         })();
         m.bindPopup(
           `<b>${escapeHtml(l.ad)}</b>${l.fabrika ? ' ★' : ''}<br>${escapeHtml(

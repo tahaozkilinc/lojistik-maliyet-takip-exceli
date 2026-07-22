@@ -20,15 +20,15 @@ const DURUM_LABEL: Record<string, string> = {
 export function LimanTalepleri() {
   const { db, ui, setUi, go, openModal } = useStore();
 
-  const limanlar = db.lokasyonlar.filter((l) => l.tip === 'Liman');
+  const limanlar = db.lokasyonlar.filter((l) => l.tip === 'Liman' || l.tip === 'Depo');
 
   if (!db.limanTalepleri.length && !limanlar.length) {
     return (
       <div className="empty">
         <Icon name="ship" size={46} sw={1.5} />
-        <h3>Liman masraf kaydı yok</h3>
+        <h3>Liman / depo masraf kaydı yok</h3>
         <p>
-          Önce Lokasyonlar bölümünden <b>Liman</b> tipinde bir lokasyon ekleyin; ardından buradan liman operasyonu oluşturarak her sefer için masraf
+          Önce Lokasyonlar bölümünden <b>Liman</b> ya da <b>Depo</b> tipinde bir lokasyon ekleyin; ardından buradan bir kayıt oluşturarak masraf
           kalemlerini girin.
         </p>
         <button className="btn primary" onClick={() => go('lokasyonlar')}>
@@ -42,8 +42,8 @@ export function LimanTalepleri() {
     return (
       <div className="empty">
         <Icon name="ship" size={46} sw={1.5} />
-        <h3>Henüz liman masraf kaydı yok</h3>
-        <p>Her gemi seferi veya liman operasyonu için bir kayıt oluşturun; ardından THC, ardiye, acente gibi masraf kalemlerini ekleyin.</p>
+        <h3>Henüz liman / depo masraf kaydı yok</h3>
+        <p>Her liman operasyonu veya depo kullanımı için bir kayıt oluşturun; ardından THC, ardiye, depolama gibi masraf kalemlerini ekleyin.</p>
         <button className="btn primary" onClick={() => openModal({ type: 'limanTalep' })}>
           + İlk Kaydı Oluştur
         </button>
@@ -80,7 +80,7 @@ export function LimanTalepleri() {
                 onClick={() => setUi({ lokFilter: l.id })}
               >
                 <span
-                  style={{ display: 'inline-block', width: 8, height: 8, borderRadius: '50%', background: TIP_RENK['Liman'] || '#2563eb', marginRight: 5 }}
+                  style={{ display: 'inline-block', width: 8, height: 8, borderRadius: '50%', background: TIP_RENK[l.tip || 'Liman'] || '#2563eb', marginRight: 5 }}
                 />
                 {l.ad}
                 <span className="c">{cnt}</span>
@@ -106,7 +106,7 @@ export function LimanTalepleri() {
               <thead>
                 <tr>
                   <th>Talep No</th>
-                  <th>Liman</th>
+                  <th>Liman / Depo</th>
                   <th>Gemi / Sefer</th>
                   <th>Tarih</th>
                   <th style={{ textAlign: 'center' }}>Masraf</th>
@@ -123,7 +123,14 @@ export function LimanTalepleri() {
                   return (
                     <tr key={lt.id} style={{ cursor: 'pointer' }} onClick={() => goDetay(lt.id)}>
                       <td className="cell-strong">{lt.talepNo}</td>
-                      <td>{liman?.ad || '—'}</td>
+                      <td>
+                        {liman?.ad || '—'}
+                        {liman?.tip && (
+                          <span style={{ marginLeft: 6, fontSize: 10, fontWeight: 700, color: TIP_RENK[liman.tip] || '#64748b' }}>
+                            {liman.tip}
+                          </span>
+                        )}
+                      </td>
                       <td style={{ fontSize: 12.5 }}>
                         {lt.gemiAdi || '—'}
                         {lt.seferNo ? <span style={{ color: 'var(--faint)', fontSize: 11 }}> · {lt.seferNo}</span> : null}

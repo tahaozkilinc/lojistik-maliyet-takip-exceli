@@ -74,7 +74,7 @@ export const TIP_RENK: Record<string, string> = {
 };
 
 export const LOK_TIP = ['Depo', 'Lidaş', 'Antrepo', 'Fabrika', 'Liman', 'Diğer'];
-export const LIMAN_MASRAF_TIPLERI = ['THC', 'Liman Ücreti', 'Ardiye', 'İşçilik', 'Acente', 'Gümrük', 'Sigorta', 'Diğer'];
+export const LIMAN_MASRAF_TIPLERI = ['THC', 'Liman Ücreti', 'Ardiye', 'Depolama', 'Elleçleme', 'İşçilik', 'Acente', 'Gümrük', 'Sigorta', 'Diğer'];
 export const KONTEYNER_TIPLERI = ["20'", "40'", "40' HC", 'Dökme Yük'];
 
 export type ViewKey =
@@ -107,8 +107,8 @@ export const TITLES: Record<string, [string, string]> = {
   firmaDetay: ['Firma Detayı', 'Anlaşmalı fiyatlar ve geçmiş'],
   lokasyonlar: ['Lokasyonlar', 'Yükleme noktaları ve fabrikaya ortalama navlun'],
   lokasyonDetay: ['Lokasyon Detayı', 'Geçmiş teklifler ve fiyat geçmişi'],
-  limanTalepleri: ['Liman Masrafları', 'Liman operasyonları ve masraf takibi'],
-  limanTalepDetay: ['Liman Masraf Detayı', ''],
+  limanTalepleri: ['Liman ve Depo Masrafı', 'Liman ve depo operasyonları, masraf takibi'],
+  limanTalepDetay: ['Liman / Depo Masraf Detayı', ''],
   haritalar: ['Haritalar', 'Tüm lokasyonlar harita üzerinde'],
   analiz: ['Fiyat Analizi', 'Güzergah ve firma performansı'],
   navlunPanel: ['Navlun Paneli', 'Navlun fiyat analizi'],
