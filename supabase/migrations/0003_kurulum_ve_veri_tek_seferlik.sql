@@ -1,9 +1,11 @@
 -- ============================================================
 -- TEK SEFERLİK KURULUM + VERİ YÜKLEME
 -- Bu betiği Supabase Dashboard > SQL Editor içinde TEK SEFERDE çalıştırın.
--- Hem tabloyu/güvenlik politikalarını kurar (varsa atlar) HEM DE
--- merkezi veritabanını doğru/güncel veriyle doldurur (üzerine yazar).
--- Birden fazla kez çalıştırmak güvenlidir (idempotent).
+-- Hem tabloyu/güvenlik politikalarını kurar (varsa atlar) HEM DE, YALNIZCA
+-- veritabanı BOŞSA (id=1 satırı hiç yoksa), başlangıç verisiyle doldurur.
+-- GÜVENLİK: zaten dolu (canlı/güncel) bir veritabanı varsa veri kısmı
+-- HİÇBİR ŞEYİ DEĞİŞTİRMEZ — bkz. dosya sonundaki "on conflict (id) do
+-- nothing". Birden fazla kez çalıştırmak güvenlidir (idempotent).
 -- ============================================================
 
 
@@ -2856,4 +2858,4 @@ values (1, $json${
     "departman": "Dış Ticaret & Lojistik"
   }
 }$json$::jsonb)
-on conflict (id) do update set data = excluded.data;
+on conflict (id) do nothing;

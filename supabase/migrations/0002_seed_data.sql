@@ -1,5 +1,9 @@
 -- Bu betiği Supabase Dashboard > SQL Editor icinde calistirin.
--- Merkezi app_db tablosunu (id=1) en guncel/dogru veriyle UZERINE YAZAR.
+-- Yalnızca app_db BOŞSA (id=1 satırı hiç yoksa) başlangıç verisini ekler.
+-- GÜVENLİK: zaten dolu (canlı/güncel) bir veritabanı varsa HİÇBİR ŞEYİ
+-- DEĞİŞTİRMEZ — bkz. dosya sonundaki "on conflict (id) do nothing". Bu
+-- betikteki veri yalnızca bu satırların yazıldığı tarihe ait durağan bir
+-- anlık görüntüdür; canlı veriyi asla ezmemesi gerekir.
 insert into public.app_db (id, data)
 values (1, $json${
   "firmalar": [
@@ -2795,4 +2799,4 @@ values (1, $json${
     "departman": "Dış Ticaret & Lojistik"
   }
 }$json$::jsonb)
-on conflict (id) do update set data = excluded.data;
+on conflict (id) do nothing;
