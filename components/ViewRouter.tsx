@@ -19,6 +19,7 @@ import { NavlunFirmalar } from './views/NavlunFirmalar';
 import { TasimaTalepleri } from './views/TasimaTalepleri';
 import { TasimaTalepDetail } from './views/TasimaTalepDetail';
 import { KullaniciRolleri } from './views/KullaniciRolleri';
+import { YedekGecmisi } from './views/YedekGecmisi';
 import { NavlunFirmaDetay } from './views/NavlunFirmaDetay';
 import { NavlunPanel } from './views/NavlunPanel';
 
@@ -65,6 +66,8 @@ export function ViewRouter() {
       return <TasimaTalepDetail />;
     case 'kullaniciRolleri':
       return <KullaniciRolleri />;
+    case 'yedekGecmisi':
+      return <YedekGecmisi />;
     default:
       return <Dashboard />;
   }

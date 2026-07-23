@@ -97,7 +97,8 @@ export type ViewKey =
   | 'navlunFirmaDetay'
   | 'tasimaTalepleri'
   | 'tasimaTalepDetay'
-  | 'kullaniciRolleri';
+  | 'kullaniciRolleri'
+  | 'yedekGecmisi';
 
 export const TITLES: Record<string, [string, string]> = {
   dashboard: ['Panel', 'Genel bakış ve özet'],
@@ -120,6 +121,7 @@ export const TITLES: Record<string, [string, string]> = {
   tasimaTalepDetay: ['Taşıma Talebi Detayı', ''],
   detail: ['Talep Detayı', ''],
   kullaniciRolleri: ['Kullanıcı Rolleri', 'Admin · Yönetici · Görüntüleyici yetkilerini yönetin'],
+  yedekGecmisi: ['Yedek Geçmişi', 'Otomatik kurtarma noktaları — sorun olursa geri dönün'],
 };
 
 /** Rol etiketleri (Türkçe görünen ad) ve açıklamaları — Kullanıcı Rolleri ekranı ve Profil içindir. */

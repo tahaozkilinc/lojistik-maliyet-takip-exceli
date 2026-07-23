@@ -191,15 +191,10 @@ export function ProfilModal() {
           Veri Yönetimi
         </div>
         <div className="hint" style={{ marginBottom: 10 }}>
-          Tüm verilerinizi (talepler, firmalar, lokasyonlar…) JSON olarak yedekleyin veya önceki bir yedeği geri yükleyin.
+          Değişiklikleriniz zaten otomatik olarak buluta kaydedilir — ayrı bir &quot;kaydet&quot; adımı gerekmez. Ek güvence için
+          tüm verilerinizi (talepler, firmalar, lokasyonlar…) JSON olarak yedekleyin ya da önceki bir yedeği geri yükleyin.
         </div>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-          {canWrite && (
-            <button className="btn primary" onClick={() => { replaceDB(db); toast('Veriler buluta kaydediliyor…', 'ok'); }}>
-              <Icon name="upload" size={14} />
-              Buluta Kaydet (Supabase)
-            </button>
-          )}
           <button className="btn" onClick={handleExport}>
             <Icon name="download" size={14} />
             Yedek İndir
