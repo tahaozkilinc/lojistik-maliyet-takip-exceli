@@ -1,7 +1,7 @@
 'use client';
 import React from 'react';
 import { useStore } from '@/lib/store';
-import { initials } from '@/lib/format';
+import { initials, hasPhone } from '@/lib/format';
 import { exportTumFiyatlar } from '@/lib/export';
 import { Icon } from '@/components/Icon';
 import { FirmaAvatar } from '@/components/FirmaAvatar';
@@ -90,7 +90,7 @@ export function Firmalar() {
                 </button>
               </div>
               <div className="fc-body">
-                {f.telefon && (
+                {hasPhone(f.telefon) && (
                   <div className="fc-line">
                     <Icon name="phone" size={15} />
                     {f.telefon}

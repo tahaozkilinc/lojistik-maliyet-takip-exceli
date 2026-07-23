@@ -13,7 +13,7 @@ export function NavlunFirmaModal({ id }: { id?: string }) {
   const f = id ? db.navlunFirmalari.find((x) => x.id === id) : null;
 
   const [ad, setAd] = useState(f ? f.ad : '');
-  const [tel, setTel] = useState(f && f.telefon ? f.telefon : '+90 ');
+  const [tel, setTel] = useState(f ? f.telefon || '' : '');
   const [notlar, setNotlar] = useState(f ? f.notlar || '' : '');
   const [logo, setLogo] = useState<string | null>(f?.logo || null);
   const [emps, setEmps] = useState<Calisan[]>(

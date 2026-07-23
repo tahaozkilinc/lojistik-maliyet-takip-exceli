@@ -97,6 +97,11 @@ export function telFmt(v: string | null | undefined): string {
   return o;
 }
 
+/** Gerçek bir numara var mı? Yalnızca ülke koduyla ("+90") kaydedilmiş, hiç rakam içermeyen eski/boş girişleri boş sayar. */
+export function hasPhone(v: string | null | undefined): boolean {
+  return (v || '').replace(/\D/g, '').replace(/^90/, '').length > 0;
+}
+
 /** Bugünden 7 gün sonrası (YYYY-MM-DD). */
 export function plus7(): string {
   const d = new Date();

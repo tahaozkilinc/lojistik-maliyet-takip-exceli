@@ -15,7 +15,7 @@ export function FirmaModal({ id }: { id?: string }) {
   const [ad, setAd] = useState(f ? f.ad : '');
   const [sehir, setSehir] = useState(f ? f.sehir || '' : '');
   const [vkn, setVkn] = useState(f ? f.vergiNo || '' : '');
-  const [tel, setTel] = useState(f && f.telefon ? f.telefon : '+90 ');
+  const [tel, setTel] = useState(f ? f.telefon || '' : '');
   const [adres, setAdres] = useState(f ? f.adres || '' : '');
   const [notlar, setNotlar] = useState(f ? f.notlar || '' : '');
   const [logo, setLogo] = useState<string | null>(f?.logo || null);

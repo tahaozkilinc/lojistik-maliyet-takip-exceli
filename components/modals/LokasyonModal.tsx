@@ -17,7 +17,7 @@ export function LokasyonModal({ id }: { id?: string }) {
   const [il, setIl] = useState(l ? l.il || l.sehir || '' : '');
   const [ilce, setIlce] = useState(l ? l.ilce || '' : '');
   const [iletisim, setIletisim] = useState(l ? l.iletisim || '' : '');
-  const [tel, setTel] = useState(l && l.telefon ? l.telefon : '+90 ');
+  const [tel, setTel] = useState(l ? l.telefon || '' : '');
   const [email, setEmail] = useState(l ? l.email || '' : '');
   const [adres, setAdres] = useState(l ? l.adres || '' : '');
   const [notlar, setNotlar] = useState(l ? l.notlar || '' : '');

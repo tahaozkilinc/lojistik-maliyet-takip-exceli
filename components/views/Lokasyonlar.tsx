@@ -1,7 +1,7 @@
 'use client';
 import React from 'react';
 import { useStore } from '@/lib/store';
-import { money } from '@/lib/format';
+import { money, hasPhone } from '@/lib/format';
 import { lokasyonStatsByProduct } from '@/lib/calc';
 import { hasCoord } from '@/lib/geo';
 import { TIP_RENK } from '@/lib/constants';
@@ -150,7 +150,7 @@ export function Lokasyonlar() {
                     {l.iletisim}
                   </div>
                 )}
-                {l.telefon && (
+                {hasPhone(l.telefon) && (
                   <div className="fc-line">
                     <Icon name="phone" size={15} />
                     {l.telefon}

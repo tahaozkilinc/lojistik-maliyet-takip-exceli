@@ -1,7 +1,7 @@
 'use client';
 import React from 'react';
 import { useStore } from '@/lib/store';
-import { money, dt, initials } from '@/lib/format';
+import { money, dt, initials, hasPhone } from '@/lib/format';
 import { toTRY, lokName } from '@/lib/calc';
 import { TIP_RENK } from '@/lib/constants';
 import { exportFirmaFiyat, openSignedFile } from '@/lib/export';
@@ -135,7 +135,7 @@ export function FirmaDetay() {
               {f.sehir || ''}
               {f.vergiNo ? ' · VKN ' + f.vergiNo : ''}
             </div>
-            {f.telefon && (
+            {hasPhone(f.telefon) && (
               <div className="fc-line" style={{ marginTop: 9 }}>
                 <Icon name="phone" size={15} />
                 {f.telefon}

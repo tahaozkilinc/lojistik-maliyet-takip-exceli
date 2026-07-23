@@ -1,7 +1,7 @@
 'use client';
 import React from 'react';
 import { useStore } from '@/lib/store';
-import { money, dt, initials } from '@/lib/format';
+import { money, dt, initials, hasPhone } from '@/lib/format';
 import { navlunFirmaTeklifleri } from '@/lib/calc';
 import { TASIMA_MOD_RENK, tasimaModLabel } from '@/lib/tasima';
 import { StatusBadge } from '@/components/StatusBadge';
@@ -74,7 +74,7 @@ export function NavlunFirmaDetay() {
           />
           <div style={{ flex: 1, minWidth: 220 }}>
             <div style={{ fontSize: 21, fontWeight: 800 }}>{f.ad}</div>
-            {f.telefon && (
+            {hasPhone(f.telefon) && (
               <div className="fc-line" style={{ marginTop: 9 }}>
                 <Icon name="phone" size={15} />
                 {f.telefon}
