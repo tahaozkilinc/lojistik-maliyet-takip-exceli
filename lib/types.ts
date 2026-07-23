@@ -193,6 +193,8 @@ export interface NavlunTeklif {
   c20?: number | null;
   c40?: number | null;
   paraBirimi?: ParaBirimi;
+  /** Transit süre (gün) — firmanın verdiği tahmini sefer/varış süresi. */
+  transitSuresi?: number | null;
   notlar?: string;
   createdAt?: string;
 }
@@ -215,6 +217,8 @@ export interface NavlunKayit {
   c20?: number | null;
   c40?: number | null;
   paraBirimi?: ParaBirimi;
+  /** Transit süre (gün) — kalkıştan varışa tahmini/gerçekleşen süre. */
+  transitSuresi?: number | null;
   notlar?: string;
   createdAt?: string;
   /** Firmalardan alınan teklifler (kıyaslama için); Talep'in teklif sistemine benzer ama ayrıdır. */
@@ -316,6 +320,8 @@ export interface TasimaTeklif {
   lokalFiyat?: number | null;
   /** Kara/hava modlarında opsiyonel ek masraf kalemleri (lokal, diğer vb.) — toplam `fiyat`a dahildir. */
   ekMasraflar?: { ad: string; tutar: number }[] | null;
+  /** Transit süre (gün) — firmanın verdiği tahmini sefer/varış süresi. */
+  transitSuresi?: number | null;
 }
 
 /** Deniz/kara/hava fiyatlarının tek talep altında toplandığı taşıma talebi. */

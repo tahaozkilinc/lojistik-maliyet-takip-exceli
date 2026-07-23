@@ -216,6 +216,7 @@ export function DenizNavlun() {
                   <th>Sipariş No</th>
                   <th style={{ textAlign: 'right' }}>20′</th>
                   <th style={{ textAlign: 'right' }}>40′</th>
+                  <th style={{ textAlign: 'right' }}>Transit</th>
                   <th>Durum</th>
                   <th>Not</th>
                   <th></th>
@@ -232,6 +233,7 @@ export function DenizNavlun() {
                     <td>{r.siparisNo || '—'}</td>
                     <td style={{ textAlign: 'right' }}>{eff.c20 != null ? money(eff.c20, eff.paraBirimi) : '—'}</td>
                     <td style={{ textAlign: 'right' }}>{eff.c40 != null ? money(eff.c40, eff.paraBirimi) : '—'}</td>
+                    <td style={{ textAlign: 'right' }}>{r.transitSuresi != null ? r.transitSuresi + ' gün' : '—'}</td>
                     <td>{r.durum ? <StatusBadge durum={r.durum} /> : '—'}</td>
                     <td>{r.notlar ? r.notlar : ''}</td>
                     <td style={{ whiteSpace: 'nowrap' }}>

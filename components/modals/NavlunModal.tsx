@@ -33,6 +33,7 @@ export function NavlunModal({ id }: { id?: string }) {
   const [c20, setC20] = useState(r && r.c20 != null ? String(r.c20) : '');
   const [c40, setC40] = useState(r && r.c40 != null ? String(r.c40) : '');
   const [para, setPara] = useState(r ? r.paraBirimi || 'USD' : 'USD');
+  const [transitSuresi, setTransitSuresi] = useState(r && r.transitSuresi != null ? String(r.transitSuresi) : '');
   const [not, setNot] = useState(r ? r.notlar || '' : '');
 
   // Firma teklifleri ve dönemsel onay — yalnızca mevcut bir kayıt düzenlenirken kullanılabilir.
@@ -45,6 +46,7 @@ export function NavlunModal({ id }: { id?: string }) {
   const [tC20, setTC20] = useState('');
   const [tC40, setTC40] = useState('');
   const [tPara, setTPara] = useState('USD');
+  const [tTransit, setTTransit] = useState('');
   const [tNot, setTNot] = useState('');
 
   const [yonetici, setYonetici] = useState((r?.onay && r.onay.yonetici) || '');
@@ -83,6 +85,7 @@ export function NavlunModal({ id }: { id?: string }) {
       c20: c20t ? Number(c20t) : null,
       c40: c40t ? Number(c40t) : null,
       paraBirimi: para,
+      transitSuresi: transitSuresi.trim() ? Number(transitSuresi.trim()) : null,
       notlar: not.trim(),
       teklifler,
       secilenTeklifId: selId,
@@ -127,6 +130,7 @@ export function NavlunModal({ id }: { id?: string }) {
       c20: c20v ? Number(c20v) : null,
       c40: c40v ? Number(c40v) : null,
       paraBirimi: tPara,
+      transitSuresi: tTransit.trim() ? Number(tTransit.trim()) : null,
       notlar: tNot.trim(),
       createdAt: new Date().toISOString(),
     };
@@ -134,6 +138,7 @@ export function NavlunModal({ id }: { id?: string }) {
     setTSiparisKodu('');
     setTC20('');
     setTC40('');
+    setTTransit('');
     setTNot('');
   }
 
@@ -160,6 +165,7 @@ export function NavlunModal({ id }: { id?: string }) {
       rec.firmaId = fb.firmaId;
       rec.tasiyici = fb.tasiyici;
       rec.siparisNo = siparisNo.trim();
+      rec.transitSuresi = transitSuresi.trim() ? Number(transitSuresi.trim()) : null;
       rec.notlar = not.trim();
       rec.teklifler = teklifler;
       rec.secilenTeklifId = selId;
@@ -174,6 +180,7 @@ export function NavlunModal({ id }: { id?: string }) {
           if (q.c20 != null) rec.c20 = q.c20;
           if (q.c40 != null) rec.c40 = q.c40;
           if (q.paraBirimi) rec.paraBirimi = q.paraBirimi;
+          if (q.transitSuresi != null) rec.transitSuresi = q.transitSuresi;
         }
       }
     });
@@ -327,8 +334,13 @@ export function NavlunModal({ id }: { id?: string }) {
           </div>
         </div>
         <div className="field">
+          <label>Transit Süre (gün)</label>
+          <input inputMode="numeric" placeholder="örn. 21" style={{ maxWidth: 140 }} value={transitSuresi} onChange={(e) => setTransitSuresi(num(e.target.value))} />
+          <div className="hint">Kalkıştan varışa tahmini/gerçekleşen gün sayısı</div>
+        </div>
+        <div className="field">
           <label>Notlar</label>
-          <textarea placeholder="BAF/CAF, transit süre, geçerlilik, özel koşul…" value={not} onChange={(e) => setNot(e.target.value)} />
+          <textarea placeholder="BAF/CAF, geçerlilik, özel koşul…" value={not} onChange={(e) => setNot(e.target.value)} />
         </div>
 
         {r ? (
@@ -346,6 +358,7 @@ export function NavlunModal({ id }: { id?: string }) {
                     <th style={{ textAlign: 'right' }}>20′</th>
                     <th style={{ textAlign: 'right' }}>40′</th>
                     <th>Para</th>
+                    <th style={{ textAlign: 'right' }}>Transit (gün)</th>
                     <th style={{ textAlign: 'right' }}>TRY (40′/20′)</th>
                     <th>Not</th>
                     {(durum === 'toplama' || durum === 'onayda') && <th></th>}
@@ -414,6 +427,20 @@ export function NavlunModal({ id }: { id?: string }) {
                               t.paraBirimi
                             )}
                           </td>
+                          <td style={{ textAlign: 'right' }}>
+                            {editable ? (
+                              <input
+                                inputMode="numeric"
+                                style={{ width: 60, padding: '5px 7px', textAlign: 'right' }}
+                                value={t.transitSuresi != null ? String(t.transitSuresi) : ''}
+                                onChange={(e) => setTeklifField(t.id, { transitSuresi: e.target.value ? Number(num(e.target.value)) : null })}
+                              />
+                            ) : t.transitSuresi != null ? (
+                              t.transitSuresi
+                            ) : (
+                              '—'
+                            )}
+                          </td>
                           <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>{money(tryVal, 'TRY')}</td>
                           <td>{t.notlar || ''}</td>
                           {(durum === 'toplama' || durum === 'onayda') && (
@@ -428,7 +455,7 @@ export function NavlunModal({ id }: { id?: string }) {
                     })
                   ) : (
                     <tr>
-                      <td colSpan={8} style={{ padding: 12, color: 'var(--faint)' }}>
+                      <td colSpan={9} style={{ padding: 12, color: 'var(--faint)' }}>
                         Henüz firma teklifi eklenmedi.
                       </td>
                     </tr>
@@ -472,6 +499,10 @@ export function NavlunModal({ id }: { id?: string }) {
                       <option key={p}>{p}</option>
                     ))}
                   </select>
+                </div>
+                <div className="field" style={{ marginBottom: 0, width: 90 }}>
+                  <label style={{ fontSize: 11 }}>Transit (gün)</label>
+                  <input inputMode="numeric" placeholder="opsiyonel" value={tTransit} onChange={(e) => setTTransit(num(e.target.value))} />
                 </div>
                 <div className="field" style={{ marginBottom: 0, flex: 1, minWidth: 140 }}>
                   <label style={{ fontSize: 11 }}>Not</label>

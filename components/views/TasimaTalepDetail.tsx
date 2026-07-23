@@ -29,6 +29,8 @@ interface AddForm {
   // Kara/hava modunda opsiyonel ek masraf kalemleri — ana fiyata eklenir.
   ekLokal: string;
   ekDiger: string;
+  /** Tüm modlarda opsiyonel: firmanın verdiği tahmini transit süre (gün). */
+  transit: string;
 }
 
 const num = (v: string) => v.replace(',', '.').replace(/[^-0-9.]/g, '');
@@ -47,6 +49,7 @@ export function TasimaTalepDetail() {
     lokal: '',
     ekLokal: '',
     ekDiger: '',
+    transit: '',
   });
   const [forms, setForms] = useState<Record<TasimaMod, AddForm>>({
     deniz: mkForm('USD'),
@@ -86,6 +89,7 @@ export function TasimaTalepDetail() {
         toast('Navlun ve/veya lokal masraf girin', 'err');
         return;
       }
+      const transitVal = f.transit.trim();
       mutate((d) => {
         const t = d.tasimaTalepleri.find((y) => y.id === x!.id);
         if (!t) return;
@@ -99,10 +103,11 @@ export function TasimaTalepDetail() {
           konteynerTipi: f.konteynerTipi,
           navlunFiyat: nv || null,
           lokalFiyat: lk || null,
+          transitSuresi: transitVal ? Number(transitVal) : null,
           createdAt: new Date().toISOString(),
         });
       });
-      setForm(mod, { navlun: '', lokal: '', not: '' });
+      setForm(mod, { navlun: '', lokal: '', not: '', transit: '' });
       toast('Fiyat eklendi', 'ok');
       return;
     }
@@ -117,6 +122,7 @@ export function TasimaTalepDetail() {
     const ekMasraflar: { ad: string; tutar: number }[] = [];
     if (ekLokal > 0) ekMasraflar.push({ ad: 'Lokal', tutar: ekLokal });
     if (ekDiger > 0) ekMasraflar.push({ ad: 'Diğer', tutar: ekDiger });
+    const transitVal = f.transit.trim();
     mutate((d) => {
       const t = d.tasimaTalepleri.find((y) => y.id === x!.id);
       if (!t) return;
@@ -128,10 +134,11 @@ export function TasimaTalepDetail() {
         paraBirimi: f.para,
         notlar: f.not.trim(),
         ekMasraflar: ekMasraflar.length ? ekMasraflar : null,
+        transitSuresi: transitVal ? Number(transitVal) : null,
         createdAt: new Date().toISOString(),
       });
     });
-    setForm(mod, { fiyat: '', not: '', ekLokal: '', ekDiger: '' });
+    setForm(mod, { fiyat: '', not: '', ekLokal: '', ekDiger: '', transit: '' });
     toast('Fiyat eklendi', 'ok');
   }
 
@@ -482,6 +489,7 @@ export function TasimaTalepDetail() {
                       {key === 'deniz' ? <th style={{ textAlign: 'right' }}>Lokal</th> : null}
                       <th style={{ textAlign: 'right' }}>{key === 'deniz' ? 'Toplam' : 'Fiyat'}</th>
                       <th style={{ textAlign: 'right' }}>TRY Karşılığı</th>
+                      <th style={{ textAlign: 'right' }}>Transit</th>
                       <th>Not</th>
                       <th></th>
                     </tr>
@@ -551,6 +559,9 @@ export function TasimaTalepDetail() {
                           </td>
                           <td style={{ textAlign: 'right', whiteSpace: 'nowrap', color: 'var(--muted)' }}>
                             {money(toTRY(db, q.fiyat, q.paraBirimi), 'TRY')}
+                          </td>
+                          <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
+                            {q.transitSuresi != null ? q.transitSuresi + ' gün' : '—'}
                           </td>
                           <td>{q.notlar || ''}</td>
                           <td style={{ textAlign: 'right' }}>
@@ -646,6 +657,10 @@ export function TasimaTalepDetail() {
                         <option key={p}>{p}</option>
                       ))}
                     </select>
+                  </div>
+                  <div className="field" style={{ marginBottom: 0, width: 100 }}>
+                    <label style={{ fontSize: 11 }}>Transit (gün)</label>
+                    <input inputMode="numeric" placeholder="opsiyonel" value={f.transit} onChange={(e) => setForm(key, { transit: num(e.target.value) })} />
                   </div>
                   <div className="field" style={{ marginBottom: 0, flex: 1, minWidth: 140 }}>
                     <label style={{ fontSize: 11 }}>Not</label>
