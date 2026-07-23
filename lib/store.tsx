@@ -219,6 +219,25 @@ async function pushRemoteDB(db: DB): Promise<void> {
   if (error) throw error;
 }
 
+/**
+ * Supabase/PostgREST hatasından kullanıcıya gösterilecek kısa, teşhis edilebilir
+ * bir açıklama çıkarır — genel "kaydedilemedi" mesajı tek başına kök nedeni
+ * (yetki reddi mi, eksik tablo mu, ağ hatası mı) hiç göstermediğinden eklendi.
+ */
+function describeSupabaseError(err: unknown): string {
+  const e = err as { message?: string; code?: string } | null | undefined;
+  const msg = (e && e.message) || (err instanceof Error ? err.message : '') || '';
+  const code = e && e.code;
+  if (code === '42501' || /row-level security|policy/i.test(msg)) {
+    return 'yetki reddi — rolünüz bu işlem için yeterli olmayabilir';
+  }
+  if (code === '42P01' || /relation .* does not exist/i.test(msg)) {
+    return 'tablo bulunamadı — veritabanı kurulumu eksik olabilir';
+  }
+  if (!msg) return 'ağ/bağlantı hatası';
+  return msg.length > 140 ? msg.slice(0, 140) + '…' : msg;
+}
+
 export function StoreProvider({ children }: { children: React.ReactNode }) {
   const [db, setDb] = useState<DB>(() => emptyDB());
   const [ready, setReady] = useState(false);
@@ -351,9 +370,11 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
             saveLocalCache(merged);
             dirtyRef.current = false;
             markDirty(false);
-          } catch {
+          } catch (err) {
             // Yine kaydedilemedi: yerel veriyle devam, bir sonraki değişiklikte tekrar denenecek
             // (dirtyRef true kalır — canlı eşitleme bu eski veriyi üzerine yazmaz).
+            // eslint-disable-next-line no-console
+            console.error('Önceki oturumdan kalan değişiklik merkeze gönderilemedi:', err);
           }
           if (!cancelled) setReady(true);
           return;
@@ -554,14 +575,18 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
           markDirty(false);
         }
         saveFailNotified.current = false;
-      } catch {
+      } catch (err) {
         // Kaydedilemedi: yerel veri (ve dirty işareti) korunur, kısa süre sonra
-        // otomatik tekrar denenir (yeniden çekip yeniden birleştirerek); kullanıcı
-        // yalnızca bir kez uyarılır.
+        // otomatik tekrar denenir (yeniden çekip yeniden birleştirerek). Gerçek
+        // sunucu hatası konsola ve toast'a yazılır — aksi halde "neden
+        // kaydedilmiyor" sorusu asla teşhis edilemez (bkz. Supabase RLS/rol
+        // uyuşmazlığı gibi sessiz sunucu reddi durumları).
+        // eslint-disable-next-line no-console
+        console.error('Merkezi veritabanına kaydetme başarısız:', err);
         if (!saveFailNotified.current) {
           saveFailNotified.current = true;
           toast(
-            'Değişiklik sunucuya kaydedilemedi. Yerel verileriniz korunuyor, bağlantı sağlanınca otomatik olarak yeniden denenecek.',
+            `Değişiklik sunucuya kaydedilemedi (${describeSupabaseError(err)}). Yerel verileriniz korunuyor, bağlantı sağlanınca otomatik olarak yeniden denenecek.`,
             'err',
           );
         }
