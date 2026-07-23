@@ -7,6 +7,7 @@ export function KurModal() {
   const { db, mutate, closeModal, toast } = useStore();
   const [usd, setUsd] = useState(String(db.kur.USD));
   const [eur, setEur] = useState(String(db.kur.EUR));
+  const num = (v: string) => v.replace(',', '.').replace(/[^-0-9.]/g, '');
 
   function save() {
     mutate((d) => {
@@ -24,11 +25,11 @@ export function KurModal() {
         <div className="grid-2">
           <div className="field">
             <label>USD/TRY</label>
-            <input type="number" step="any" value={usd} onChange={(e) => setUsd(e.target.value)} />
+            <input inputMode="decimal" value={usd} onChange={(e) => setUsd(num(e.target.value))} />
           </div>
           <div className="field">
             <label>EUR/TRY</label>
-            <input type="number" step="any" value={eur} onChange={(e) => setEur(e.target.value)} />
+            <input inputMode="decimal" value={eur} onChange={(e) => setEur(num(e.target.value))} />
           </div>
         </div>
         <div className="hint">

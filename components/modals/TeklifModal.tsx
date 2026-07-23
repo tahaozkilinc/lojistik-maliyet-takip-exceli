@@ -22,6 +22,7 @@ export function TeklifModal({
   const { db, mutate, closeModal, toast, openModal } = useStore();
   const t = db.talepler.find((x) => x.id === talepId);
   const noFirms = !db.firmalar.length;
+  const num = (v: string) => v.replace(',', '.').replace(/[^-0-9.]/g, '');
 
   const q = t && teklifId ? t.teklifler.find((x) => x.id === teklifId) : null;
   const son = t ? sonIslem(db, t.yuklemeLokasyonId, t.teslimLokasyonId, t.id) : null;
@@ -189,7 +190,7 @@ export function TeklifModal({
             <label>
               Fiyat (₺/{t.birim || 'ton'}) <span className="req">*</span>
             </label>
-            <input type="number" step="any" placeholder="0" value={fiyat} onChange={(e) => setFiyat(e.target.value)} />
+            <input inputMode="decimal" placeholder="0" value={fiyat} onChange={(e) => setFiyat(num(e.target.value))} />
           </div>
           <div className="field">
             <label>Para Birimi</label>

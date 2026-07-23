@@ -19,6 +19,7 @@ export function AnlasmaModal({ firmaId, anlId }: { firmaId: string; anlId?: stri
   const [tes, setTes] = useState(a ? a.teslimLokasyonId : defaultTeslimId(db));
   const [fiyat, setFiyat] = useState(a && a.birimFiyat != null ? String(a.birimFiyat) : '');
   const [para, setPara] = useState(a ? a.paraBirimi : 'TRY');
+  const num = (v: string) => v.replace(',', '.').replace(/[^-0-9.]/g, '');
 
   useEffect(() => {
     if (!f) closeModal();
@@ -140,7 +141,7 @@ export function AnlasmaModal({ firmaId, anlId }: { firmaId: string; anlId?: stri
             <label>
               Birim Fiyat (₺/ton) <span className="req">*</span>
             </label>
-            <input type="number" step="any" placeholder="0" value={fiyat} onChange={(e) => setFiyat(e.target.value)} />
+            <input inputMode="decimal" placeholder="0" value={fiyat} onChange={(e) => setFiyat(num(e.target.value))} />
           </div>
           <div className="field">
             <label>Para Birimi</label>
