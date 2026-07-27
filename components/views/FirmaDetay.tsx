@@ -8,14 +8,6 @@ import { exportFirmaFiyat, openSignedFile } from '@/lib/export';
 import { Icon } from '@/components/Icon';
 import { FirmaAvatar } from '@/components/FirmaAvatar';
 
-/** Anlaşmalı Fiyatlar & Geçmiş panelindeki ürün filtresi seçenekleri. */
-const URUN_FILTRELERI: { key: string; label: string }[] = [
-  { key: 'all', label: 'Tümü' },
-  { key: 'Mısır', label: 'Mısır' },
-  { key: 'Mısır Özü', label: 'Mısır Özü' },
-  { key: 'diger', label: 'Diğerleri' },
-];
-
 function AnlDelta({ v, p }: { v: number; p: number | null }) {
   if (p == null || p === 0) return null;
   const d = ((v - p) / p) * 100;
@@ -59,12 +51,24 @@ export function FirmaDetay() {
     );
   // Ürün filtresi: aynı depodan/hattan firma ürüne göre farklı fiyat
   // verebildiğinden, tek bir ürünün (ör. yalnızca Mısır) tüm hatlardaki
-  // fiyatlarını görmek için filtrelenebilir.
+  // fiyatlarını görmek için filtrelenebilir. Seçenekler bu firmanın
+  // anlaşmalarında GERÇEKTEN kullanılan ürün adlarından türetilir (sabit bir
+  // liste değil) — "Diğer" yalnızca ürünü belirtilmemiş ("Tüm ürünler")
+  // anlaşma varsa ve her zaman en sonda gösterilir.
+  const urunTipleri = [...new Set(anls.map((a) => a.yukTipi).filter((t): t is string => !!t))].sort((a, b) =>
+    a.localeCompare(b, 'tr'),
+  );
+  const digerVarMi = anls.some((a) => !a.yukTipi);
+  const urunFiltreleri: { key: string; label: string }[] = [
+    { key: 'all', label: 'Tümü' },
+    ...urunTipleri.map((t) => ({ key: t, label: t })),
+    ...(digerVarMi ? [{ key: 'diger', label: 'Diğer' }] : []),
+  ];
   const anlsFiltered =
     urunFilter === 'all'
       ? anls
       : urunFilter === 'diger'
-        ? anls.filter((a) => a.yukTipi !== 'Mısır' && a.yukTipi !== 'Mısır Özü')
+        ? anls.filter((a) => !a.yukTipi)
         : anls.filter((a) => a.yukTipi === urunFilter);
   // Aynı hattan (yükleme → teslim) firma ürün bazlı farklı fiyat verebildiği
   // için anlaşmalar hat bazında gruplanır — her grup altında ürünler ayrı
@@ -357,7 +361,7 @@ export function FirmaDetay() {
           </div>
           {anls.length > 0 && (
             <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 14 }}>
-              {URUN_FILTRELERI.map((u) => (
+              {urunFiltreleri.map((u) => (
                 <button
                   key={u.key}
                   className={'chip-filter ' + (urunFilter === u.key ? 'on' : '')}
