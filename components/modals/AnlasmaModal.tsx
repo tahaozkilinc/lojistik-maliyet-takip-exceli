@@ -14,7 +14,10 @@ export function AnlasmaModal({ firmaId, anlId }: { firmaId: string; anlId?: stri
   const bugun = new Date().toISOString().slice(0, 10);
 
   const [urun, setUrun] = useState(a ? a.yukTipi || '' : '');
-  const [tarih, setTarih] = useState(a ? a.tarih || bugun : bugun);
+  // Revize ederken tarih her zaman bugüne varsayılır — kullanıcı fiyatı
+  // güncelleyip kaydettiğinde "revize ettiği gün" otomatik yazılmış olur.
+  // Farklı bir tarih istenirse alan yine elle değiştirilebilir.
+  const [tarih, setTarih] = useState(bugun);
   const [yuk, setYuk] = useState(a ? a.yuklemeLokasyonId : db.lokasyonlar[0]?.id || '');
   const [tes, setTes] = useState(a ? a.teslimLokasyonId : defaultTeslimId(db));
   const [fiyat, setFiyat] = useState(a && a.birimFiyat != null ? String(a.birimFiyat) : '');
@@ -116,6 +119,7 @@ export function AnlasmaModal({ firmaId, anlId }: { firmaId: string; anlId?: stri
           <div className="field">
             <label>Anlaşma Tarihi</label>
             <input type="date" value={tarih} onChange={(e) => setTarih(e.target.value)} />
+            <div className="hint">Varsayılan olarak bugünün tarihi — revize ettiğiniz gün olarak kaydedilir.</div>
           </div>
         </div>
         <div className="grid-2">
