@@ -14,11 +14,10 @@ import React, {
   useState,
 } from 'react';
 import type { AppRole, DB, Profile } from './types';
-import { LS_KEY, THEME_KEY, EMBED_FLAG_KEY, DIRTY_KEY, type ViewKey } from './constants';
-import { emptyDB, migrate, normalizeDB, seedIfEmpty } from './seed';
+import { LS_KEY, THEME_KEY, DIRTY_KEY, type ViewKey } from './constants';
+import { emptyDB, migrate, normalizeDB } from './seed';
 import { uid } from './format';
 import { mergeDB } from './merge';
-import { embeddedData, EMBED_VERSION } from './seedData';
 import { supabase } from './supabaseClient';
 import {
   login as authLogin,
@@ -97,6 +96,14 @@ export interface UIState {
 export interface StoreValue {
   db: DB;
   ready: boolean;
+  /**
+   * Oturum açıkken merkezi veri hiç yüklenemediyse (ağ hatası + bu cihazda
+   * hiç önbellek yoksa) kısa, kullanıcıya gösterilecek hata metni; aksi
+   * halde null. Eski/yanlış veri sessizce gösterilmez.
+   */
+  loadError: string | null;
+  /** Veri yüklemeyi (ve gerekirse önce oturum durumunu) yeniden dener. */
+  retryLoad: () => void;
   /** Oturum açık mı. */
   authed: boolean;
   /** E-posta/şifre ile giriş (Supabase Auth). */
@@ -180,7 +187,15 @@ function markDirty(isDirty: boolean) {
   }
 }
 
-/** Orijinal yükleme akışı: load → applyEmbedded → (yoksa) seedIfEmpty → migrate. */
+/**
+ * Yalnızca bu cihazın kendi önbelleğini okur (localStorage) — hiçbir zaman
+ * sahte/gömülü demo veya eski bir "yedek" anlık görüntü enjekte etmez.
+ * Böyle bir enjeksiyon önceden vardı ve bağlantı sorunu yaşayan bir cihazda
+ * (özellikle önbelleği hiç olmayan yeni/gizli sekme oturumlarında) gerçek
+ * güncel veri yerine aylar önceki durağan bir anlık görüntünün sessizce
+ * gösterilmesine yol açıyordu — cihazlar arasında "farklı veri görme"
+ * şikayetinin doğrudan nedeniydi.
+ */
 function loadLocalCache(): DB {
   let db = emptyDB();
   try {
@@ -189,20 +204,23 @@ function loadLocalCache(): DB {
   } catch {
     /* bozuk veri — varsayılanla devam */
   }
-  let applied = false;
-  try {
-    if (localStorage.getItem(EMBED_FLAG_KEY) !== EMBED_VERSION) {
-      db = normalizeDB(embeddedData, db.meta);
-      localStorage.setItem(EMBED_FLAG_KEY, EMBED_VERSION);
-      applied = true;
-    }
-  } catch {
-    /* yok say */
-  }
-  if (!applied) seedIfEmpty(db);
   migrate(db);
   saveLocalCache(db);
   return db;
+}
+
+/** db'de kullanıcı tarafından girilmiş herhangi bir kayıt var mı — yoksa gerçekten boş demektir. */
+function isDbEmpty(db: DB): boolean {
+  return (
+    !db.talepler.length &&
+    !db.firmalar.length &&
+    !db.lokasyonlar.length &&
+    !db.denizNavlun.length &&
+    !db.karaNavlun.length &&
+    !db.navlunFirmalari.length &&
+    !db.tasimaTalepleri.length &&
+    !db.limanTalepleri.length
+  );
 }
 
 /** Merkezi (Supabase) veriyi okur; satır henüz yoksa null döner. */
@@ -241,6 +259,7 @@ function describeSupabaseError(err: unknown): string {
 export function StoreProvider({ children }: { children: React.ReactNode }) {
   const [db, setDb] = useState<DB>(() => emptyDB());
   const [ready, setReady] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [theme, setTheme] = useState<'light' | 'dark'>('light');
   const [toasts, setToasts] = useState<ToastItem[]>([]);
   const [modal, setModal] = useState<ModalState>(null);
@@ -386,18 +405,39 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
           baseRef.current = remote;
           setDb(remote);
           saveLocalCache(remote);
-          try { localStorage.setItem(EMBED_FLAG_KEY, EMBED_VERSION); } catch { /* yok say */ }
         } else {
+          // Sunucuda satır hiç yok (ör. tamamen yeni bir kurulum) — sahte/gömülü
+          // demo veri ENJEKTE ETMEYİZ; bu cihazın kendi (genelde boş) önbelleğiyle
+          // başlanır ve o, ilk satır olarak sunucuya yazılır.
           const local = loadLocalCache();
           dbRef.current = local;
           setDb(local);
           await pushRemoteDB(local);
           baseRef.current = local;
         }
-      } catch {
-        // Ağ/izin hatası: yerel önbellekle devam et (çevrimdışı erişim kaybolmaz).
+      } catch (err) {
+        // Merkezi veriye ulaşılamadı (ağ/izin hatası). Bu cihazda daha önce
+        // GERÇEKTEN kaydedilmiş bir önbellek varsa onu göster ama AÇIKÇA "bu
+        // eski/yerel veri, bağlantı yok" uyarısı veririz — hiçbir zaman sessizce
+        // eski/sahte bir veriyi güncelmiş gibi göstermeyiz. Önbellek de boşsa
+        // (ör. önbelleği hiç olmayan yeni/gizli sekme) boş bir gösterge paneli
+        // yerine açık bir hata ekranı gösteririz.
+        // eslint-disable-next-line no-console
+        console.error('Merkezi veri yüklenemedi:', err);
+        if (cancelled) return;
         const local = loadLocalCache();
-        if (!cancelled) setDb(local);
+        if (isDbEmpty(local)) {
+          setLoadError(
+            `Sunucuya bağlanılamadı, verileriniz yüklenemedi (${describeSupabaseError(err)}). İnternet bağlantınızı kontrol edip tekrar deneyin.`,
+          );
+        } else {
+          dbRef.current = local;
+          setDb(local);
+          toast(
+            'Sunucuya bağlanılamadı — bu cihazda daha önce kaydedilmiş veriler gösteriliyor, en güncel olmayabilir.',
+            'err',
+          );
+        }
       } finally {
         // Rol, uygulama etkileşimli hale gelmeden ÖNCE bilinmeli — aksi halde
         // mutate() kısa bir süre için rol kontrolünü (henüz null olduğu için)
@@ -414,6 +454,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     return () => {
       cancelled = true;
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [authed]);
 
   // Canlı eşitleme: başka bir kullanıcı/sekme veriyi değiştirirse anında yansıt.
@@ -502,6 +543,11 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     });
     setModal(null);
     setUiState((prev) => ({ ...prev, view: 'dashboard', detailId: null }));
+  }, []);
+
+  /** Veri yüklemeyi baştan dener — en güvenilir yol tam sayfa yenilemedir. */
+  const retryLoad = useCallback(() => {
+    window.location.reload();
   }, []);
 
   const changePassword = useCallback(
@@ -752,6 +798,8 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     () => ({
       db,
       ready,
+      loadError,
+      retryLoad,
       authed,
       login,
       logout,
@@ -784,6 +832,8 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     [
       db,
       ready,
+      loadError,
+      retryLoad,
       authed,
       login,
       logout,

@@ -10,7 +10,7 @@ import { PrintHost } from '@/components/print/PrintHost';
 import { LoginScreen } from '@/components/LoginScreen';
 
 export default function Page() {
-  const { ready, authed } = useStore();
+  const { ready, authed, loadError, retryLoad } = useStore();
   const [menuOpen, setMenuOpen] = useState(false);
 
   if (!ready) {
@@ -28,6 +28,20 @@ export default function Page() {
         <LoginScreen />
         <Toasts />
       </>
+    );
+  }
+
+  // Merkezi veriye hiç ulaşılamadı ve bu cihazda gösterilecek gerçek bir
+  // önbellek de yok — boş/yanıltıcı bir panel yerine açık bir hata ekranı.
+  if (loadError) {
+    return (
+      <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 16, padding: 24, textAlign: 'center' }}>
+        <div style={{ fontSize: 15, fontWeight: 700 }}>Verileriniz yüklenemedi</div>
+        <div style={{ fontSize: 13, color: 'var(--muted)', maxWidth: 400 }}>{loadError}</div>
+        <button className="btn primary" onClick={retryLoad}>
+          Tekrar Dene
+        </button>
+      </div>
     );
   }
 
