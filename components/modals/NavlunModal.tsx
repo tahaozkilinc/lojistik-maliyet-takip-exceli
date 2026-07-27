@@ -152,7 +152,11 @@ export function NavlunModal({ id }: { id?: string }) {
   }
 
   /** Mevcut teklif/seçim durumunu kalıcılaştırır, gerekirse durum ve onay bilgisini günceller. */
-  function persist(newDurum: Durum, onayPatch?: { yonetici?: string; tarih?: string; not?: string; atandi?: string; imzaliBelge?: ImzaliBelge | null; gonderim?: string | null }) {
+  function persist(
+    newDurum: Durum,
+    onayPatch?: { yonetici?: string; tarih?: string; not?: string; atandi?: string; imzaliBelge?: ImzaliBelge | null; gonderim?: string | null },
+    clearSelection?: boolean,
+  ) {
     mutate((d) => {
       const rec = d.denizNavlun.find((x) => x.id === id);
       if (!rec) return;
@@ -168,7 +172,9 @@ export function NavlunModal({ id }: { id?: string }) {
       rec.transitSuresi = transitSuresi.trim() ? Number(transitSuresi.trim()) : null;
       rec.notlar = not.trim();
       rec.teklifler = teklifler;
-      rec.secilenTeklifId = selId;
+      // "Fiyat toplama"ya dönerken eski seçim de temizlenir — aksi halde teklif
+      // tablosunda artık geçersiz olan bir satır hâlâ "seçili" görünmeye devam eder.
+      rec.secilenTeklifId = clearSelection ? null : selId;
       rec.durum = newDurum;
       if (onayPatch) rec.onay = { ...(rec.onay || {}), ...onayPatch };
       if (newDurum === 'onaylandi' && selId) {
@@ -203,7 +209,8 @@ export function NavlunModal({ id }: { id?: string }) {
 
   function geriCek() {
     if (!confirm('Onay durumu "fiyat toplama"ya geri alınacak. Devam edilsin mi?')) return;
-    persist('toplama', { gonderim: null });
+    persist('toplama', { gonderim: null }, true);
+    setSelId(null);
     setDurum('toplama');
     toast('Onaydan geri çekildi — teklifleri revize edebilirsiniz', 'ok');
   }

@@ -108,6 +108,11 @@ export function TalepDetail() {
       const t = d.talepler.find((y) => y.id === x!.id)!;
       t.durum = 'toplama';
       if (t.onay) t.onay.gonderim = null;
+      // Fiyat toplamaya dönen bir talep artık "seçilmiş/gerçekleşmiş" değildir —
+      // aksi halde eski seçim ve indirimli fiyat "toplama" durumunda da
+      // (yanlışlıkla güncelmiş gibi) görünmeye devam eder.
+      t.secilenTeklifId = null;
+      t.gerceklesen = null;
     });
     toast('Talep onaydan geri çekildi — fiyat revizesi yapabilirsiniz', 'ok');
   }

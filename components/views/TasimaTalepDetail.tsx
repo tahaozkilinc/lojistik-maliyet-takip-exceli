@@ -177,6 +177,8 @@ export function TasimaTalepDetail() {
       if (!t) return;
       t.durum = 'toplama';
       if (t.onay) t.onay.gonderim = null;
+      t.secilenTeklifId = null;
+      t.gerceklesen = null;
     });
     toast('Talep onaydan geri çekildi', 'ok');
   }
