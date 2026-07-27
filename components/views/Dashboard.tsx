@@ -5,7 +5,6 @@ import { money, dt } from '@/lib/format';
 import { firmName, navlunFirmName, efektifFiyat, efektifTotalTRY } from '@/lib/calc';
 import { tasimaEfektifFiyat } from '@/lib/tasima';
 import { Icon } from '@/components/Icon';
-import { TvQuote } from '@/components/TvQuote';
 
 interface Akaryakit {
   benzin: number;
@@ -57,11 +56,6 @@ export function Dashboard() {
           </div>
           <div className="d">Adana · V/Max Diesel{akaryakit?.tarih ? ' · ' + dt(akaryakit.tarih) : ''}</div>
         </div>
-      </div>
-
-      <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap', margin: '4px 0 18px' }}>
-        <TvQuote symbol="TVC:UKOIL" href="https://www.tradingview.com/symbols/TVC-UKOIL/" label="Brent Petrol" />
-        <TvQuote symbol="INDEX:BDI" href="https://www.tradingview.com/symbols/INDEX-BDI/" label="Baltic Dry Index (BDI)" />
       </div>
 
       {bekleyen.length > 0 && (
