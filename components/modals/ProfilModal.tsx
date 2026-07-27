@@ -4,7 +4,7 @@ import { useStore } from '@/lib/store';
 import { ModalShell, ModalHead } from '@/components/Modal';
 import { Icon } from '@/components/Icon';
 import { exportData } from '@/lib/export';
-import { normalizeDB, emptyDB } from '@/lib/seed';
+import { normalizeDB } from '@/lib/seed';
 import { ROL_ETIKET, ROL_ACIKLAMA } from '@/lib/constants';
 import type { AppRole } from '@/lib/types';
 
@@ -207,31 +207,6 @@ export function ProfilModal() {
           )}
         </div>
         <input ref={fileRef} type="file" accept=".json" style={{ display: 'none' }} onChange={handleImport} />
-
-        {canWrite && (
-          <>
-            <div className="section-divider" style={{ marginTop: 18 }}>
-              <Icon name="warning" size={14} />
-              Tehlikeli Bölge
-            </div>
-            <div className="hint" style={{ marginBottom: 10 }}>
-              Tüm kayıtları kalıcı olarak siler. Bu işlem geri alınamaz — önce yedek almanızı öneririz.
-            </div>
-            <button
-              className="btn danger"
-              onClick={() => {
-                if (!confirm('TÜM veri silinecek: talepler, firmalar, lokasyonlar, navlun kayıtları. Bu işlem GERİ ALINAMAZ. Devam edilsin mi?')) return;
-                if (!confirm('Son onay: gerçekten her şey silinsin mi?')) return;
-                replaceDB(emptyDB());
-                go('dashboard');
-                closeModal();
-                toast('Tüm veriler silindi', 'ok');
-              }}
-            >
-              Tüm Verileri Sil
-            </button>
-          </>
-        )}
       </div>
       <div className="modal-foot">
         <button className="btn" onClick={closeModal}>
