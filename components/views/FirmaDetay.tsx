@@ -1,5 +1,5 @@
 'use client';
-import React from 'react';
+import React, { useState } from 'react';
 import { useStore } from '@/lib/store';
 import { money, dt, initials, hasPhone } from '@/lib/format';
 import { toTRY, lokName } from '@/lib/calc';
@@ -7,6 +7,14 @@ import { TIP_RENK } from '@/lib/constants';
 import { exportFirmaFiyat, openSignedFile } from '@/lib/export';
 import { Icon } from '@/components/Icon';
 import { FirmaAvatar } from '@/components/FirmaAvatar';
+
+/** Anlaşmalı Fiyatlar & Geçmiş panelindeki ürün filtresi seçenekleri. */
+const URUN_FILTRELERI: { key: string; label: string }[] = [
+  { key: 'all', label: 'Tümü' },
+  { key: 'Mısır', label: 'Mısır' },
+  { key: 'Mısır Özü', label: 'Mısır Özü' },
+  { key: 'diger', label: 'Diğerleri' },
+];
 
 function AnlDelta({ v, p }: { v: number; p: number | null }) {
   if (p == null || p === 0) return null;
@@ -22,6 +30,7 @@ function AnlDelta({ v, p }: { v: number; p: number | null }) {
 export function FirmaDetay() {
   const { db, ui, go, openModal, mutate, toast } = useStore();
   const f = db.firmalar.find((x) => x.id === ui.firmaId);
+  const [urunFilter, setUrunFilter] = useState('all');
 
   if (!f) {
     return (
@@ -48,11 +57,20 @@ export function FirmaDetay() {
         (lokName(db, a.yuklemeLokasyonId) || '').localeCompare(lokName(db, b.yuklemeLokasyonId) || '', 'tr') ||
         (a.yukTipi || '').localeCompare(b.yukTipi || '', 'tr'),
     );
+  // Ürün filtresi: aynı depodan/hattan firma ürüne göre farklı fiyat
+  // verebildiğinden, tek bir ürünün (ör. yalnızca Mısır) tüm hatlardaki
+  // fiyatlarını görmek için filtrelenebilir.
+  const anlsFiltered =
+    urunFilter === 'all'
+      ? anls
+      : urunFilter === 'diger'
+        ? anls.filter((a) => a.yukTipi !== 'Mısır' && a.yukTipi !== 'Mısır Özü')
+        : anls.filter((a) => a.yukTipi === urunFilter);
   // Aynı hattan (yükleme → teslim) firma ürün bazlı farklı fiyat verebildiği
   // için anlaşmalar hat bazında gruplanır — her grup altında ürünler ayrı
   // satır olarak listelenir.
   const anlGroups: { yuklemeLokasyonId: string; teslimLokasyonId: string; items: typeof anls }[] = [];
-  for (const a of anls) {
+  for (const a of anlsFiltered) {
     let g = anlGroups.find((x) => x.yuklemeLokasyonId === a.yuklemeLokasyonId && x.teslimLokasyonId === a.teslimLokasyonId);
     if (!g) {
       g = { yuklemeLokasyonId: a.yuklemeLokasyonId, teslimLokasyonId: a.teslimLokasyonId, items: [] };
@@ -337,6 +355,19 @@ export function FirmaDetay() {
             Her <b>ürün + hat</b> için tek güncel fiyat tutulur. Fiyatı güncellediğinizde eski değer otomatik geçmişe işlenir; aynı ürün+hat için
             ikinci kez fiyat eklemeye çalışırsanız uyarılırsınız.
           </div>
+          {anls.length > 0 && (
+            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 14 }}>
+              {URUN_FILTRELERI.map((u) => (
+                <button
+                  key={u.key}
+                  className={'chip-filter ' + (urunFilter === u.key ? 'on' : '')}
+                  onClick={() => setUrunFilter(u.key)}
+                >
+                  {u.label}
+                </button>
+              ))}
+            </div>
+          )}
           {anlGroups.length ? (
             anlGroups.map((g) => (
               <div key={g.yuklemeLokasyonId + '|' + g.teslimLokasyonId} style={{ marginBottom: 16 }}>
@@ -425,6 +456,15 @@ export function FirmaDetay() {
                 })}
               </div>
             ))
+          ) : anls.length > 0 ? (
+            <div className="empty" style={{ padding: 26 }}>
+              <p>
+                Bu filtrede anlaşmalı fiyat yok.{' '}
+                <a style={{ cursor: 'pointer', fontWeight: 600 }} onClick={() => setUrunFilter('all')}>
+                  Tümünü göster
+                </a>
+              </p>
+            </div>
           ) : (
             <div className="empty" style={{ padding: 26 }}>
               <p>
