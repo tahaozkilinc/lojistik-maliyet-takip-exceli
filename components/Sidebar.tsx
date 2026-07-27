@@ -39,10 +39,7 @@ const NAV: { group: string; items: { view: ViewKey; label: string; icon: IconNam
 
 const YONETIM_GROUP: { group: string; items: { view: ViewKey; label: string; icon: IconName; badge?: 'talep' | 'onay' | 'tasima' }[] } = {
   group: 'Yönetim',
-  items: [
-    { view: 'kullaniciRolleri', label: 'Kullanıcı Rolleri', icon: 'lock' },
-    { view: 'yedekGecmisi', label: 'Yedek Geçmişi', icon: 'history' },
-  ],
+  items: [{ view: 'kullaniciRolleri', label: 'Kullanıcı Rolleri', icon: 'lock' }],
 };
 
 export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void }) {
