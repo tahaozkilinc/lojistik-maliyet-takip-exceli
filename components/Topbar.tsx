@@ -7,7 +7,7 @@ import { TITLES } from '@/lib/constants';
 const SEARCH_VIEWS = new Set<string>(['talepler', 'onaylar', 'firmalar', 'lokasyonlar', 'navlunFirmalar', 'haritalar', 'tasimaTalepleri']);
 
 export function Topbar({ onMenu }: { onMenu: () => void }) {
-  const { ui, setUi, openModal, toast, db, go } = useStore();
+  const { ui, setUi, openModal, toast, db, go, syncState } = useStore();
   const [title, crumb] = TITLES[ui.view] || ['', ''];
 
   // Birincil eylem butonu yalnızca ilgili bölümde görünür; diğer sayfalarda buton yok.
@@ -61,6 +61,31 @@ export function Topbar({ onMenu }: { onMenu: () => void }) {
         </div>
       </div>
       <div className="spacer" />
+      {syncState !== 'idle' && (
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 6,
+            padding: '5px 12px',
+            borderRadius: 20,
+            fontSize: 12.5,
+            fontWeight: 600,
+            whiteSpace: 'nowrap',
+            background: syncState === 'error' ? 'var(--red-bg)' : 'var(--surface-2)',
+            color: syncState === 'error' ? 'var(--red)' : 'var(--muted)',
+            border: '1px solid ' + (syncState === 'error' ? 'var(--red)' : 'var(--line)'),
+          }}
+          title={
+            syncState === 'error'
+              ? 'Son değişiklik sunucuya kaydedilemedi — otomatik olarak yeniden deneniyor. Sayfayı kapatmadan önce bağlantının düzeldiğinden emin olun.'
+              : 'Değişiklik sunucuya kaydediliyor…'
+          }
+        >
+          <Icon name={syncState === 'error' ? 'warning' : 'refresh'} size={13} className={syncState === 'saving' ? 'spin' : undefined} />
+          {syncState === 'error' ? 'Kaydedilemedi — yeniden deneniyor' : 'Kaydediliyor…'}
+        </div>
+      )}
       <div className="search-box">
         <Icon name="search" size={16} />
         <input

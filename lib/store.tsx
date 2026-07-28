@@ -104,6 +104,8 @@ export interface StoreValue {
   loadError: string | null;
   /** Veri yüklemeyi (ve gerekirse önce oturum durumunu) yeniden dener. */
   retryLoad: () => void;
+  /** Kaydetme durumu — Topbar'daki kalıcı göstergeye bağlanır. */
+  syncState: 'idle' | 'saving' | 'error';
   /** Oturum açık mı. */
   authed: boolean;
   /** E-posta/şifre ile giriş (Supabase Auth). */
@@ -260,6 +262,16 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   const [db, setDb] = useState<DB>(() => emptyDB());
   const [ready, setReady] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
+  /**
+   * Kaydetme durumu — Topbar'da her zaman görünür bir gösterge içindir.
+   * dirtyRef (ref, render tetiklemez) ile birlikte, aynı noktalarda güncellenir.
+   * Amaç: bir onay/kaydetme arka planda sessizce başarısız olduğunda kullanıcı
+   * bunu yalnızca 3 saniyelik bir toast'tan değil, kalıcı bir göstergeden de
+   * görebilsin — "onaylıyorum ama tutmuyor" şikayetinin asıl nedeni genelde
+   * budur: kaydetme arka planda başarısız olur, arayüz iyimser biçimde zaten
+   * "başarılı" görünmüştür.
+   */
+  const [syncState, setSyncState] = useState<'idle' | 'saving' | 'error'>('idle');
   const [theme, setTheme] = useState<'light' | 'dark'>('light');
   const [toasts, setToasts] = useState<ToastItem[]>([]);
   const [modal, setModal] = useState<ModalState>(null);
@@ -659,6 +671,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
           saveLocalCache(merged);
           dirtyRef.current = false;
           markDirty(false);
+          setSyncState('idle');
         }
         saveFailNotified.current = false;
       } catch (err) {
@@ -669,6 +682,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         // uyuşmazlığı gibi sessiz sunucu reddi durumları).
         // eslint-disable-next-line no-console
         console.error('Merkezi veritabanına kaydetme başarısız:', err);
+        setSyncState('error');
         if (!saveFailNotified.current) {
           saveFailNotified.current = true;
           toast(
@@ -684,6 +698,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   const scheduleRemoteSave = useCallback(() => {
     dirtyRef.current = true;
     markDirty(true);
+    setSyncState('saving');
     if (saveTimer.current) clearTimeout(saveTimer.current);
     saveTimer.current = setTimeout(doRemoteSave, 600);
   }, [doRemoteSave]);
@@ -840,6 +855,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       ready,
       loadError,
       retryLoad,
+      syncState,
       authed,
       login,
       logout,
@@ -874,6 +890,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       ready,
       loadError,
       retryLoad,
+      syncState,
       authed,
       login,
       logout,
