@@ -309,8 +309,8 @@ export function FirmaDetay() {
                 key={s.id}
                 className="file-chip"
                 style={{ cursor: 'pointer', marginBottom: 8 }}
-                onClick={() => {
-                  if (!openSignedFile(s.belge)) toast('Belge görüntülenemiyor', 'err');
+                onClick={async () => {
+                  if (!(await openSignedFile(s.belge))) toast('Belge görüntülenemiyor', 'err');
                 }}
               >
                 <div className="fi">

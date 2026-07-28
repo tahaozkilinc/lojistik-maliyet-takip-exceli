@@ -5,6 +5,7 @@ import { ModalShell, ModalHead } from '@/components/Modal';
 import { Icon } from '@/components/Icon';
 import { SAFE_FILE_MIME } from '@/lib/constants';
 import { uid } from '@/lib/format';
+import { uploadBelge } from '@/lib/storage';
 import type { ImzaliBelge } from '@/lib/types';
 
 export function LokasyonSozlesmeModal({ lokasyonId }: { lokasyonId: string }) {
@@ -15,30 +16,32 @@ export function LokasyonSozlesmeModal({ lokasyonId }: { lokasyonId: string }) {
   const [baslik, setBaslik] = useState('');
   const [tarih, setTarih] = useState(new Date().toISOString().slice(0, 10));
   const [belge, setBelge] = useState<ImzaliBelge | null>(null);
+  const [uploading, setUploading] = useState(false);
 
   if (!l) return null;
 
-  function handleFile(ev: React.ChangeEvent<HTMLInputElement>) {
+  async function handleFile(ev: React.ChangeEvent<HTMLInputElement>) {
     const file = ev.target.files?.[0];
     if (!file) return;
+    ev.target.value = '';
     // Güvenlik: yalnızca script çalıştıramayan görsel biçimleri ve PDF kabul edilir.
     if (!SAFE_FILE_MIME.test(file.type)) {
       toast('Yalnızca görsel (PNG/JPG/GIF/WebP) veya PDF yükleyebilirsiniz', 'err');
-      ev.target.value = '';
       return;
     }
     if (file.size > 4 * 1024 * 1024) {
       toast("Dosya 4MB'tan büyük olamaz", 'err');
-      ev.target.value = '';
       return;
     }
-    const r = new FileReader();
-    r.onload = () => {
-      setBelge({ ad: file.name, tip: file.type, boyut: (file.size / 1024).toFixed(0) + ' KB', data: String(r.result) });
+    setUploading(true);
+    try {
+      setBelge(await uploadBelge(file));
       toast("Belge hazır — Ekle'ye basınca kaydedilir", 'ok');
-    };
-    r.readAsDataURL(file);
-    ev.target.value = '';
+    } catch {
+      toast('Belge yüklenemedi — bağlantınızı kontrol edip tekrar deneyin', 'err');
+    } finally {
+      setUploading(false);
+    }
   }
 
   function save() {
@@ -80,7 +83,11 @@ export function LokasyonSozlesmeModal({ lokasyonId }: { lokasyonId: string }) {
           <label>
             Sözleşme Belgesi <span className="req">*</span>
           </label>
-          {belge ? (
+          {uploading ? (
+            <div className="dropzone">
+              <div style={{ fontWeight: 600, color: 'var(--text)' }}>Yükleniyor…</div>
+            </div>
+          ) : belge ? (
             <div className="file-chip">
               <div className="fi">
                 <Icon name="file" size={16} />

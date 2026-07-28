@@ -311,9 +311,9 @@ export function Onaylar() {
                         {x.onay && x.onay.imzaliBelge ? (
                           <button
                             className="btn sm ghost"
-                            onClick={(e) => {
+                            onClick={async (e) => {
                               e.stopPropagation();
-                              if (!openSignedFile(x.onay!.imzaliBelge)) toast('Belge görüntülenemiyor', 'err');
+                              if (!(await openSignedFile(x.onay!.imzaliBelge))) toast('Belge görüntülenemiyor', 'err');
                             }}
                           >
                             📎 Göster

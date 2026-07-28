@@ -5,6 +5,7 @@ import type { DB, Firma, ImzaliBelge } from './types';
 import { lokName } from './calc';
 import { dt } from './format';
 import { SAFE_FILE_MIME, SAFE_FILE_DATA_URL } from './constants';
+import { isStorageRef, resolveBelgeUrl } from './storage';
 
 /** Excel HTML'i için kaçış (dosyaya yazılır, DOM'a enjekte edilmez). */
 function esc(s: unknown): string {
@@ -101,8 +102,25 @@ export function exportData(db: DB): string {
  * reddedilir. İçerik, doğrulanan MIME tipiyle bir Blob'a dönüştürülerek HTML
  * olarak yorumlanması engellenir; document.write KULLANILMAZ.
  */
-export function openSignedFile(belge: ImzaliBelge | null | undefined): boolean {
+export async function openSignedFile(belge: ImzaliBelge | null | undefined): Promise<boolean> {
   if (!belge || !belge.data) return false;
+  if (isStorageRef(belge.data)) {
+    // Boş bir sekme SENKRON olarak (tıklamaya doğrudan yanıt olarak) açılır —
+    // aksi halde tarayıcı, imzalı bağlantı asenkron üretildiği için sekmeyi
+    // engelleyebilir (popup blocker). Bağlantı hazır olunca bu sekme oraya
+    // yönlendirilir. noopener KASITLI OLARAK kullanılmaz: içerik her zaman
+    // yalnızca doğrulanmış görsel/PDF'tir (script çalıştıramaz), bu yüzden
+    // opener referansı burada gerçek bir risk oluşturmaz; buna karşılık
+    // referrer sızıntısını önlemek için noreferrer korunur.
+    const w = window.open('', '_blank', 'noreferrer');
+    const url = await resolveBelgeUrl(belge.data);
+    if (!url || !w) {
+      w?.close();
+      return false;
+    }
+    w.location.href = url;
+    return true;
+  }
   if (!SAFE_FILE_DATA_URL.test(belge.data)) return false;
   try {
     const m = belge.data.match(/^data:([^;,]+)(;base64)?,(.*)$/s);

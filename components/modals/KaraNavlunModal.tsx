@@ -7,6 +7,7 @@ import { splitHat, joinHat } from '@/lib/navlun';
 import { PARA_KODLARI, ARAC, BIRIMLER, SAFE_FILE_MIME } from '@/lib/constants';
 import { uid, money } from '@/lib/format';
 import { toTRY, navlunFirmName } from '@/lib/calc';
+import { uploadBelge } from '@/lib/storage';
 import { StatusBadge } from '@/components/StatusBadge';
 import { Icon } from '@/components/Icon';
 import type { ImzaliBelge, KaraNavlunTeklif, Durum } from '@/lib/types';
@@ -54,6 +55,7 @@ export function KaraNavlunModal({ id }: { id?: string }) {
   const [atandi, setAtandi] = useState((r?.onay && r.onay.atandi) || '');
   const [pendingFile, setPendingFile] = useState<ImzaliBelge | null>(null);
   const [existingBelge, setExistingBelge] = useState<ImzaliBelge | null>((r?.onay && r.onay.imzaliBelge) || null);
+  const [uploading, setUploading] = useState(false);
 
   /** Seçilen navlun firmasını kayda yazılacak firmaId + tasiyici çiftine çevirir. */
   function firmaBilgi(): { firmaId: string; tasiyici: string } {
@@ -204,28 +206,30 @@ export function KaraNavlunModal({ id }: { id?: string }) {
     toast('Onaydan geri çekildi — teklifleri revize edebilirsiniz', 'ok');
   }
 
-  function handleFile(ev: React.ChangeEvent<HTMLInputElement>) {
+  async function handleFile(ev: React.ChangeEvent<HTMLInputElement>) {
     const f = ev.target.files?.[0];
     if (!f) return;
+    ev.target.value = '';
     // Güvenlik: yalnızca script çalıştıramayan görsel biçimleri ve PDF kabul edilir.
     if (!SAFE_FILE_MIME.test(f.type)) {
       toast('Yalnızca görsel (PNG/JPG/GIF/WebP) veya PDF yükleyebilirsiniz', 'err');
-      ev.target.value = '';
       return;
     }
     if (f.size > 4 * 1024 * 1024) {
       toast("Dosya 4MB'tan büyük olamaz", 'err');
-      ev.target.value = '';
       return;
     }
-    const reader = new FileReader();
-    reader.onload = () => {
-      setPendingFile({ ad: f.name, tip: f.type, boyut: (f.size / 1024).toFixed(0) + ' KB', data: String(reader.result) });
+    setUploading(true);
+    try {
+      const belge = await uploadBelge(f);
+      setPendingFile(belge);
       setExistingBelge(null);
       toast("Belge hazır — Onayla'ya basınca kaydedilir", 'ok');
-    };
-    reader.readAsDataURL(f);
-    ev.target.value = '';
+    } catch {
+      toast('Belge yüklenemedi — bağlantınızı kontrol edip tekrar deneyin', 'err');
+    } finally {
+      setUploading(false);
+    }
   }
 
   function decide(karar: 'onaylandi' | 'reddedildi') {
@@ -528,7 +532,11 @@ export function KaraNavlunModal({ id }: { id?: string }) {
                 </div>
                 <div className="section-divider">Islak imzalı belge (opsiyonel)</div>
                 <div id="fileZone">
-                  {chip ? (
+                  {uploading ? (
+                    <div className="dropzone">
+                      <div style={{ fontWeight: 600, color: 'var(--text)' }}>Yükleniyor…</div>
+                    </div>
+                  ) : chip ? (
                     <div className="file-chip">
                       <div className="fi">
                         <Icon name="file" size={16} />

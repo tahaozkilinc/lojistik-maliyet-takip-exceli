@@ -1,6 +1,7 @@
 'use client';
-import React, { useRef } from 'react';
+import React, { useRef, useState } from 'react';
 import { SAFE_IMAGE_MIME, LOGO_MAX_BYTES } from '@/lib/constants';
+import { uploadLogo } from '@/lib/storage';
 
 /** Firma/Navlun Firması formlarında ortak logo yükleme alanı. */
 export function LogoUpload({
@@ -13,25 +14,29 @@ export function LogoUpload({
   toast: (msg: string, type?: '' | 'ok' | 'err') => void;
 }) {
   const fileRef = useRef<HTMLInputElement>(null);
+  const [uploading, setUploading] = useState(false);
 
-  function handleFile(ev: React.ChangeEvent<HTMLInputElement>) {
+  async function handleFile(ev: React.ChangeEvent<HTMLInputElement>) {
     const f = ev.target.files?.[0];
     if (!f) return;
+    ev.target.value = '';
     // Güvenlik: yalnızca komut çalıştıramayan (script içeremeyen) görsel biçimleri kabul edilir — SVG hariç.
     if (!SAFE_IMAGE_MIME.test(f.type)) {
       toast('Yalnızca görsel (PNG/JPG/GIF/WebP) yükleyebilirsiniz', 'err');
-      ev.target.value = '';
       return;
     }
     if (f.size > LOGO_MAX_BYTES) {
       toast(`Logo ${Math.round(LOGO_MAX_BYTES / 1024)} KB'tan büyük olamaz — daha küçük bir görsel seçin`, 'err');
-      ev.target.value = '';
       return;
     }
-    const reader = new FileReader();
-    reader.onload = () => onChange(String(reader.result));
-    reader.readAsDataURL(f);
-    ev.target.value = '';
+    setUploading(true);
+    try {
+      onChange(await uploadLogo(f));
+    } catch {
+      toast('Logo yüklenemedi — bağlantınızı kontrol edip tekrar deneyin', 'err');
+    } finally {
+      setUploading(false);
+    }
   }
 
   return (
@@ -61,10 +66,10 @@ export function LogoUpload({
             Yok
           </div>
         )}
-        <button type="button" className="btn sm" onClick={() => fileRef.current?.click()}>
-          {value ? 'Değiştir' : 'Logo Yükle'}
+        <button type="button" className="btn sm" disabled={uploading} onClick={() => fileRef.current?.click()}>
+          {uploading ? 'Yükleniyor…' : value ? 'Değiştir' : 'Logo Yükle'}
         </button>
-        {value && (
+        {value && !uploading && (
           <button type="button" className="btn sm ghost" style={{ color: 'var(--red)' }} onClick={() => onChange(null)}>
             Kaldır
           </button>

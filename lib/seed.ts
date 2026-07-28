@@ -3,7 +3,17 @@
    ============================================================ */
 import type { DB } from './types';
 import { uid } from './format';
-import { SAFE_FILE_DATA_URL, SAFE_IMAGE_DATA_URL } from './constants';
+import { SAFE_FILE_DATA_URL, SAFE_IMAGE_DATA_URL, STORAGE_BELGE_REF, STORAGE_LOGO_URL_RE } from './constants';
+
+/** Bir ImzaliBelge.data değeri ya eski (gömülü data: URL) ya da yeni (Storage işaretleyicisi) biçimde geçerli mi. */
+function isValidBelgeData(data: string): boolean {
+  return SAFE_FILE_DATA_URL.test(data) || STORAGE_BELGE_REF.test(data);
+}
+
+/** Bir logo değeri ya eski (gömülü data: URL) ya da yeni (Storage herkese açık URL'i) biçimde geçerli mi. */
+function isValidLogo(logo: string): boolean {
+  return SAFE_IMAGE_DATA_URL.test(logo) || STORAGE_LOGO_URL_RE.test(logo);
+}
 
 export function emptyDB(): DB {
   return {
@@ -50,40 +60,40 @@ export function sanitizeParsed<T>(value: T): T {
 export function sanitizeBelgeUrls(db: DB): DB {
   db.talepler.forEach((t) => {
     const b = t.onay && t.onay.imzaliBelge;
-    if (b && b.data && !SAFE_FILE_DATA_URL.test(b.data)) {
+    if (b && b.data && !isValidBelgeData(b.data)) {
       if (t.onay) t.onay.imzaliBelge = null;
     }
   });
   db.denizNavlun.forEach((n) => {
     const b = n.onay && n.onay.imzaliBelge;
-    if (b && b.data && !SAFE_FILE_DATA_URL.test(b.data)) {
+    if (b && b.data && !isValidBelgeData(b.data)) {
       if (n.onay) n.onay.imzaliBelge = null;
     }
   });
   db.karaNavlun.forEach((n) => {
     const b = n.onay && n.onay.imzaliBelge;
-    if (b && b.data && !SAFE_FILE_DATA_URL.test(b.data)) {
+    if (b && b.data && !isValidBelgeData(b.data)) {
       if (n.onay) n.onay.imzaliBelge = null;
     }
   });
   db.tasimaTalepleri.forEach((t) => {
     const b = t.onay && t.onay.imzaliBelge;
-    if (b && b.data && !SAFE_FILE_DATA_URL.test(b.data)) {
+    if (b && b.data && !isValidBelgeData(b.data)) {
       if (t.onay) t.onay.imzaliBelge = null;
     }
   });
   db.firmalar.forEach((f) => {
     if (Array.isArray(f.sozlesmeler)) {
-      f.sozlesmeler = f.sozlesmeler.filter((s) => s.belge && s.belge.data && SAFE_FILE_DATA_URL.test(s.belge.data));
+      f.sozlesmeler = f.sozlesmeler.filter((s) => s.belge && s.belge.data && isValidBelgeData(s.belge.data));
     }
-    if (f.logo && !SAFE_IMAGE_DATA_URL.test(f.logo)) f.logo = null;
+    if (f.logo && !isValidLogo(f.logo)) f.logo = null;
   });
   db.navlunFirmalari.forEach((f) => {
-    if (f.logo && !SAFE_IMAGE_DATA_URL.test(f.logo)) f.logo = null;
+    if (f.logo && !isValidLogo(f.logo)) f.logo = null;
   });
   db.lokasyonlar.forEach((l) => {
     if (Array.isArray(l.sozlesmeler)) {
-      l.sozlesmeler = l.sozlesmeler.filter((s) => s.belge && s.belge.data && SAFE_FILE_DATA_URL.test(s.belge.data));
+      l.sozlesmeler = l.sozlesmeler.filter((s) => s.belge && s.belge.data && isValidBelgeData(s.belge.data));
     }
   });
   return db;

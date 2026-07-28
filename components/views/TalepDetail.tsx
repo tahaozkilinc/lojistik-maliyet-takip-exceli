@@ -555,8 +555,8 @@ export function TalepDetail() {
                   <div
                     className="file-chip"
                     style={{ cursor: 'pointer' }}
-                    onClick={() => {
-                      if (!openSignedFile(x.onay!.imzaliBelge)) toast('Belge görüntülenemiyor', 'err');
+                    onClick={async () => {
+                      if (!(await openSignedFile(x.onay!.imzaliBelge))) toast('Belge görüntülenemiyor', 'err');
                     }}
                   >
                     <div className="fi">

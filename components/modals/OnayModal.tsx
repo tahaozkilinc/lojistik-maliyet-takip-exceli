@@ -6,6 +6,7 @@ import { Icon } from '@/components/Icon';
 import { toTRY, bestQuoteId, firmName, qTotal } from '@/lib/calc';
 import { PARA_KODLARI, SAFE_FILE_MIME } from '@/lib/constants';
 import { money, fmtTon } from '@/lib/format';
+import { uploadBelge } from '@/lib/storage';
 import type { ImzaliBelge } from '@/lib/types';
 
 interface Row {
@@ -35,6 +36,7 @@ export function OnayModal({ id }: { id: string }) {
   const [not, setNot] = useState((t && t.onay && t.onay.not) || '');
   const [pendingFile, setPendingFile] = useState<ImzaliBelge | null>(null);
   const [existingBelge, setExistingBelge] = useState<ImzaliBelge | null>((t && t.onay && t.onay.imzaliBelge) || null);
+  const [uploading, setUploading] = useState(false);
 
   useEffect(() => {
     if (!t) closeModal();
@@ -79,28 +81,30 @@ export function OnayModal({ id }: { id: string }) {
     openModal({ type: 'indirim', talepId: id });
   }
 
-  function handleFile(ev: React.ChangeEvent<HTMLInputElement>) {
+  async function handleFile(ev: React.ChangeEvent<HTMLInputElement>) {
     const f = ev.target.files?.[0];
     if (!f) return;
+    ev.target.value = '';
     // Güvenlik: yalnızca script çalıştıramayan görsel biçimleri ve PDF kabul edilir.
     if (!SAFE_FILE_MIME.test(f.type)) {
       toast('Yalnızca görsel (PNG/JPG/GIF/WebP) veya PDF yükleyebilirsiniz', 'err');
-      ev.target.value = '';
       return;
     }
     if (f.size > 4 * 1024 * 1024) {
       toast("Dosya 4MB'tan büyük olamaz", 'err');
-      ev.target.value = '';
       return;
     }
-    const r = new FileReader();
-    r.onload = () => {
-      setPendingFile({ ad: f.name, tip: f.type, boyut: (f.size / 1024).toFixed(0) + ' KB', data: String(r.result) });
+    setUploading(true);
+    try {
+      const belge = await uploadBelge(f);
+      setPendingFile(belge);
       setExistingBelge(null);
       toast("Belge hazır — Onayla'ya basınca kaydedilir", 'ok');
-    };
-    r.readAsDataURL(f);
-    ev.target.value = '';
+    } catch {
+      toast('Belge yüklenemedi — bağlantınızı kontrol edip tekrar deneyin', 'err');
+    } finally {
+      setUploading(false);
+    }
   }
 
   function decide(karar: 'onaylandi' | 'reddedildi') {
@@ -252,7 +256,11 @@ export function OnayModal({ id }: { id: string }) {
         </div>
         <div className="section-divider">Islak imzalı belge (opsiyonel)</div>
         <div id="fileZone">
-          {chip ? (
+          {uploading ? (
+            <div className="dropzone">
+              <div style={{ fontWeight: 600, color: 'var(--text)' }}>Yükleniyor…</div>
+            </div>
+          ) : chip ? (
             <div className="file-chip">
               <div className="fi">
                 <Icon name="file" size={16} />

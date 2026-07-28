@@ -1,6 +1,7 @@
 /* ============================================================
    Sabitler — orijinal uygulamadan birebir.
    ============================================================ */
+import { SUPABASE_URL } from './supabaseConfig';
 
 export const LS_KEY = 'nakliye_fiyat_yonetim_v1';
 export const THEME_KEY = 'nfy_theme';
@@ -61,6 +62,24 @@ export const SAFE_FILE_DATA_URL = /^data:(image\/(png|jpe?g|gif|webp|bmp|avif)|a
 export const SAFE_IMAGE_MIME = /^image\/(png|jpe?g|gif|webp|bmp|avif)$/i;
 export const SAFE_IMAGE_DATA_URL = /^data:image\/(png|jpe?g|gif|webp|bmp|avif)(;base64)?,/i;
 export const LOGO_MAX_BYTES = 800 * 1024;
+
+/**
+ * Dosya ekleri (logo, imzalı belgeler) artık app_db satırının İÇİNE
+ * gömülmez; Supabase Storage'a yüklenir (bkz. lib/storage.ts ve
+ * supabase/migrations/0009_dosya_deposu.sql) — büyüyen tek satırın yol
+ * açtığı yavaş açılış/kaydetme zaman aşımlarını kökten gidermek içindir.
+ * Eski (bu değişiklikten önce yüklenmiş) kayıtlar hâlâ yukarıdaki data:
+ * URL biçimindedir ve öyle çalışmaya devam eder — yalnızca YENİ yüklemeler
+ * aşağıdaki biçimleri kullanır.
+ */
+export const BELGELER_BUCKET = 'belgeler';
+export const LOGOLAR_BUCKET = 'logolar';
+/** "storage:<dosya-adı>" işaretleyicisi — yalnızca kendi ürettiğimiz kesin kalıba uyan değerler kabul edilir. */
+export const STORAGE_BELGE_REF = /^storage:[a-z0-9_]+\.[a-z0-9]{1,10}$/;
+/** Herkese açık logo deposundaki bir dosyanın tam URL'i — yalnızca KENDİ projemizin logolar deposuna işaret edenler kabul edilir. */
+export const STORAGE_LOGO_URL_RE = new RegExp(
+  '^' + SUPABASE_URL.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '/storage/v1/object/public/logolar/[a-z0-9_]+\\.[a-z0-9]{1,10}$',
+);
 
 export const AYLAR = [
   'Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran',
