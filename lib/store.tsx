@@ -104,6 +104,14 @@ export interface StoreValue {
   loadError: string | null;
   /** Veri yüklemeyi (ve gerekirse önce oturum durumunu) yeniden dener. */
   retryLoad: () => void;
+  /**
+   * true iken: ekranda bu cihazın önbelleğindeki veri gösteriliyor, sunucudaki
+   * güncel veri arka planda hâlâ kontrol ediliyor demektir (bkz. Topbar'daki
+   * gösterge). Amaç: hızlı açılış için önbellek anında gösterilir ama bu
+   * SESSİZCE yapılmaz — kontrol sürdüğü açıkça belirtilir, veri değişirse
+   * neden değiştiği bellidir.
+   */
+  checkingFresh: boolean;
   /** Kaydetme durumu — Topbar'daki kalıcı göstergeye bağlanır. */
   syncState: 'idle' | 'saving' | 'error';
   /** Oturum açık mı. */
@@ -298,6 +306,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   const [db, setDb] = useState<DB>(() => emptyDB());
   const [ready, setReady] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [checkingFresh, setCheckingFresh] = useState(false);
   /**
    * Kaydetme durumu — Topbar'da her zaman görünür bir gösterge içindir.
    * dirtyRef (ref, render tetiklemez) ile birlikte, aynı noktalarda güncellenir.
@@ -419,6 +428,26 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       // ağ isteğini art arda bekleterek açılışı gereksiz yere yavaşlatıyordu.
       const rolePromise = getMyRole().catch((): AppRole => 'goruntuleyici');
 
+      // Hız: "unsynced" değilse ve bu cihazda GERÇEKTEN kaydedilmiş bir
+      // önbellek varsa, sunucu yanıtını beklemeden arayüzü hemen gösteririz.
+      // ÖNEMLİ: bu daha önce bir kez denenmiş ve SESSİZCE yapıldığı için
+      // ("sayfa açılıp birkaç saniye sonra veri kendiliğinden değişiyor"
+      // şikayetine yol açmıştı) geri alınmıştı. Bu sefer FARKLI: kontrolün
+      // sürdüğü açıkça bir göstergeyle belirtilir (checkingFresh → Topbar)
+      // ve veri gerçekten değişirse bunu açıklayan bir toast gösterilir —
+      // hiçbir şey artık sessizce değişmez.
+      let fastLocal: DB | null = null;
+      if (!unsynced) {
+        const local = loadLocalCache();
+        if (!isDbEmpty(local)) {
+          fastLocal = local;
+          dbRef.current = local;
+          setDb(local);
+          setCheckingFresh(true);
+          if (!cancelled) setReady(true);
+        }
+      }
+
       try {
         // Önceki oturumda bir değişiklik merkeze hiç kaydedilememiş olabilir (ör. ağ
         // hatası, beklenmedik kapanma). Böyle bir durumda sunucudaki (eski) veriyi
@@ -465,16 +494,32 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         if (remote) {
           baseRef.current = remote;
           saveBaseCache(remote);
-          dbRef.current = remote;
-          setDb(remote);
-          saveLocalCache(remote);
+          // Bu kontrol sürerken (fetch beklenirken) yeni bir mutate()/replaceDB()
+          // çalıştıysa dbRef.current artık fastLocal'dan farklı bir nesneyi
+          // gösterir — o durumda az önce başlayan yerel değişikliği EZMEYİZ.
+          // ÖNEMLİ: saveLocalCache de bu durumda ATLANIR — aksi halde mutate()'in
+          // az önce LS_KEY'e yazdığı YENİ (henüz kaydedilmemiş) değişiklik, bu
+          // eski `remote` anlık görüntüsüyle üzerine yazılıp kaybolabilirdi; o
+          // değişiklik zaten kendi kaydını (scheduleRemoteSave) bekliyor ve o
+          // tamamlandığında LS_KEY'i doğru (güncel) haliyle tekrar yazacak.
+          if (!fastLocal || dbRef.current === fastLocal) {
+            // fastLocal gösterildiyse ve sunucudaki veri ondan GERÇEKTEN farklıysa,
+            // değişikliğin nedeni açıkça belirtilir — hiçbir şey sessizce değişmez.
+            const changed = fastLocal ? JSON.stringify(fastLocal) !== JSON.stringify(remote) : false;
+            dbRef.current = remote;
+            setDb(remote);
+            saveLocalCache(remote);
+            if (changed && !cancelled) toast('Veriler güncellendi', 'ok');
+          }
         } else {
           // Sunucuda satır hiç yok (ör. tamamen yeni bir kurulum) — sahte/gömülü
           // demo veri ENJEKTE ETMEYİZ; bu cihazın kendi (genelde boş) önbelleğiyle
           // başlanır ve o, ilk satır olarak sunucuya yazılır.
-          const local = loadLocalCache();
-          dbRef.current = local;
-          setDb(local);
+          const local = fastLocal || loadLocalCache();
+          if (!fastLocal) {
+            dbRef.current = local;
+            setDb(local);
+          }
           await pushRemoteDB(local);
           baseRef.current = local;
           saveBaseCache(local);
@@ -503,6 +548,8 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
           );
         }
       } finally {
+        // Kontrol bitti — gösterge (varsa) kaldırılır.
+        if (!cancelled) setCheckingFresh(false);
         // Rol, uygulama etkileşimli hale gelmeden ÖNCE bilinmeli — aksi halde
         // mutate() kısa bir süre için rol kontrolünü (henüz null olduğu için)
         // hatalı biçimde reddedebilir/izin verebilir. İstek en tepede zaten
@@ -867,6 +914,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       ready,
       loadError,
       retryLoad,
+      checkingFresh,
       syncState,
       authed,
       login,
@@ -902,6 +950,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       ready,
       loadError,
       retryLoad,
+      checkingFresh,
       syncState,
       authed,
       login,

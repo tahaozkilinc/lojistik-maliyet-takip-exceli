@@ -7,7 +7,7 @@ import { TITLES } from '@/lib/constants';
 const SEARCH_VIEWS = new Set<string>(['talepler', 'onaylar', 'firmalar', 'lokasyonlar', 'navlunFirmalar', 'haritalar', 'tasimaTalepleri']);
 
 export function Topbar({ onMenu }: { onMenu: () => void }) {
-  const { ui, setUi, openModal, toast, db, go, syncState } = useStore();
+  const { ui, setUi, openModal, toast, db, go, syncState, checkingFresh } = useStore();
   const [title, crumb] = TITLES[ui.view] || ['', ''];
 
   // Birincil eylem butonu yalnızca ilgili bölümde görünür; diğer sayfalarda buton yok.
@@ -61,6 +61,27 @@ export function Topbar({ onMenu }: { onMenu: () => void }) {
         </div>
       </div>
       <div className="spacer" />
+      {checkingFresh && (
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 6,
+            padding: '5px 12px',
+            borderRadius: 20,
+            fontSize: 12.5,
+            fontWeight: 600,
+            whiteSpace: 'nowrap',
+            background: 'var(--surface-2)',
+            color: 'var(--muted)',
+            border: '1px solid var(--line)',
+          }}
+          title="Hızlı açılış için önce cihazınızdaki son bilinen veriler gösterildi; en güncel veriler sunucudan kontrol ediliyor."
+        >
+          <Icon name="refresh" size={13} className="spin" />
+          En güncel veriler kontrol ediliyor…
+        </div>
+      )}
       {syncState !== 'idle' && (
         <div
           style={{
