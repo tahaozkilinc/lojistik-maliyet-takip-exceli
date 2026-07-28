@@ -413,6 +413,12 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         /* yok say */
       }
 
+      // Rol isteği, ana veri isteğiyle AYNI ANDA başlatılır — ikisi birbirinden
+      // bağımsızdır. Öncesinde rol yalnızca veri yüklendikten SONRA (ayrı bir
+      // sıradaki istekle) çekiliyordu; bu, aslında paralel yapılabilecek iki
+      // ağ isteğini art arda bekleterek açılışı gereksiz yere yavaşlatıyordu.
+      const rolePromise = getMyRole().catch((): AppRole => 'goruntuleyici');
+
       try {
         // Önceki oturumda bir değişiklik merkeze hiç kaydedilememiş olabilir (ör. ağ
         // hatası, beklenmedik kapanma). Böyle bir durumda sunucudaki (eski) veriyi
@@ -499,13 +505,11 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       } finally {
         // Rol, uygulama etkileşimli hale gelmeden ÖNCE bilinmeli — aksi halde
         // mutate() kısa bir süre için rol kontrolünü (henüz null olduğu için)
-        // hatalı biçimde reddedebilir/izin verebilir.
-        try {
-          const r = await getMyRole();
-          if (!cancelled) setRole(r);
-        } catch {
-          if (!cancelled) setRole('goruntuleyici');
-        }
+        // hatalı biçimde reddedebilir/izin verebilir. İstek en tepede zaten
+        // başlatıldığından (rolePromise), burada genelde ek bir bekleme
+        // gerekmez — veri isteğiyle paralel yürümüş olur.
+        const r = await rolePromise;
+        if (!cancelled) setRole(r);
         if (!cancelled) setReady(true);
       }
     })();
