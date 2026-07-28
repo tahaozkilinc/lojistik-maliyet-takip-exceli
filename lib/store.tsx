@@ -14,7 +14,7 @@ import React, {
   useState,
 } from 'react';
 import type { AppRole, DB, Profile } from './types';
-import { LS_KEY, THEME_KEY, DIRTY_KEY, type ViewKey } from './constants';
+import { LS_KEY, THEME_KEY, DIRTY_KEY, BASE_KEY, type ViewKey } from './constants';
 import { emptyDB, migrate, normalizeDB } from './seed';
 import { uid } from './format';
 import { mergeDB } from './merge';
@@ -186,6 +186,39 @@ function markDirty(isDirty: boolean) {
     else localStorage.removeItem(DIRTY_KEY);
   } catch {
     /* yok say */
+  }
+}
+
+/**
+ * Bu cihazın en son sunucuyla eşleştiği bilinen durumu ("base") diske de
+ * yazar. ÖNEMLİ: baseRef yalnızca bellekte tutulursa, sekme kapanır/sayfa
+ * yenilenirse kaybolur. Bir sonraki açılışta "unsynced" (kaydedilememiş
+ * yerel değişiklik) durumu tespit edilirse, gerçek bir base olmadan üç
+ * yönlü birleştirme base=null ile yapılmak zorunda kalır — bu da o cihazın
+ * ESKİ yerel önbelleğindeki HER alanı (yalnızca gerçekten değiştirdiği
+ * alanı değil) sunucudaki güncel veriye karşı "kazanan" ilan eder. Başka
+ * bir deyişle: bağlantısı bir an kesilip sekmesi kapanan bir cihaz, bir
+ * süre sonra tekrar açıldığında kendi eski verisiyle başkalarının o
+ * sırada yaptığı güncellemeleri sessizce ezebilir. Bunu önlemek için base
+ * de local ile aynı anlarda diske yazılır.
+ */
+function saveBaseCache(db: DB) {
+  try {
+    localStorage.setItem(BASE_KEY, JSON.stringify(db));
+  } catch {
+    /* depolama dolu olabilir — bu durumda kurtarma sırasında base=null'a düşülür */
+  }
+}
+
+function loadBaseCache(): DB | null {
+  try {
+    const r = localStorage.getItem(BASE_KEY);
+    if (!r) return null;
+    const db = normalizeDB(JSON.parse(r));
+    migrate(db);
+    return db;
+  } catch {
+    return null;
   }
 }
 
@@ -391,12 +424,19 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
           try {
             // Bu oturumdan önceki bir kaydetme hiç merkeze ulaşmamış olabilir; ama
             // merkezdeki veri de bu arada başkası tarafından değiştirilmiş olabilir.
-            // Körlemesine üzerine yazmak yerine, bilinen bir ortak "base" olmadan
-            // (base=null → birleşim + çakışmada yerel kazanır) üç yönlü birleştir.
+            // Körlemesine üzerine yazmak yerine, DİSKE YAZILMIŞ gerçek son ortak
+            // "base" ile üç yönlü birleştir (bkz. saveBaseCache). Gerçek base
+            // olmadan (null) birleştirmek, bu cihazın eski önbelleğindeki HER alanı
+            // — yalnızca gerçekten değiştirdiği alanı değil — sunucudaki güncel
+            // veriye karşı "kazanan" ilan ederdi; bu da tam olarak "bu cihaz
+            // açılınca başkalarının yeni değişiklikleri kayboluyor" şikayetinin
+            // nedenidir. Diskte kayıtlı base da yoksa (ör. bu düzeltmeden önceki
+            // bir oturumdan kalan durum) son çare olarak null'a düşülür.
             const remote = await fetchRemoteDB();
-            const merged = remote ? mergeDB(null, local, remote) : local;
+            const merged = remote ? mergeDB(loadBaseCache(), local, remote) : local;
             await pushRemoteDB(merged);
             baseRef.current = merged;
+            saveBaseCache(merged);
             dbRef.current = merged;
             setDb(merged);
             saveLocalCache(merged);
@@ -415,6 +455,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         if (cancelled) return;
         if (remote) {
           baseRef.current = remote;
+          saveBaseCache(remote);
           dbRef.current = remote;
           setDb(remote);
           saveLocalCache(remote);
@@ -427,6 +468,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
           setDb(local);
           await pushRemoteDB(local);
           baseRef.current = local;
+          saveBaseCache(local);
         }
       } catch (err) {
         // Merkezi veriye ulaşılamadı (ağ/izin hatası). Bu cihazda GERÇEKTEN
@@ -494,6 +536,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
               if (remote && !dirtyRef.current) {
                 dbRef.current = remote;
                 baseRef.current = remote;
+                saveBaseCache(remote);
                 setDb(remote);
                 saveLocalCache(remote);
               }
@@ -620,6 +663,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         const merged: DB = remote ? mergeDB(baseRef.current, localSnapshot, remote) : localSnapshot;
         await pushRemoteDB(merged);
         baseRef.current = merged;
+        saveBaseCache(merged);
         // Bu kaydetme sürerken (fetch/push beklenirken) yeni bir mutate()/replaceDB()
         // çalıştıysa dbRef.current artık farklı bir nesneyi gösterir — o durumda
         // ESKİ (localSnapshot tabanlı) sonucu ekrana/dbRef'e yazıp daha yeni yerel

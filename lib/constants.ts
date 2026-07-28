@@ -7,6 +7,13 @@ export const THEME_KEY = 'nfy_theme';
 export const EMBED_FLAG_KEY = 'nfy_embed';
 /** Henüz merkezi veritabanına kaydedilmemiş yerel değişiklik var mı (senkronizasyon kaybını önlemek için). */
 export const DIRTY_KEY = 'nfy_unsynced';
+/**
+ * Bu cihazın en son sunucuyla eşleştiği bilinen ortak durum ("base") —
+ * üç yönlü birleştirmenin doğru çalışması için sayfa yeniden
+ * yüklendiğinde/tarayıcı kapandığında da hayatta kalması gerekir (bkz.
+ * lib/store.tsx'teki baseRef ve lib/merge.ts).
+ */
+export const BASE_KEY = 'nfy_base_v1';
 
 export const PARA: Record<string, string> = { TRY: '₺', USD: '$', EUR: '€' };
 export const PARA_KODLARI = ['TRY', 'USD', 'EUR'];

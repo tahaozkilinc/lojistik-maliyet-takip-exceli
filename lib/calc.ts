@@ -9,6 +9,23 @@ export function lokById(db: DB, id: string): Lokasyon | undefined {
   return db.lokasyonlar.find((l) => l.id === id);
 }
 
+/** Bir yedeği geri yüklemeden önce kullanıcıya gösterilecek, karşılaştırılabilir kayıt türleri. */
+export const KAYIT_ALANLARI: { key: keyof DB; label: string }[] = [
+  { key: 'talepler', label: 'Nakliye Talepleri' },
+  { key: 'firmalar', label: 'Firmalar' },
+  { key: 'lokasyonlar', label: 'Lokasyonlar' },
+  { key: 'denizNavlun', label: 'Deniz Navlun Kayıtları' },
+  { key: 'karaNavlun', label: 'Kara Navlun Kayıtları' },
+  { key: 'navlunFirmalari', label: 'Navlun Firmaları' },
+  { key: 'tasimaTalepleri', label: 'Taşıma Talepleri' },
+  { key: 'limanTalepleri', label: 'Liman/Depo Talepleri' },
+];
+
+export function recordCount(db: DB, key: keyof DB): number {
+  const v = db[key];
+  return Array.isArray(v) ? v.length : 0;
+}
+
 /** Tutarı TRY'ye çevirir (kur DB'den). */
 export function toTRY(db: DB, amount: number, cur: string): number {
   if (cur === 'TRY') return amount;

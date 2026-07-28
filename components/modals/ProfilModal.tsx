@@ -5,10 +5,14 @@ import { ModalShell, ModalHead } from '@/components/Modal';
 import { Icon } from '@/components/Icon';
 import { exportData } from '@/lib/export';
 import { normalizeDB } from '@/lib/seed';
+import { KAYIT_ALANLARI, recordCount } from '@/lib/calc';
 import { ROL_ETIKET, ROL_ACIKLAMA } from '@/lib/constants';
-import type { AppRole } from '@/lib/types';
+import type { AppRole, DB } from '@/lib/types';
 
 const ROLLER: AppRole[] = ['admin', 'yonetici', 'goruntuleyici'];
+
+/** Yanlışlıkla eski bir yedeğin geri yüklenip güncel kayıtların silinmesini önlemek için yazılması gereken metin. */
+const CONFIRM_PHRASE = 'GERİ YÜKLE';
 
 export function ProfilModal() {
   const { db, replaceDB, go, closeModal, toast, displayName, updateDisplayName, changePassword, role, profiles, updateUserRole } = useStore();
@@ -21,7 +25,11 @@ export function ProfilModal() {
   const [next2, setNext2] = useState('');
   const [pwErr, setPwErr] = useState('');
   const [pwBusy, setPwBusy] = useState(false);
-  const canWrite = role === 'admin' || role === 'yonetici';
+  // Tüm sistemi (herkes için) tek bir dosyayla değiştirebilen bir işlem olduğundan,
+  // gündelik düzenleme yetkisi olan "yönetici" değil, yalnızca "admin" tetikleyebilir.
+  const canRestore = role === 'admin';
+  const [pendingImport, setPendingImport] = useState<{ db: DB; fileName: string } | null>(null);
+  const [confirmText, setConfirmText] = useState('');
 
   async function saveName() {
     await updateDisplayName(name);
@@ -73,19 +81,116 @@ export function ProfilModal() {
       try {
         const parsed = JSON.parse(String(r.result));
         if (!parsed || !parsed.talepler || !parsed.firmalar) throw new Error('invalid');
-        if (!confirm('Mevcut veriler bu yedekle değiştirilecek. Devam edilsin mi?')) return;
         // Güvenlik: dış JSON prototip kirlenmesine ve tehlikeli belgelere karşı temizlenir.
         const clean = normalizeDB(parsed, db.meta);
-        replaceDB(clean);
-        go('dashboard');
-        closeModal();
-        toast('Yedek geri yüklendi', 'ok');
+        // Doğrudan değiştirmek yerine önce bir karşılaştırma/onay adımı gösterilir —
+        // bu, TÜM kullanıcılar için geçerli olan tek paylaşılan veritabanını değiştirir;
+        // yanlış (eski) bir dosya seçmek geri alınamaz veri kaybına yol açabilir.
+        setConfirmText('');
+        setPendingImport({ db: clean, fileName: f.name });
       } catch {
         toast('Geçersiz yedek dosyası', 'err');
       }
     };
     r.readAsText(f);
     ev.target.value = '';
+  }
+
+  function confirmRestore() {
+    if (!pendingImport || confirmText.trim() !== CONFIRM_PHRASE) return;
+    replaceDB(pendingImport.db);
+    setPendingImport(null);
+    setConfirmText('');
+    go('dashboard');
+    closeModal();
+    toast('Yedek geri yüklendi', 'ok');
+  }
+
+  function cancelRestore() {
+    setPendingImport(null);
+    setConfirmText('');
+  }
+
+  if (pendingImport) {
+    const lostTotal = KAYIT_ALANLARI.reduce((sum, { key }) => {
+      return sum + Math.max(0, recordCount(db, key) - recordCount(pendingImport.db, key));
+    }, 0);
+    return (
+      <ModalShell onClose={cancelRestore} style={{ maxWidth: 560 }}>
+        <ModalHead title="Yedek Geri Yükleme Onayı" onClose={cancelRestore} />
+        <div className="modal-body">
+          <div className="login-err" style={{ marginBottom: 14 }}>
+            <b>{pendingImport.fileName}</b> dosyası, sistemdeki TÜM verilerin (talepler, firmalar, fiyatlar,
+            onaylar…) yerini alacak — bu değişiklik TÜM kullanıcılar için geçerli olur ve geri alınamaz.
+          </div>
+          <div style={{ border: '1px solid var(--line)', borderRadius: 10, overflow: 'hidden', marginBottom: 10 }}>
+            <table>
+              <thead>
+                <tr>
+                  <th>Kayıt Türü</th>
+                  <th style={{ textAlign: 'right' }}>Şu An</th>
+                  <th style={{ textAlign: 'right' }}>Bu Yedekte</th>
+                </tr>
+              </thead>
+              <tbody>
+                {KAYIT_ALANLARI.map(({ key, label }) => {
+                  const now = recordCount(db, key);
+                  const backup = recordCount(pendingImport.db, key);
+                  const kayipVar = backup < now;
+                  return (
+                    <tr key={key}>
+                      <td>{label}</td>
+                      <td style={{ textAlign: 'right' }}>{now}</td>
+                      <td
+                        style={{
+                          textAlign: 'right',
+                          color: kayipVar ? 'var(--red)' : undefined,
+                          fontWeight: kayipVar ? 700 : undefined,
+                        }}
+                      >
+                        {backup}
+                        {kayipVar ? ' ▼' : ''}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+          {lostTotal > 0 ? (
+            <div className="login-err" style={{ marginBottom: 14 }}>
+              Bu yedekte, şu an sistemde olandan toplam <b>{lostTotal}</b> kayıt daha az var (kırmızı işaretli
+              satırlar). Bu genellikle yedek alındıktan SONRA eklenen kayıtların bu dosyada bulunmadığı anlamına
+              gelir — geri yüklerseniz bu kayıtlar kalıcı olarak silinir.
+            </div>
+          ) : (
+            <div className="hint" style={{ marginBottom: 14 }}>
+              Bu yedek, mevcut verilerin gerisinde görünmüyor — yine de bu işlem tüm kullanıcılar için geçerli
+              olacağından dikkatli onaylayın.
+            </div>
+          )}
+          <div className="field">
+            <label>
+              Onaylamak için <b>{CONFIRM_PHRASE}</b> yazın
+            </label>
+            <input
+              value={confirmText}
+              onChange={(e) => setConfirmText(e.target.value)}
+              placeholder={CONFIRM_PHRASE}
+              autoFocus
+            />
+          </div>
+        </div>
+        <div className="modal-foot">
+          <button className="btn" onClick={cancelRestore}>
+            Vazgeç
+          </button>
+          <button className="btn danger" disabled={confirmText.trim() !== CONFIRM_PHRASE} onClick={confirmRestore}>
+            Şimdi Geri Yükle
+          </button>
+        </div>
+      </ModalShell>
+    );
   }
 
   return (
@@ -199,13 +304,19 @@ export function ProfilModal() {
             <Icon name="download" size={14} />
             Yedek İndir
           </button>
-          {canWrite && (
+          {canRestore && (
             <button className="btn" onClick={() => fileRef.current?.click()}>
               <Icon name="upload" size={14} />
               Yedek Geri Yükle
             </button>
           )}
         </div>
+        {!canRestore && (
+          <div className="hint" style={{ marginTop: 8 }}>
+            Yedek geri yükleme (tüm sistemi bu dosyayla değiştirme) yalnızca admin rolündeki kullanıcılar
+            tarafından yapılabilir.
+          </div>
+        )}
         <input ref={fileRef} type="file" accept=".json" style={{ display: 'none' }} onChange={handleImport} />
       </div>
       <div className="modal-foot">
