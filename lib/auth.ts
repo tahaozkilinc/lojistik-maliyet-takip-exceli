@@ -11,7 +11,7 @@
    Yeni kullanıcı oluşturma: Supabase Dashboard → Authentication →
    Users → Add user. Uygulama içinde kayıt ekranı yoktur ve OLMAYACAKTIR.
    ============================================================ */
-import { supabase } from './supabaseClient';
+import { supabase, withTimeout } from './supabaseClient';
 import type { AppRole, Profile } from './types';
 
 export interface AuthUser {
@@ -29,7 +29,7 @@ function toAuthUser(u: { id: string; email?: string; user_metadata?: Record<stri
 
 /** Geçerli oturumdaki kullanıcıyı döndürür (yoksa null). */
 export async function getCurrentUser(): Promise<AuthUser | null> {
-  const { data } = await supabase.auth.getUser();
+  const { data } = await withTimeout(supabase.auth.getUser(), 'Oturum kontrolü');
   return toAuthUser(data.user);
 }
 
@@ -50,31 +50,35 @@ function describeAuthError(error: { status?: number; message?: string }, invalid
 
 export async function login(email: string, password: string): Promise<{ ok: boolean; error?: string }> {
   if (!email.trim() || !password) return { ok: false, error: 'E-posta ve şifre girin.' };
-  const { error } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
-  if (error) return { ok: false, error: describeAuthError(error, 'E-posta veya şifre hatalı.') };
-  return { ok: true };
+  try {
+    const { error } = await withTimeout(supabase.auth.signInWithPassword({ email: email.trim(), password }), 'Giriş');
+    if (error) return { ok: false, error: describeAuthError(error, 'E-posta veya şifre hatalı.') };
+    return { ok: true };
+  } catch {
+    return { ok: false, error: 'Bağlantı hatası. İnternet bağlantınızı kontrol edip tekrar deneyin.' };
+  }
 }
 
 export async function logout(): Promise<void> {
-  await supabase.auth.signOut();
+  await withTimeout(supabase.auth.signOut(), 'Çıkış');
 }
 
 /** Şifre değiştirir; önce mevcut şifre yeniden giriş denenerek doğrulanır. */
 export async function changePassword(current: string, next: string): Promise<{ ok: boolean; error?: string }> {
-  const { data } = await supabase.auth.getUser();
+  const { data } = await withTimeout(supabase.auth.getUser(), 'Oturum kontrolü');
   const email = data.user?.email;
   if (!email) return { ok: false, error: 'Oturum bulunamadı.' };
   if (!next || next.length < 6) return { ok: false, error: 'Yeni şifre en az 6 karakter olmalı.' };
-  const { error: verifyErr } = await supabase.auth.signInWithPassword({ email, password: current });
+  const { error: verifyErr } = await withTimeout(supabase.auth.signInWithPassword({ email, password: current }), 'Şifre doğrulama');
   if (verifyErr) return { ok: false, error: describeAuthError(verifyErr, 'Mevcut şifre hatalı.') };
-  const { error } = await supabase.auth.updateUser({ password: next });
+  const { error } = await withTimeout(supabase.auth.updateUser({ password: next }), 'Şifre güncelleme');
   if (error) return { ok: false, error: describeAuthError(error, error.message || 'Şifre güncellenemedi.') };
   return { ok: true };
 }
 
 /** Görünen adı günceller (Supabase kullanıcı meta verisinde tutulur). */
 export async function updateDisplayName(name: string): Promise<void> {
-  await supabase.auth.updateUser({ data: { displayName: name.trim() } });
+  await withTimeout(supabase.auth.updateUser({ data: { displayName: name.trim() } }), 'Ad güncelleme');
 }
 
 /**
@@ -90,10 +94,10 @@ export async function updateDisplayName(name: string): Promise<void> {
  * varsayılan olarak döner.
  */
 export async function getMyRole(): Promise<AppRole | null> {
-  const { data: userData } = await supabase.auth.getUser();
+  const { data: userData } = await withTimeout(supabase.auth.getUser(), 'Oturum kontrolü');
   const uid = userData.user?.id;
   if (!uid) return null;
-  const { data, error } = await supabase.from('profiles').select('role').eq('id', uid).maybeSingle();
+  const { data, error } = await withTimeout(supabase.from('profiles').select('role').eq('id', uid).maybeSingle(), 'Rol okuma');
   if (error) {
     const tableMissing = error.code === '42P01' || /relation .*profiles.* does not exist|schema cache/i.test(error.message || '');
     return tableMissing ? 'yonetici' : 'goruntuleyici';
@@ -104,7 +108,7 @@ export async function getMyRole(): Promise<AppRole | null> {
 
 /** Tüm kullanıcı profillerini (e-posta + rol) döndürür — Kullanıcı Rolleri ekranı içindir. */
 export async function listProfiles(): Promise<Profile[]> {
-  const { data, error } = await supabase.from('profiles').select('id, email, role').order('email');
+  const { data, error } = await withTimeout(supabase.from('profiles').select('id, email, role').order('email'), 'Kullanıcı listesi');
   if (error || !data) return [];
   return data as Profile[];
 }
@@ -116,7 +120,7 @@ export async function listProfiles(): Promise<Profile[]> {
  * döndürülür.
  */
 export async function updateUserRole(userId: string, role: AppRole): Promise<{ ok: boolean; error?: string }> {
-  const { data, error } = await supabase.from('profiles').update({ role }).eq('id', userId).select('id');
+  const { data, error } = await withTimeout(supabase.from('profiles').update({ role }).eq('id', userId).select('id'), 'Rol güncelleme');
   if (error) return { ok: false, error: error.message || 'Rol güncellenemedi.' };
   if (!data || !data.length) return { ok: false, error: 'Bu işlem için yetkiniz yok (yalnızca admin rol değiştirebilir).' };
   return { ok: true };

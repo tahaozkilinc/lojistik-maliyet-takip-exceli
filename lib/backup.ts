@@ -4,7 +4,7 @@
    anlık görüntü alınır, 30 gün saklanır. İstemciden yalnızca okunabilir ve
    (mevcut replaceDB() akışı üzerinden) geri yüklenebilir — yazılamaz/silinemez.
    ============================================================ */
-import { supabase } from './supabaseClient';
+import { supabase, withTimeout } from './supabaseClient';
 import { normalizeDB } from './seed';
 import type { DB } from './types';
 
@@ -16,18 +16,17 @@ export interface AppDbHistoryEntry {
 
 /** Kayıtlı yedek noktalarının listesini (veri içeriği hariç, hafif) döner — en yeni önce. */
 export async function listAppDbHistory(): Promise<AppDbHistoryEntry[]> {
-  const { data, error } = await supabase
-    .from('app_db_history')
-    .select('id, created_at, updated_by')
-    .order('created_at', { ascending: false })
-    .limit(200);
+  const { data, error } = await withTimeout(
+    supabase.from('app_db_history').select('id, created_at, updated_by').order('created_at', { ascending: false }).limit(200),
+    'Yedek geçmişi listesi',
+  );
   if (error || !data) return [];
   return data as AppDbHistoryEntry[];
 }
 
 /** Belirli bir yedek noktasının tam verisini döner (bulunamazsa null). */
 export async function getAppDbHistoryData(id: number): Promise<DB | null> {
-  const { data, error } = await supabase.from('app_db_history').select('data').eq('id', id).maybeSingle();
+  const { data, error } = await withTimeout(supabase.from('app_db_history').select('data').eq('id', id).maybeSingle(), 'Yedek verisi okuma');
   if (error || !data) return null;
   return normalizeDB(data.data);
 }

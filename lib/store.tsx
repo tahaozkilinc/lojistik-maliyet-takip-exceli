@@ -18,7 +18,7 @@ import { LS_KEY, THEME_KEY, DIRTY_KEY, BASE_KEY, type ViewKey } from './constant
 import { emptyDB, migrate, normalizeDB } from './seed';
 import { uid } from './format';
 import { mergeDB } from './merge';
-import { supabase } from './supabaseClient';
+import { supabase, withTimeout } from './supabaseClient';
 import {
   login as authLogin,
   logout as authLogout,
@@ -260,7 +260,10 @@ function isDbEmpty(db: DB): boolean {
 
 /** Merkezi (Supabase) veriyi okur; satır henüz yoksa null döner. */
 async function fetchRemoteDB(): Promise<DB | null> {
-  const { data, error } = await supabase.from('app_db').select('data').eq('id', REMOTE_ROW_ID).maybeSingle();
+  const { data, error } = await withTimeout(
+    supabase.from('app_db').select('data').eq('id', REMOTE_ROW_ID).maybeSingle(),
+    'Veri okuma',
+  );
   if (error) throw error;
   if (!data) return null;
   return normalizeDB(data.data);
@@ -268,7 +271,7 @@ async function fetchRemoteDB(): Promise<DB | null> {
 
 /** Merkezi (Supabase) veriyi yazar (upsert). */
 async function pushRemoteDB(db: DB): Promise<void> {
-  const { error } = await supabase.from('app_db').upsert({ id: REMOTE_ROW_ID, data: db });
+  const { error } = await withTimeout(supabase.from('app_db').upsert({ id: REMOTE_ROW_ID, data: db }), 'Veri yazma');
   if (error) throw error;
 }
 
@@ -622,7 +625,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     const res = await authUpdateUserRole(userId, newRole);
     if (res.ok) {
       setProfiles(await listProfiles());
-      const { data } = await supabase.auth.getUser();
+      const { data } = await withTimeout(supabase.auth.getUser(), 'Oturum kontrolü');
       if (data.user?.id === userId) setRole(newRole);
     }
     return res;
