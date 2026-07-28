@@ -377,30 +377,6 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         /* yok say */
       }
 
-      // Hız: "unsynced" değilse ve bu cihazda GERÇEKTEN kaydedilmiş bir
-      // önbellek varsa, sunucu yanıtını beklemeden arayüzü hemen gösteririz
-      // (tekrarlayan ziyaretlerde neredeyse anında açılış). Aşağıdaki mevcut
-      // akış (sunucudan güncel veriyi çekip gerekirse uzlaştırma) hiç
-      // değişmeden arka planda devam eder; sonucu yalnızca bu arada yeni bir
-      // yerel değişiklik başlamadıysa uygular — aksi halde o değişikliğin
-      // kendi kaydı zaten devam eder ve üzerine yazılmaz.
-      let fastLocal: DB | null = null;
-      if (!unsynced) {
-        const local = loadLocalCache();
-        if (!isDbEmpty(local)) {
-          fastLocal = local;
-          dbRef.current = local;
-          setDb(local);
-          try {
-            const r = await getMyRole();
-            if (!cancelled) setRole(r);
-          } catch {
-            if (!cancelled) setRole('goruntuleyici');
-          }
-          if (!cancelled) setReady(true);
-        }
-      }
-
       try {
         // Önceki oturumda bir değişiklik merkeze hiç kaydedilememiş olabilir (ör. ağ
         // hatası, beklenmedik kapanma). Böyle bir durumda sunucudaki (eski) veriyi
@@ -439,68 +415,53 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         if (cancelled) return;
         if (remote) {
           baseRef.current = remote;
-          if (!fastLocal || dbRef.current === fastLocal) {
-            dbRef.current = remote;
-            setDb(remote);
-          }
+          dbRef.current = remote;
+          setDb(remote);
           saveLocalCache(remote);
         } else {
           // Sunucuda satır hiç yok (ör. tamamen yeni bir kurulum) — sahte/gömülü
           // demo veri ENJEKTE ETMEYİZ; bu cihazın kendi (genelde boş) önbelleğiyle
           // başlanır ve o, ilk satır olarak sunucuya yazılır.
-          const local = fastLocal || loadLocalCache();
-          if (!fastLocal) {
-            dbRef.current = local;
-            setDb(local);
-          }
+          const local = loadLocalCache();
+          dbRef.current = local;
+          setDb(local);
           await pushRemoteDB(local);
           baseRef.current = local;
         }
       } catch (err) {
-        // Merkezi veriye ulaşılamadı (ağ/izin hatası). Hızlı yoldan zaten
-        // gerçek bir önbellek gösterdiysek dokunmayız, yalnızca bilgilendiririz.
-        // Aksi halde: bu cihazda GERÇEKTEN kaydedilmiş bir önbellek varsa onu
-        // göster ama AÇIKÇA "bu eski/yerel veri, bağlantı yok" uyarısı veririz
-        // — hiçbir zaman sessizce eski/sahte bir veriyi güncelmiş gibi
-        // göstermeyiz. Önbellek de boşsa (ör. önbelleği hiç olmayan yeni/gizli
-        // sekme) boş bir gösterge paneli yerine açık bir hata ekranı gösteririz.
+        // Merkezi veriye ulaşılamadı (ağ/izin hatası). Bu cihazda GERÇEKTEN
+        // kaydedilmiş bir önbellek varsa onu göster ama AÇIKÇA "bu eski/yerel
+        // veri, bağlantı yok" uyarısı veririz — hiçbir zaman sessizce eski/sahte
+        // bir veriyi güncelmiş gibi göstermeyiz. Önbellek de boşsa (ör.
+        // önbelleği hiç olmayan yeni/gizli sekme) boş bir gösterge paneli
+        // yerine açık bir hata ekranı gösteririz.
         // eslint-disable-next-line no-console
         console.error('Merkezi veri yüklenemedi:', err);
         if (cancelled) return;
-        if (fastLocal) {
-          toast(
-            `Sunucuya bağlanılamadı (${describeSupabaseError(err)}) — cihazınızdaki veriler gösteriliyor, en güncel olmayabilir.`,
-            'err',
+        const local = loadLocalCache();
+        if (isDbEmpty(local)) {
+          setLoadError(
+            `Sunucuya bağlanılamadı, verileriniz yüklenemedi (${describeSupabaseError(err)}). İnternet bağlantınızı kontrol edip tekrar deneyin.`,
           );
         } else {
-          const local = loadLocalCache();
-          if (isDbEmpty(local)) {
-            setLoadError(
-              `Sunucuya bağlanılamadı, verileriniz yüklenemedi (${describeSupabaseError(err)}). İnternet bağlantınızı kontrol edip tekrar deneyin.`,
-            );
-          } else {
-            dbRef.current = local;
-            setDb(local);
-            toast(
-              'Sunucuya bağlanılamadı — bu cihazda daha önce kaydedilmiş veriler gösteriliyor, en güncel olmayabilir.',
-              'err',
-            );
-          }
+          dbRef.current = local;
+          setDb(local);
+          toast(
+            'Sunucuya bağlanılamadı — bu cihazda daha önce kaydedilmiş veriler gösteriliyor, en güncel olmayabilir.',
+            'err',
+          );
         }
       } finally {
         // Rol, uygulama etkileşimli hale gelmeden ÖNCE bilinmeli — aksi halde
         // mutate() kısa bir süre için rol kontrolünü (henüz null olduğu için)
-        // hatalı biçimde reddedebilir/izin verebilir. Hızlı yoldan zaten
-        // belirlendiyse tekrar beklenmez.
-        if (!fastLocal) {
-          try {
-            const r = await getMyRole();
-            if (!cancelled) setRole(r);
-          } catch {
-            if (!cancelled) setRole('goruntuleyici');
-          }
-          if (!cancelled) setReady(true);
+        // hatalı biçimde reddedebilir/izin verebilir.
+        try {
+          const r = await getMyRole();
+          if (!cancelled) setRole(r);
+        } catch {
+          if (!cancelled) setRole('goruntuleyici');
         }
+        if (!cancelled) setReady(true);
       }
     })();
     return () => {
