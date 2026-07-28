@@ -6,6 +6,7 @@ import { Icon } from '@/components/Icon';
 import { exportData } from '@/lib/export';
 import { normalizeDB } from '@/lib/seed';
 import { KAYIT_ALANLARI, recordCount } from '@/lib/calc';
+import { findLegacyFiles, migrateLegacyFile, applyMigratedFiles, type MigratedFile } from '@/lib/storage';
 import { ROL_ETIKET, ROL_ACIKLAMA } from '@/lib/constants';
 import type { AppRole, DB } from '@/lib/types';
 
@@ -15,7 +16,8 @@ const ROLLER: AppRole[] = ['admin', 'yonetici', 'goruntuleyici'];
 const CONFIRM_PHRASE = 'GERİ YÜKLE';
 
 export function ProfilModal() {
-  const { db, replaceDB, go, closeModal, toast, displayName, updateDisplayName, changePassword, role, profiles, updateUserRole } = useStore();
+  const { db, mutate, replaceDB, go, closeModal, toast, displayName, updateDisplayName, changePassword, role, profiles, updateUserRole } =
+    useStore();
   const fileRef = useRef<HTMLInputElement>(null);
 
   const [name, setName] = useState(displayName);
@@ -25,11 +27,13 @@ export function ProfilModal() {
   const [next2, setNext2] = useState('');
   const [pwErr, setPwErr] = useState('');
   const [pwBusy, setPwBusy] = useState(false);
-  // Tüm sistemi (herkes için) tek bir dosyayla değiştirebilen bir işlem olduğundan,
-  // gündelik düzenleme yetkisi olan "yönetici" değil, yalnızca "admin" tetikleyebilir.
+  // Tüm sistemi (herkes için) etkileyen işlemler olduğundan (yedek geri yükleme,
+  // depo bakımı), gündelik düzenleme yetkisi olan "yönetici" değil, yalnızca "admin".
   const canRestore = role === 'admin';
   const [pendingImport, setPendingImport] = useState<{ db: DB; fileName: string } | null>(null);
   const [confirmText, setConfirmText] = useState('');
+  const [migrating, setMigrating] = useState(false);
+  const [migrateProgress, setMigrateProgress] = useState<{ done: number; total: number } | null>(null);
 
   async function saveName() {
     await updateDisplayName(name);
@@ -109,6 +113,47 @@ export function ProfilModal() {
   function cancelRestore() {
     setPendingImport(null);
     setConfirmText('');
+  }
+
+  /**
+   * Bu değişiklikten ÖNCE yüklenmiş logo/belgeler hâlâ veritabanı kaydının
+   * içinde gömülü — kaydın büyük kalmaya devam etmesinin ve kaydetmelerin
+   * zaman zaman zaman aşımına uğramasının nedeni budur (yeni yüklemeler
+   * artık ayrı depoya gidiyor, ama eskiler kendiliğinden taşınmaz). Bu,
+   * onları tek tek Storage'a yükleyip veritabanı kaydını GERÇEKTEN küçültür.
+   * Başarısız olan tek tek dosyalar atlanır (hâlâ eski biçimde, çalışır
+   * durumda kalır) — hiçbir dosya kaybolmaz, yalnızca bir sonraki denemede
+   * tekrar ele alınır.
+   */
+  async function migrateFiles() {
+    const legacy = findLegacyFiles(db);
+    if (!legacy.length) {
+      toast('Taşınacak eski dosya yok — veritabanınız zaten güncel', 'ok');
+      return;
+    }
+    setMigrating(true);
+    setMigrateProgress({ done: 0, total: legacy.length });
+    const results: MigratedFile[] = [];
+    let failed = 0;
+    for (const ref of legacy) {
+      try {
+        const newValue = await migrateLegacyFile(ref);
+        results.push({ ref, newValue });
+      } catch {
+        failed++;
+      }
+      setMigrateProgress({ done: results.length + failed, total: legacy.length });
+    }
+    if (results.length) {
+      mutate((draft) => applyMigratedFiles(draft, results));
+    }
+    setMigrating(false);
+    setMigrateProgress(null);
+    if (failed) {
+      toast(`${results.length}/${legacy.length} dosya taşındı — ${failed} tanesi başarısız oldu, tekrar deneyebilirsiniz`, 'err');
+    } else {
+      toast(`${results.length} dosya depoya taşındı`, 'ok');
+    }
   }
 
   if (pendingImport) {
@@ -318,6 +363,27 @@ export function ProfilModal() {
           </div>
         )}
         <input ref={fileRef} type="file" accept=".json" style={{ display: 'none' }} onChange={handleImport} />
+
+        {canRestore && (
+          <>
+            <div className="section-divider" style={{ marginTop: 18 }}>
+              <Icon name="refresh" size={14} />
+              Depo Bakımı
+            </div>
+            <div className="hint" style={{ marginBottom: 10 }}>
+              Bu değişiklikten önce yüklenmiş logo/belgeler hâlâ veritabanı kaydının içinde saklanıyor — bu,
+              kaydetmelerin bazen yavaş olmasının ya da zaman aşımına uğramasının nedeni olabilir. Bu düğme
+              onları ayrı bir depoya taşıyıp kaydı gerçekten küçültür. Hiçbir dosya silinmez, yalnızca nereye
+              kaydedildiği değişir.
+            </div>
+            <button className="btn" disabled={migrating} onClick={migrateFiles}>
+              <Icon name="refresh" size={14} className={migrating ? 'spin' : undefined} />
+              {migrating
+                ? `Taşınıyor… (${migrateProgress ? migrateProgress.done : 0}/${migrateProgress ? migrateProgress.total : 0})`
+                : 'Eski Dosyaları Depoya Taşı'}
+            </button>
+          </>
+        )}
       </div>
       <div className="modal-foot">
         <button className="btn" onClick={closeModal}>
