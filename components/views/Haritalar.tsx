@@ -76,8 +76,12 @@ export function Haritalar() {
       </div>
       {ui.haritaUrun !== 'all' && (
         <div style={{ marginTop: -8, marginBottom: 14, color: 'var(--faint)', fontSize: 12.5 }}>
-          Soluk renkli lokasyonların bu üründen henüz sefer geçmişi yoktur. Bir lokasyona tıkladığınızda {ui.haritaUrun} için fabrikaya ortalama
-          taşıma maliyetini görürsünüz.
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+            <span style={{ display: 'inline-block', width: 10, height: 10, borderRadius: '50%', border: '2.5px solid #b9821a' }} />
+            Amber çerçeveli lokasyonlarda henüz sefer yok ama anlaşmalı fiyat var — o fiyat gösterilir.
+          </span>{' '}
+          Soluk (gri) lokasyonların ne sefer geçmişi ne de anlaşmalı fiyatı vardır. Bir lokasyona tıklayarak {ui.haritaUrun} için fiyatı
+          görebilirsiniz.
         </div>
       )}
       {flist.length - konumlu > 0 && (

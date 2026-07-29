@@ -4,7 +4,8 @@ import 'leaflet/dist/leaflet.css';
 import type { Map as LeafletMap, TileLayer } from 'leaflet';
 import { useStore } from '@/lib/store';
 import { hasCoord } from '@/lib/geo';
-import { lokasyonStats, limanMasrafStats } from '@/lib/calc';
+import { lokasyonStats, limanMasrafStats, findAnlasmalar, toTRY } from '@/lib/calc';
+import type { AnlasmaMatch } from '@/lib/calc';
 import { money, escapeHtml } from '@/lib/format';
 import { TIP_RENK } from '@/lib/constants';
 import type { Lokasyon } from '@/lib/types';
@@ -84,20 +85,39 @@ export function MainMap() {
       .forEach((l) => {
         // Ürün filtresi aktifken bu lokasyondan seçili üründen hiç sefer yoksa
         // pin soluklaştırılır — konum yine görünür kalır (kaybolmaz), ama
-        // fiyatı olan lokasyonlar öne çıkar.
+        // fiyatı olan lokasyonlar öne çıkar. Sefer geçmişi yoksa, gerçekleşen
+        // fiyat yerine bu hat için anlaşmalı (sözleşmeli) fiyat varsa o gösterilir.
         const st = !l.fabrika ? lokasyonStats(db, l.id, fabrikaId, urun) : null;
-        const noData = !!urun && !!st && !st.fiyatli;
+        const seferYok = !!urun && !!st && !st.fiyatli;
+        const anlMatches: AnlasmaMatch[] = seferYok && fabrikaId ? findAnlasmalar(db, l.id, fabrikaId, urun) : [];
+        const enUcuzAnl = anlMatches.length
+          ? anlMatches.reduce((best, cur) =>
+              toTRY(db, cur.anlasma.birimFiyat, cur.anlasma.paraBirimi) < toTRY(db, best.anlasma.birimFiyat, best.anlasma.paraBirimi) ? cur : best,
+            )
+          : null;
+        const noData = seferYok && !enUcuzAnl;
         const m = L.circleMarker([l.lat as number, l.lng as number], {
           radius: noData ? 7 : 9,
-          color: '#fff',
-          weight: noData ? 1 : 2,
+          color: enUcuzAnl ? '#b9821a' : '#fff',
+          weight: noData ? 1 : enUcuzAnl ? 3 : 2,
           fillColor: noData ? '#aab3bd' : lokRenk(l),
           fillOpacity: noData ? 0.45 : 1,
         }).addTo(map);
         const s = l.fabrika
           ? ''
           : (() => {
-              if (!st || !st.fiyatli) return urun ? `<br><span style="color:#8a98a8">${escapeHtml(urun)}: bu üründen sefer kaydı yok</span>` : '';
+              if (!st || !st.fiyatli) {
+                if (!urun) return '';
+                if (enUcuzAnl) {
+                  const firmaTxt = escapeHtml(enUcuzAnl.firma.ad) + (anlMatches.length > 1 ? ` +${anlMatches.length - 1} firma` : '');
+                  return (
+                    `<br><b>${escapeHtml(urun)} · Anlaşmalı fiyat:</b> ${money(enUcuzAnl.anlasma.birimFiyat, enUcuzAnl.anlasma.paraBirimi)}` +
+                    ` <span style="color:#8a98a8">(${firmaTxt})</span>` +
+                    `<br><span style="color:#b9821a;font-size:11px">Henüz sefer yapılmadı — anlaşmalı fiyat gösteriliyor</span>`
+                  );
+                }
+                return `<br><span style="color:#8a98a8">${escapeHtml(urun)}: sefer ya da anlaşmalı fiyat kaydı yok</span>`;
+              }
               const usd = db.kur.USD ? st.avg / db.kur.USD : null;
               const tutar = usd != null ? money(usd, 'USD') : money(st.avg, 'TRY');
               const label = urun ? `${escapeHtml(urun)} · Fabrikaya ort` : 'Fabrikaya ort';
@@ -125,7 +145,7 @@ export function MainMap() {
       });
     if (pts.length) map.fitBounds(pts, { padding: [50, 50], maxZoom: 12 });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mapReady, db.lokasyonlar, db.talepler, db.limanTalepleri, ui.haritaFilter, ui.haritaUrun, ui.search]);
+  }, [mapReady, db.lokasyonlar, db.talepler, db.limanTalepleri, db.firmalar, ui.haritaFilter, ui.haritaUrun, ui.search]);
 
   if (failed) {
     return (
