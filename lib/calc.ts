@@ -286,8 +286,13 @@ export interface LokasyonStats {
   son: number;
 }
 
-export function lokasyonStats(db: DB, locId: string, teslimId?: string): LokasyonStats {
-  const ts = [...db.talepler.filter((t) => t.yuklemeLokasyonId === locId && (!teslimId || t.teslimLokasyonId === teslimId))].sort(
+export function lokasyonStats(db: DB, locId: string, teslimId?: string, urun?: string): LokasyonStats {
+  const ts = [...db.talepler.filter(
+    (t) =>
+      t.yuklemeLokasyonId === locId &&
+      (!teslimId || t.teslimLokasyonId === teslimId) &&
+      (!urun || (t.yukTipi || '').trim() === urun),
+  )].sort(
     (a, b) => new Date(a.createdAt || 0).getTime() - new Date(b.createdAt || 0).getTime(),
   );
   const prices: number[] = [];

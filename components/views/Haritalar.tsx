@@ -1,7 +1,7 @@
 'use client';
 import React from 'react';
 import { useStore } from '@/lib/store';
-import { TIP_RENK } from '@/lib/constants';
+import { TIP_RENK, YUK_TIPLERI } from '@/lib/constants';
 import { hasCoord } from '@/lib/geo';
 import type { Lokasyon } from '@/lib/types';
 import { MainMap } from '@/components/maps/MainMap';
@@ -38,11 +38,30 @@ export function Haritalar() {
     </button>
   );
 
+  const ucount = (u: string) => db.talepler.filter((t) => (t.yukTipi || '').trim() === u).length;
+  const urunChip = (k: string, l: string) => (
+    <button
+      key={k}
+      className={'chip-filter ' + (ui.haritaUrun === k ? 'on' : '')}
+      onClick={() => setUi({ haritaUrun: k })}
+    >
+      {l}
+      <span className="c">{k === 'all' ? db.talepler.length : ucount(k)}</span>
+    </button>
+  );
+
   return (
     <>
       <div className="filter-bar">
         {chip('all', 'Tümü')}
         {shown.map((t) => chip(t, t, TIP_RENK[t] || '#1d4d7e'))}
+      </div>
+      <div style={{ fontSize: 10.5, color: 'var(--faint)', textTransform: 'uppercase', letterSpacing: 0.4, fontWeight: 700, margin: '-8px 0 8px' }}>
+        Ürüne göre taşıma maliyeti
+      </div>
+      <div className="filter-bar">
+        {urunChip('all', 'Tüm Ürünler')}
+        {YUK_TIPLERI.map((u) => urunChip(u, u))}
       </div>
       <div className="map-legend">
         {['Fabrika', 'Liman', 'Lidaş', 'Depo', 'Antrepo', 'Diğer'].map((t) => (
@@ -52,8 +71,15 @@ export function Haritalar() {
         ))}
         <div className="lg" style={{ marginLeft: 'auto' }}>
           {konumlu} konum gösteriliyor{ui.haritaFilter !== 'all' ? ' · ' + ui.haritaFilter : ''}
+          {ui.haritaUrun !== 'all' ? ' · Ürün: ' + ui.haritaUrun : ''}
         </div>
       </div>
+      {ui.haritaUrun !== 'all' && (
+        <div style={{ marginTop: -8, marginBottom: 14, color: 'var(--faint)', fontSize: 12.5 }}>
+          Soluk renkli lokasyonların bu üründen henüz sefer geçmişi yoktur. Bir lokasyona tıkladığınızda {ui.haritaUrun} için fabrikaya ortalama
+          taşıma maliyetini görürsünüz.
+        </div>
+      )}
       {flist.length - konumlu > 0 && (
         <div
           style={{

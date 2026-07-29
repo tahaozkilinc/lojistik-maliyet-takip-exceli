@@ -76,26 +76,32 @@ export function MainMap() {
     const pts: [number, number][] = [];
     const fabrikaId = db.lokasyonlar.find((l) => l.fabrika)?.id;
     const sq = ui.search.toLowerCase().trim();
+    const urun = ui.haritaUrun !== 'all' ? ui.haritaUrun : undefined;
 
     db.lokasyonlar
       .filter((l) => hasCoord(l) && (ui.haritaFilter === 'all' || lokTipOf(l) === ui.haritaFilter))
       .filter((l) => !sq || (l.ad + (l.sehir || '') + (l.il || '') + (l.ilce || '') + lokTipOf(l)).toLowerCase().includes(sq))
       .forEach((l) => {
+        // Ürün filtresi aktifken bu lokasyondan seçili üründen hiç sefer yoksa
+        // pin soluklaştırılır — konum yine görünür kalır (kaybolmaz), ama
+        // fiyatı olan lokasyonlar öne çıkar.
+        const st = !l.fabrika ? lokasyonStats(db, l.id, fabrikaId, urun) : null;
+        const noData = !!urun && !!st && !st.fiyatli;
         const m = L.circleMarker([l.lat as number, l.lng as number], {
-          radius: 9,
+          radius: noData ? 7 : 9,
           color: '#fff',
-          weight: 2,
-          fillColor: lokRenk(l),
-          fillOpacity: 1,
+          weight: noData ? 1 : 2,
+          fillColor: noData ? '#aab3bd' : lokRenk(l),
+          fillOpacity: noData ? 0.45 : 1,
         }).addTo(map);
         const s = l.fabrika
           ? ''
           : (() => {
-              const st = lokasyonStats(db, l.id, fabrikaId);
-              if (!st.fiyatli) return '';
+              if (!st || !st.fiyatli) return urun ? `<br><span style="color:#8a98a8">${escapeHtml(urun)}: bu üründen sefer kaydı yok</span>` : '';
               const usd = db.kur.USD ? st.avg / db.kur.USD : null;
               const tutar = usd != null ? money(usd, 'USD') : money(st.avg, 'TRY');
-              return `<br><b>Fabrikaya ort:</b> ${tutar}${usd != null ? ` <span style="color:#8a98a8">(${money(st.avg, 'TRY')})</span>` : ''} · ${st.sefer} sefer`;
+              const label = urun ? `${escapeHtml(urun)} · Fabrikaya ort` : 'Fabrikaya ort';
+              return `<br><b>${label}:</b> ${tutar}${usd != null ? ` <span style="color:#8a98a8">(${money(st.avg, 'TRY')})</span>` : ''} · ${st.sefer} sefer`;
             })();
         const extra = (() => {
           if (l.tip !== 'Liman' && l.tip !== 'Depo') return '';
@@ -119,7 +125,7 @@ export function MainMap() {
       });
     if (pts.length) map.fitBounds(pts, { padding: [50, 50], maxZoom: 12 });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mapReady, db.lokasyonlar, db.talepler, db.limanTalepleri, ui.haritaFilter, ui.search]);
+  }, [mapReady, db.lokasyonlar, db.talepler, db.limanTalepleri, ui.haritaFilter, ui.haritaUrun, ui.search]);
 
   if (failed) {
     return (

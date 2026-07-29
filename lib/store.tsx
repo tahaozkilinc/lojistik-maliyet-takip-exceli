@@ -82,6 +82,7 @@ export interface UIState {
   talepFilter: string;
   lokFilter: string;
   haritaFilter: string;
+  haritaUrun: string;
   tasimaFilter: string;
   navlunYil: number;
   navlunHat: string;
@@ -354,6 +355,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     talepFilter: 'all',
     lokFilter: 'all',
     haritaFilter: 'all',
+    haritaUrun: 'all',
     tasimaFilter: 'toplama',
     navlunYil: new Date().getFullYear(),
     navlunHat: '__all',
