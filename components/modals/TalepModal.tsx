@@ -21,7 +21,8 @@ export function TalepModal({ id }: { id?: string }) {
   const [yukOther, setYukOther] = useState(otherInit ? x!.yukTipi || '' : '');
   const [miktar, setMiktar] = useState(x && x.miktar != null ? fmtTon(x.miktar) : '');
   const [birim, setBirim] = useState(x ? x.birim || 'ton' : 'ton');
-  const [arac, setArac] = useState(x ? x.aracTipi || '' : '');
+  // Yeni talepte varsayılan olarak "Tır" seçili gelir — gerekirse değiştirilebilir.
+  const [arac, setArac] = useState(x ? x.aracTipi || '' : 'Tır');
   const [aciklama, setAciklama] = useState(x ? x.aciklama || '' : '');
 
   function save() {
@@ -170,6 +171,8 @@ export function TalepModal({ id }: { id?: string }) {
           <label>Araç Tipi</label>
           <select value={arac} onChange={(e) => setArac(e.target.value)}>
             <option value="">Seçiniz…</option>
+            {/* Eski kayıtlarda listede artık olmayan bir araç tipi olabilir — o kaybolmasın diye korunur. */}
+            {arac && !ARAC.includes(arac) && <option value={arac}>{arac} (eski)</option>}
             {ARAC.map((a) => (
               <option key={a}>{a}</option>
             ))}

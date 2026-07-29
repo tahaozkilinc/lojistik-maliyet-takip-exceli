@@ -20,16 +20,7 @@ export const PARA: Record<string, string> = { TRY: '₺', USD: '$', EUR: '€' }
 export const PARA_KODLARI = ['TRY', 'USD', 'EUR'];
 
 export const BIRIMLER = ['ton', 'palet', 'araç', 'kg', 'm³', 'sefer'];
-export const ARAC = [
-  'Tır (Tenteli)',
-  'Tır (Frigo)',
-  'Kamyon',
-  'Kırkayak',
-  'Lowbed',
-  'Konteyner',
-  'Silobas',
-  'Damperli',
-];
+export const ARAC = ["ADR'li", 'Tır', 'Diğer'];
 export const YUK_TIPLERI = ['Mısır', 'Mısır Özü', 'Ayçekirdeği', 'Soya'];
 
 /** Incoterms 2020 teslim şekilleri. */

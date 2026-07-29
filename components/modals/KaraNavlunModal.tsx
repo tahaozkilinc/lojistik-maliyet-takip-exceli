@@ -32,7 +32,8 @@ export function KaraNavlunModal({ id }: { id?: string }) {
   const legacyTasiyici = r && !r.firmaId && r.tasiyici ? r.tasiyici : '';
   const [firmaSel, setFirmaSel] = useState(r ? r.firmaId || (legacyTasiyici ? '__legacy' : '') : '');
   const [siparisNo, setSiparisNo] = useState(r ? r.siparisNo || '' : '');
-  const [aracTipi, setAracTipi] = useState(r ? r.aracTipi || '' : '');
+  // Yeni kayıtta varsayılan olarak "Tır" seçili gelir — gerekirse değiştirilebilir.
+  const [aracTipi, setAracTipi] = useState(r ? r.aracTipi || '' : 'Tır');
   const [fiyat, setFiyat] = useState(r && r.fiyat != null ? String(r.fiyat) : '');
   const [birim, setBirim] = useState(r ? r.birim || '' : '');
   const [para, setPara] = useState(r ? r.paraBirimi || 'TRY' : 'TRY');
@@ -275,6 +276,8 @@ export function KaraNavlunModal({ id }: { id?: string }) {
             <label>Araç Tipi</label>
             <select value={aracTipi} onChange={(e) => setAracTipi(e.target.value)}>
               <option value="">Seçiniz</option>
+              {/* Eski kayıtlarda listede artık olmayan bir araç tipi olabilir — o kaybolmasın diye korunur. */}
+              {aracTipi && !ARAC.includes(aracTipi) && <option value={aracTipi}>{aracTipi} (eski)</option>}
               {ARAC.map((a) => (
                 <option key={a}>{a}</option>
               ))}

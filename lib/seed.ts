@@ -242,7 +242,7 @@ export function seedIfEmpty(db: DB): void {
     yukTipi: 'Mısır',
     miktar: 28,
     birim: 'ton',
-    aracTipi: 'Tır (Tenteli)',
+    aracTipi: 'Tır',
     yuklemeTarihi: new Date(Date.now() + 3 * 864e5).toISOString().slice(0, 10),
     aciklama: 'Sabah 08:00 yükleme. Yağmura karşı tente şart.',
     teklifler: [
