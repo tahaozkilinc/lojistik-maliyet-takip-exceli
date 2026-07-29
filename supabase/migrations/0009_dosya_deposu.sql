@@ -44,7 +44,11 @@ on conflict (id) do update set
   file_size_limit = excluded.file_size_limit,
   allowed_mime_types = excluded.allowed_mime_types;
 
-alter table storage.objects enable row level security;
+-- NOT: "alter table storage.objects enable row level security" burada
+-- KASITLI OLARAK yoktur — Supabase bu tabloda RLS'i zaten varsayılan
+-- olarak açık tutar; SQL Editor rolü bu tablonun sahibi (owner)
+-- olmadığından bu komut "must be owner of table objects" hatasıyla
+-- başarısız olur. Aşağıdaki policy'ler için sahip olmaya gerek yoktur.
 
 -- --- logolar: okuma herkese açık (public=true, RLS'siz de servis edilir);
 --     yazma (ekleme/değiştirme/silme) yalnızca admin/yönetici ---
