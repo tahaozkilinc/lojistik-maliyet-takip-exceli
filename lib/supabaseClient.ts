@@ -4,14 +4,15 @@ import { SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY } from './supabaseConfig';
 export const supabase = createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
 
 /**
- * app_db satırı için sunucu tarafı bütçe (bkz. supabase/migrations/
- * 0006_yazma_zaman_asimi_duzelt.sql: statement_timeout = 30s) — istemci
- * zaman aşımı BUNDAN UZUN olmalı. Aksi halde, sunucunun kendisi normal
- * şekilde (yavaş ama başarıyla) tamamlayacağı büyük bir okuma/yazma,
- * istemci daha erken vazgeçtiği için gereksiz yere "hata" olarak
- * raporlanır — bu da yanlış alarm ve boşuna güven kaybına yol açar.
+ * app_db satırı için sunucu tarafı bütçe — istemci zaman aşımı BUNDAN UZUN
+ * olmalı, aksi halde sunucunun normal şekilde (yavaş ama başarıyla)
+ * tamamlayacağı bir okuma/yazma, istemci daha erken vazgeçtiği için
+ * gereksiz yere "hata" olarak raporlanır (yanlış alarm, boşuna güven
+ * kaybı). Dosya ekleri henüz Storage'a taşınmadığı sürece app_db satırı
+ * büyük kalabildiğinden bu bütçe geçici olarak 60sn'ye çıkarıldı (bkz.
+ * supabase betiği); depo taşıma tamamlanınca tekrar düşürülebilir.
  */
-const NETWORK_TIMEOUT_MS = 35000;
+const NETWORK_TIMEOUT_MS = 65000;
 
 /**
  * Bir Supabase isteğini zaman aşımına uğratır. Supabase istemcisinin
