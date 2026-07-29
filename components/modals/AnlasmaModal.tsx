@@ -5,7 +5,7 @@ import { ModalShell, ModalHead } from '@/components/Modal';
 import { LokOptions } from './shared';
 import { defaultTeslimId, lokName } from '@/lib/calc';
 import { YUK_TIPLERI, PARA_KODLARI } from '@/lib/constants';
-import { money, uid } from '@/lib/format';
+import { money, uid, dt } from '@/lib/format';
 
 export function AnlasmaModal({ firmaId, anlId }: { firmaId: string; anlId?: string }) {
   const { db, mutate, closeModal, toast } = useStore();
@@ -31,6 +31,22 @@ export function AnlasmaModal({ firmaId, anlId }: { firmaId: string; anlId?: stri
 
   if (!f) return null;
   const gecmisSayi = (a?.gecmis || []).length;
+  // Silme işleminde doğru kaydı hedeflemek için orijinal (saklanan) dizideki
+  // sırası korunur; ekranda tarihe göre sıralanır ama idx hep gerçek konumu gösterir.
+  const gecmisSirali = (a?.gecmis || [])
+    .map((g, idx) => ({ g, idx }))
+    .sort((x, y) => (x.g.tarih || '').localeCompare(y.g.tarih || ''));
+
+  function delGecmis(idx: number) {
+    if (!confirm('Bu geçmiş fiyat kaydı silinsin mi? Bu işlem geri alınamaz.')) return;
+    mutate((d) => {
+      const ff = d.firmalar.find((x) => x.id === firmaId);
+      const an = ff && anlId ? (ff.anlasmalar || []).find((x) => x.id === anlId) : null;
+      if (!an || !Array.isArray(an.gecmis)) return;
+      an.gecmis.splice(idx, 1);
+    });
+    toast('Geçmiş fiyat silindi', 'ok');
+  }
 
   // Özel (listede olmayan) ürün için ek seçenek.
   const urunOptions = [...YUK_TIPLERI];
@@ -158,7 +174,26 @@ export function AnlasmaModal({ firmaId, anlId }: { firmaId: string; anlId?: stri
         </div>
         {a && gecmisSayi ? (
           <div style={{ fontSize: 12, color: 'var(--muted)', background: 'var(--surface-2)', border: '1px solid var(--line)', borderRadius: 8, padding: '9px 11px' }}>
-            Fiyatı değiştirip kaydederseniz mevcut <b>{money(a.birimFiyat, a.paraBirimi)}/ton</b> değeri geçmişe eklenir. Bu kayıtta {gecmisSayi} geçmiş fiyat var.
+            <div style={{ marginBottom: 8 }}>
+              Fiyatı değiştirip kaydederseniz mevcut <b>{money(a.birimFiyat, a.paraBirimi)}/ton</b> değeri geçmişe eklenir.
+            </div>
+            <div style={{ fontSize: 10.5, color: 'var(--faint)', textTransform: 'uppercase', letterSpacing: '.4px', fontWeight: 700, marginBottom: 2 }}>
+              Geçmiş Fiyatlar ({gecmisSayi}) — hatalı bir kayıt varsa silebilirsiniz
+            </div>
+            {gecmisSirali.map(({ g, idx }) => (
+              <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '5px 0', borderTop: '1px solid var(--line-2)' }}>
+                <span style={{ color: 'var(--faint)', minWidth: 84 }}>{g.tarih ? dt(g.tarih) : 'tarih yok'}</span>
+                <b style={{ flex: 1 }}>{money(g.birimFiyat, g.paraBirimi)}/ton</b>
+                <button
+                  type="button"
+                  className="btn sm ghost"
+                  style={{ color: 'var(--red)' }}
+                  onClick={() => delGecmis(idx)}
+                >
+                  Sil
+                </button>
+              </div>
+            ))}
           </div>
         ) : (
           <div style={{ fontSize: 12, color: 'var(--faint)' }}>

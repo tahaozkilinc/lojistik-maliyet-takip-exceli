@@ -129,6 +129,17 @@ export function FirmaDetay() {
     });
     toast('Sözleşme silindi');
   }
+  /** Hatalı/eskimiş bir geçmiş fiyat kaydını siler — "başlangıca göre" artış yüzdesini bozan yanlış satırları düzeltmek içindir. */
+  function delAnlGecmis(anlId: string, idx: number) {
+    if (!confirm('Bu geçmiş fiyat kaydı silinsin mi? Bu işlem geri alınamaz.')) return;
+    mutate((d) => {
+      const ff = d.firmalar.find((x) => x.id === f!.id);
+      const an = ff ? (ff.anlasmalar || []).find((x) => x.id === anlId) : null;
+      if (!an || !Array.isArray(an.gecmis)) return;
+      an.gecmis.splice(idx, 1);
+    });
+    toast('Geçmiş fiyat silindi', 'ok');
+  }
 
   return (
     <>
@@ -383,10 +394,14 @@ export function FirmaDetay() {
                   <span className="tag">{g.items.length} ürün</span>
                 </div>
                 {g.items.map((a) => {
-                  const gec = (a.gecmis || []).slice().sort((x, y) => (x.tarih || '').localeCompare(y.tarih || ''));
-                  const prev = gec.length ? gec[gec.length - 1] : null;
-                  const tl = gec.concat([{ birimFiyat: a.birimFiyat, paraBirimi: a.paraBirimi, tarih: a.tarih || '' }]);
-                  const first = tl.length ? toTRY(db, tl[0].birimFiyat, tl[0].paraBirimi) : 0;
+                  // idx: a.gecmis içindeki GERÇEK (saklanan) konum — silme işlemi bunu hedefler.
+                  // Ekranda tarihe göre sıralanır, canlı (güncel) fiyat satırı idx=-1 ile işaretlenip silinemez kalır.
+                  const gec = (a.gecmis || [])
+                    .map((g, idx) => ({ g, idx }))
+                    .sort((x, y) => (x.g.tarih || '').localeCompare(y.g.tarih || ''));
+                  const prev = gec.length ? gec[gec.length - 1].g : null;
+                  const tl = gec.concat([{ g: { birimFiyat: a.birimFiyat, paraBirimi: a.paraBirimi, tarih: a.tarih || '' }, idx: -1 }]);
+                  const first = tl.length ? toTRY(db, tl[0].g.birimFiyat, tl[0].g.paraBirimi) : 0;
                   const last = toTRY(db, a.birimFiyat, a.paraBirimi);
                   const overall = first ? ((last - first) / first) * 100 : 0;
                   let pv: number | null = null;
@@ -435,7 +450,7 @@ export function FirmaDetay() {
                             Fiyat Geçmişi ({tl.length})
                           </summary>
                           <div style={{ marginTop: 4 }}>
-                            {tl.map((h, idx) => {
+                            {tl.map(({ g: h, idx: hIdx }, i) => {
                               const v = toTRY(db, h.birimFiyat, h.paraBirimi);
                               const node =
                                 pv != null ? (
@@ -445,10 +460,26 @@ export function FirmaDetay() {
                                 );
                               pv = v;
                               return (
-                                <div key={idx} style={{ display: 'grid', gridTemplateColumns: '1fr auto 84px', gap: 10, padding: '4px 0', fontSize: 12.5, borderTop: '1px solid var(--line-2)' }}>
+                                <div
+                                  key={i}
+                                  style={{ display: 'grid', gridTemplateColumns: '1fr auto 84px 44px', alignItems: 'center', gap: 10, padding: '4px 0', fontSize: 12.5, borderTop: '1px solid var(--line-2)' }}
+                                >
                                   <span style={{ color: 'var(--muted)' }}>{h.tarih ? dt(h.tarih) : 'tarih yok'}</span>
                                   <b>{money(h.birimFiyat, h.paraBirimi)}/ton</b>
                                   <span style={{ textAlign: 'right' }}>{node}</span>
+                                  {hIdx >= 0 ? (
+                                    <button
+                                      type="button"
+                                      className="btn sm ghost"
+                                      style={{ color: 'var(--red)', justifySelf: 'end', padding: '2px 7px' }}
+                                      title="Bu geçmiş fiyat kaydını sil"
+                                      onClick={() => delAnlGecmis(a.id!, hIdx)}
+                                    >
+                                      Sil
+                                    </button>
+                                  ) : (
+                                    <span style={{ fontSize: 10.5, color: 'var(--faint)', justifySelf: 'end' }}>güncel</span>
+                                  )}
                                 </div>
                               );
                             })}
