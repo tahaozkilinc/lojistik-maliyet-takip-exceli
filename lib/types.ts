@@ -273,11 +273,45 @@ export interface LimanMasraf {
   id: string;
   masrafTipi: string;
   aciklama?: string;
+  /** LimanFirma.id — bkz. limanFirmaAdi() (lib/calc.ts): eski kayıtlarda ana Firma listesine (db.firmalar) işaret edebilir, geriye dönük uyumluluk için orada da aranır. */
   firmaId?: string;
   fiyat: number;
   paraBirimi: ParaBirimi;
   kdvDahil?: boolean;
   createdAt?: string;
+}
+
+/** Bir liman/depo firmasının (acente, elleçleme, gümrük vb.) sabit/referans ücret kalemi. */
+export interface LimanUcret {
+  id: string;
+  masrafTipi: string;
+  /** Lokasyon.id — yalnızca belirli bir liman/depo için geçerliyse; boşsa tüm limanlar için genel ücrettir. */
+  limanId?: string;
+  fiyat: number;
+  paraBirimi: ParaBirimi;
+  tarih?: string;
+  notlar?: string;
+  createdAt?: string;
+}
+
+/**
+ * Liman ve depo operasyonlarında kullanılan acente/elleçleme/gümrük vb.
+ * firma kaydı. Ana sistemin Firma (Talep modülü, nakliyeci) listesinden ve
+ * Navlun Firmaları listesinden tamamen bağımsızdır — kasıtlı olarak ayrı
+ * tutulur, karışmaz.
+ */
+export interface LimanFirma {
+  id: string;
+  ad: string;
+  telefon?: string;
+  notlar?: string;
+  /** Firma iletişim kişileri. */
+  calisanlar?: Calisan[];
+  /** Referans ücret listesi (THC, ardiye, depolama, elleçleme, gümrük…). */
+  ucretler?: LimanUcret[];
+  createdAt?: string;
+  /** data: URL veya Storage URL (yalnızca görsel — bkz. SAFE_IMAGE_MIME). */
+  logo?: string | null;
 }
 
 export interface LimanTalep {
@@ -386,6 +420,8 @@ export interface DB {
   /** Deniz/kara/hava fiyatlarının tek talep altında toplandığı taşıma talepleri. */
   tasimaTalepleri: TasimaTalep[];
   limanTalepleri: LimanTalep[];
+  /** Liman/depo masraflarında kullanılan, ana Firma ve Navlun Firmaları listelerinden bağımsız firma kaydı. */
+  limanFirmalari: LimanFirma[];
   kur: Kur;
   meta: Meta;
 }

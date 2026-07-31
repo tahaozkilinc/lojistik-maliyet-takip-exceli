@@ -11,6 +11,8 @@ import { Lokasyonlar } from './views/Lokasyonlar';
 import { LokasyonDetay } from './views/LokasyonDetay';
 import { LimanTalepleri } from './views/LimanTalepleri';
 import { LimanTalepDetay } from './views/LimanTalepDetay';
+import { LimanFirmalari } from './views/LimanFirmalari';
+import { LimanFirmaDetay } from './views/LimanFirmaDetay';
 import { Haritalar } from './views/Haritalar';
 import { Analiz } from './views/Analiz';
 import { DenizNavlun } from './views/DenizNavlun';
@@ -46,6 +48,10 @@ export function ViewRouter() {
       return <LimanTalepleri />;
     case 'limanTalepDetay':
       return <LimanTalepDetay />;
+    case 'limanFirmalari':
+      return <LimanFirmalari />;
+    case 'limanFirmaDetay':
+      return <LimanFirmaDetay />;
     case 'haritalar':
       return <Haritalar />;
     case 'analiz':

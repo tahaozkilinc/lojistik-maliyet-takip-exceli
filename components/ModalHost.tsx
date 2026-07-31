@@ -19,6 +19,8 @@ import { TasimaIndirimModal } from './modals/TasimaIndirimModal';
 import { TasimaOnayModal } from './modals/TasimaOnayModal';
 import { LimanTalepModal } from './modals/LimanTalepModal';
 import { LimanMasrafModal } from './modals/LimanMasrafModal';
+import { LimanFirmaModal } from './modals/LimanFirmaModal';
+import { LimanUcretModal } from './modals/LimanUcretModal';
 import { KurModal } from './modals/KurModal';
 import { ProfilModal } from './modals/ProfilModal';
 
@@ -70,6 +72,10 @@ export function ModalHost() {
       return <LimanTalepModal id={modal.id} presetLimanId={modal.presetLimanId} />;
     case 'limanMasraf':
       return <LimanMasrafModal talepId={modal.talepId} masrafId={modal.masrafId} />;
+    case 'limanFirma':
+      return <LimanFirmaModal id={modal.id} />;
+    case 'limanUcret':
+      return <LimanUcretModal firmaId={modal.firmaId} ucretId={modal.ucretId} />;
     case 'kur':
       return <KurModal />;
     case 'profil':

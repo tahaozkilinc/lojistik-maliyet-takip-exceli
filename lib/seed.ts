@@ -25,6 +25,7 @@ export function emptyDB(): DB {
     navlunFirmalari: [],
     tasimaTalepleri: [],
     limanTalepleri: [],
+    limanFirmalari: [],
     kur: { USD: 34.5, EUR: 37.2, motorin: 0, brent: 0 },
     meta: { firma: 'Sunar Yatırım A.Ş.', departman: 'Dış Ticaret & Lojistik' },
   };
@@ -91,6 +92,9 @@ export function sanitizeBelgeUrls(db: DB): DB {
   db.navlunFirmalari.forEach((f) => {
     if (f.logo && !isValidLogo(f.logo)) f.logo = null;
   });
+  db.limanFirmalari.forEach((f) => {
+    if (f.logo && !isValidLogo(f.logo)) f.logo = null;
+  });
   db.lokasyonlar.forEach((l) => {
     if (Array.isArray(l.sozlesmeler)) {
       l.sozlesmeler = l.sozlesmeler.filter((s) => s.belge && s.belge.data && isValidBelgeData(s.belge.data));
@@ -120,6 +124,7 @@ export function normalizeDB(raw: unknown, fallbackMeta?: DB['meta']): DB {
     limanTalepleri: (Array.isArray(clean.limanTalepleri) ? clean.limanTalepleri : base.limanTalepleri).map(
       (lt) => (!Array.isArray(lt.masraflar) ? { ...lt, masraflar: [] } : lt),
     ),
+    limanFirmalari: Array.isArray(clean.limanFirmalari) ? clean.limanFirmalari : base.limanFirmalari,
     kur: clean.kur && typeof clean.kur === 'object' ? { ...base.kur, ...clean.kur } : base.kur,
     meta: clean.meta && typeof clean.meta === 'object' ? { ...base.meta, ...clean.meta } : base.meta,
   };
@@ -292,6 +297,7 @@ export function migrate(db: DB): boolean {
   db.tasimaTalepleri.forEach((t) => { if (!Array.isArray(t.teklifler)) t.teklifler = []; });
   if (!Array.isArray(db.limanTalepleri)) { db.limanTalepleri = []; }
   db.limanTalepleri.forEach((lt) => { if (!Array.isArray(lt.masraflar)) { lt.masraflar = []; dirty = true; } });
+  if (!Array.isArray(db.limanFirmalari)) db.limanFirmalari = [];
   if (
     !(
       db.talepler.length ||

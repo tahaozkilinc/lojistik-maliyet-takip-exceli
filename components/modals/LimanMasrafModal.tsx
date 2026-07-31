@@ -4,6 +4,7 @@ import { useStore } from '@/lib/store';
 import { ModalShell, ModalHead } from '@/components/Modal';
 import { LIMAN_MASRAF_TIPLERI, PARA_KODLARI } from '@/lib/constants';
 import { uid } from '@/lib/format';
+import { limanFirmaAdi } from '@/lib/calc';
 
 export function LimanMasrafModal({ talepId, masrafId }: { talepId: string; masrafId?: string }) {
   const { db, mutate, closeModal, toast } = useStore();
@@ -101,12 +102,17 @@ export function LimanMasrafModal({ talepId, masrafId }: { talepId: string; masra
           <label>Firma / Acente</label>
           <select value={firmaId} onChange={(e) => setFirmaId(e.target.value)}>
             <option value="">— Seçin (isteğe bağlı) —</option>
-            {db.firmalar.map((f) => (
+            {/* Eski kayıtlarda ana Firma listesinden seçilmiş bir değer olabilir — Liman Firmaları listesinde yoksa o kaybolmasın diye korunur. */}
+            {firmaId && !db.limanFirmalari.some((f) => f.id === firmaId) && (
+              <option value={firmaId}>{limanFirmaAdi(db, firmaId)}</option>
+            )}
+            {db.limanFirmalari.map((f) => (
               <option key={f.id} value={f.id}>
                 {f.ad}
               </option>
             ))}
           </select>
+          <div className="hint">Listede yok mu? Sidebar&apos;dan Liman Firmaları bölümünden ekleyin.</div>
         </div>
         <div className="field-row">
           <div className="field" style={{ flex: 2 }}>

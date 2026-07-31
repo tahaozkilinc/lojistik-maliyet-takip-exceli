@@ -2,7 +2,7 @@
 import React from 'react';
 import { useStore } from '@/lib/store';
 import { money, dt } from '@/lib/format';
-import { toTRY } from '@/lib/calc';
+import { toTRY, limanFirmaAdi } from '@/lib/calc';
 import { Icon } from '@/components/Icon';
 
 const DURUM_RENK: Record<string, string> = {
@@ -147,7 +147,7 @@ export function LimanTalepDetay() {
               </thead>
               <tbody>
                 {masraflar.map((m) => {
-                  const firmaAd = m.firmaId ? db.firmalar.find((f) => f.id === m.firmaId)?.ad || '—' : '—';
+                  const firmaAd = limanFirmaAdi(db, m.firmaId);
                   const tryVal = toTRY(db, m.fiyat, m.paraBirimi);
                   return (
                     <tr key={m.id}>

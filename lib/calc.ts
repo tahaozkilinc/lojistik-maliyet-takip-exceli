@@ -19,6 +19,7 @@ export const KAYIT_ALANLARI: { key: keyof DB; label: string }[] = [
   { key: 'navlunFirmalari', label: 'Navlun Firmaları' },
   { key: 'tasimaTalepleri', label: 'Taşıma Talepleri' },
   { key: 'limanTalepleri', label: 'Liman/Depo Talepleri' },
+  { key: 'limanFirmalari', label: 'Liman Firmaları' },
 ];
 
 export function recordCount(db: DB, key: keyof DB): number {
@@ -43,6 +44,21 @@ export function firmName(db: DB, id: string): string {
 export function navlunFirmName(db: DB, id: string): string {
   const f = db.navlunFirmalari.find((x) => x.id === id);
   return f ? f.ad : '(silinmiş firma)';
+}
+
+/**
+ * Liman/depo masrafındaki firmaId'yi ada çevirir. Önce yeni Liman Firmaları
+ * listesinde arar; bulamazsa (Liman Firmaları modülünden önce ana Firma
+ * listesinden seçilmiş eski kayıtlar için) ana Firma listesine bakar ve
+ * "(eski liste)" notuyla döner — böylece eski seçim sessizce kaybolmaz.
+ */
+export function limanFirmaAdi(db: DB, firmaId?: string | null): string {
+  if (!firmaId) return '—';
+  const lf = db.limanFirmalari.find((x) => x.id === firmaId);
+  if (lf) return lf.ad;
+  const eski = db.firmalar.find((x) => x.id === firmaId);
+  if (eski) return eski.ad + ' (eski liste)';
+  return '(silinmiş firma)';
 }
 
 export interface NavlunFirmaTeklifItem {

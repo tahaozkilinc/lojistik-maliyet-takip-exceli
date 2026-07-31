@@ -60,6 +60,8 @@ export type ModalState =
   | { type: 'tasimaOnay'; id: string }
   | { type: 'limanTalep'; id?: string; presetLimanId?: string }
   | { type: 'limanMasraf'; talepId: string; masrafId?: string }
+  | { type: 'limanFirma'; id?: string }
+  | { type: 'limanUcret'; firmaId: string; ucretId?: string }
   | { type: 'kur' }
   | { type: 'profil' }
   | null;
@@ -79,6 +81,7 @@ export interface UIState {
   lokasyonId: string | null;
   limanTalepId: string | null;
   navlunFirmaId: string | null;
+  limanFirmaId: string | null;
   talepFilter: string;
   lokFilter: string;
   haritaFilter: string;
@@ -263,7 +266,8 @@ function isDbEmpty(db: DB): boolean {
     !db.karaNavlun.length &&
     !db.navlunFirmalari.length &&
     !db.tasimaTalepleri.length &&
-    !db.limanTalepleri.length
+    !db.limanTalepleri.length &&
+    !db.limanFirmalari.length
   );
 }
 
@@ -352,6 +356,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     lokasyonId: null,
     limanTalepId: null,
     navlunFirmaId: null,
+    limanFirmaId: null,
     talepFilter: 'all',
     lokFilter: 'all',
     haritaFilter: 'all',
@@ -872,6 +877,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       lokasyonId: ui.lokasyonId,
       limanTalepId: ui.limanTalepId,
       navlunFirmaId: ui.navlunFirmaId,
+      limanFirmaId: ui.limanFirmaId,
     };
     if (!historyInitRef.current) {
       history.replaceState(histState, '');
@@ -892,6 +898,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         lokasyonId?: string | null;
         limanTalepId?: string | null;
         navlunFirmaId?: string | null;
+        limanFirmaId?: string | null;
       } | null;
       if (!s?.view) return;
       isPoppingRef.current = true;
@@ -903,6 +910,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         lokasyonId: s.lokasyonId ?? null,
         limanTalepId: s.limanTalepId ?? null,
         navlunFirmaId: s.navlunFirmaId ?? null,
+        limanFirmaId: s.limanFirmaId ?? null,
       }));
       setModal(null);
     };
