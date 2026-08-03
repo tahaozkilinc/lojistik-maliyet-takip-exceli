@@ -23,7 +23,7 @@ const NAV: { group: string; items: { view: ViewKey; label: string; icon: IconNam
     ],
   },
   {
-    group: 'Navlun Takibi',
+    group: 'İthalat Nakliye Takibi',
     items: [
       { view: 'navlunPanel', label: 'Panel', icon: 'panel' },
       { view: 'tasimaTalepleri', label: 'Taşıma Talepleri', icon: 'send', badge: 'tasima' },
