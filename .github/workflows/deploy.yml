@@ -39,7 +39,13 @@ jobs:
 
       - name: Security audit (güvenlik geçidi)
         # Yüksek/kritik güvenlik açığı varsa derlemeyi ve dağıtımı durdurur.
-        run: npm audit --audit-level=high
+        # --omit=dev: yalnızca CANLI SİTEYE GİDEN (dependencies) paketler
+        # denetlenir. devDependencies (eslint, typescript vb.) derleme
+        # çıktısına hiç girmez — statik export'a paketlenmez, kullanıcıya
+        # ulaşmaz — bu yüzden onlardaki bir CVE deploy'u durdurmamalı. Canlıya
+        # giden bağımlılıklarda (next, react, @supabase/…) yüksek/kritik bir
+        # açık çıkarsa gate yine kırmızıya döner.
+        run: npm audit --omit=dev --audit-level=high
 
       - name: Lint
         run: npm run lint
