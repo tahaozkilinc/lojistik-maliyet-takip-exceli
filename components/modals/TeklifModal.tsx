@@ -139,6 +139,13 @@ export function TeklifModal({
                   {money(son.birimFiyat, son.paraBirimi)}/{t.birim || 'ton'}
                 </b>{' '}
                 ({dt(son.tarih)})
+                {son.yukTipi ? (
+                  son.yukTipi !== t.yukTipi ? (
+                    <span style={{ color: 'var(--amber)', fontWeight: 700 }}> · {son.yukTipi} — farklı ürün!</span>
+                  ) : (
+                    <span> · {son.yukTipi}</span>
+                  )
+                ) : null}
               </div>
             ) : null}
           </div>
@@ -179,6 +186,13 @@ export function TeklifModal({
                   {money(fs.birimFiyat, fs.paraBirimi)}/{t.birim || 'ton'}
                 </b>{' '}
                 ({dt(fs.tarih)})
+                {fs.yukTipi ? (
+                  fs.yukTipi !== t.yukTipi ? (
+                    <span style={{ color: 'var(--amber)', fontWeight: 700 }}> · {fs.yukTipi} — farklı ürün!</span>
+                  ) : (
+                    <span> · {fs.yukTipi}</span>
+                  )
+                ) : null}
               </>
             ) : (
               'Bu firmanın bu hatta önceki teklifi yok.'

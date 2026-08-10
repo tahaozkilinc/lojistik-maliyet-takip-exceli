@@ -272,13 +272,20 @@ export function TalepDetail() {
                   </div>
                 ))}
                 {son && (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 0', fontSize: 13, color: 'var(--muted)' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 0', fontSize: 13, color: 'var(--muted)', flexWrap: 'wrap' }}>
                     <Icon name="history" size={15} />
                     Bu hatta önceki işlem: <b style={{ color: 'var(--text)' }}>{firmName(db, son.firmaId)}</b> ·{' '}
                     <b style={{ color: 'var(--text)' }}>
                       {money(son.birimFiyat, son.paraBirimi)}/{x.birim || 'ton'}
                     </b>{' '}
                     <span style={{ color: 'var(--faint)' }}>({dt(son.tarih)})</span>
+                    {son.yukTipi ? (
+                      son.yukTipi !== x.yukTipi ? (
+                        <span style={{ color: 'var(--amber)', fontWeight: 700 }}>· {son.yukTipi} — farklı ürün, dikkatli kullanın!</span>
+                      ) : (
+                        <span style={{ color: 'var(--faint)' }}>· {son.yukTipi}</span>
+                      )
+                    ) : null}
                   </div>
                 )}
               </div>

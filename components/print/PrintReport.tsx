@@ -75,6 +75,13 @@ export function PrintReport({ id }: { id: string }) {
             {money(onc.birimFiyat, onc.paraBirimi)}/{t.birim || 'ton'}
           </b>
           {onc.indirimli ? ' (indirimli)' : ''} <span style={{ color: '#9aa6b2' }}>({dt(onc.tarih)})</span>
+          {onc.yukTipi ? (
+            onc.yukTipi !== t.yukTipi ? (
+              <b style={{ color: '#b9821a' }}> · {onc.yukTipi} — farklı ürün!</b>
+            ) : (
+              <span> · {onc.yukTipi}</span>
+            )
+          ) : null}
         </div>
       ) : null}
 

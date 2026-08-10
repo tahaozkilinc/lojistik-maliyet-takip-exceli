@@ -451,6 +451,8 @@ export interface FirmaSonFiyat {
   paraBirimi: string;
   tarih?: string;
   indirimli: boolean;
+  /** Bu fiyatın alındığı talebin yük tipi — rotadaki en son fiyat başka bir üründen olabilir, karışmasın diye taşınır. */
+  yukTipi?: string;
 }
 
 export function firmaSonFiyat(
@@ -480,7 +482,7 @@ export function firmaSonFiyat(
           ind = true;
         }
         if (!best || new Date(q.createdAt || 0) > new Date(best.tarih || 0)) {
-          best = { birimFiyat: bf, paraBirimi: bp, tarih: q.createdAt, indirimli: ind };
+          best = { birimFiyat: bf, paraBirimi: bp, tarih: q.createdAt, indirimli: ind, yukTipi: t.yukTipi };
         }
       });
   });
