@@ -14,7 +14,7 @@ import {
 import { PARA_KODLARI, KONTEYNER_TIPLERI } from '@/lib/constants';
 import { StatusBadge } from '@/components/StatusBadge';
 import { Icon } from '@/components/Icon';
-import type { TasimaMod } from '@/lib/types';
+import type { TasimaMod, TasimaTeklif } from '@/lib/types';
 
 interface AddForm {
   firmaId: string;
@@ -56,6 +56,8 @@ export function TasimaTalepDetail() {
     kara: mkForm('TRY'),
     hava: mkForm('USD'),
   });
+  // Hangi teklif düzenleniyor — mod başına en fazla bir tane, formu "ekleme"den "düzenleme"ye çevirir.
+  const [editingId, setEditingId] = useState<Record<TasimaMod, string | null>>({ deniz: null, kara: null, hava: null });
   if (!x) {
     return (
       <div className="empty" style={{ padding: 50 }}>
@@ -75,8 +77,9 @@ export function TasimaTalepDetail() {
     setForms((prev) => ({ ...prev, [mod]: { ...prev[mod], ...patch } }));
   }
 
-  function addTeklif(mod: TasimaMod) {
+  function saveTeklif(mod: TasimaMod) {
     const f = forms[mod];
+    const editId = editingId[mod];
     if (!f.firmaId) {
       toast('Önce Navlun Firmaları bölümünden firma ekleyin', 'err');
       return;
@@ -93,8 +96,7 @@ export function TasimaTalepDetail() {
       mutate((d) => {
         const t = d.tasimaTalepleri.find((y) => y.id === x!.id);
         if (!t) return;
-        t.teklifler.push({
-          id: uid('ttk'),
+        const data = {
           mod,
           firmaId: f.firmaId,
           fiyat: toplam,
@@ -104,11 +106,17 @@ export function TasimaTalepDetail() {
           navlunFiyat: nv || null,
           lokalFiyat: lk || null,
           transitSuresi: transitVal ? Number(transitVal) : null,
-          createdAt: new Date().toISOString(),
-        });
+        };
+        if (editId) {
+          const q = t.teklifler.find((y) => y.id === editId);
+          if (q) Object.assign(q, data);
+        } else {
+          t.teklifler.push({ id: uid('ttk'), createdAt: new Date().toISOString(), ...data });
+        }
       });
       setForm(mod, { navlun: '', lokal: '', not: '', transit: '' });
-      toast('Fiyat eklendi', 'ok');
+      setEditingId((prev) => ({ ...prev, [mod]: null }));
+      toast(editId ? 'Fiyat güncellendi' : 'Fiyat eklendi', 'ok');
       return;
     }
     const fv = parseFloat(f.fiyat) || 0;
@@ -126,8 +134,7 @@ export function TasimaTalepDetail() {
     mutate((d) => {
       const t = d.tasimaTalepleri.find((y) => y.id === x!.id);
       if (!t) return;
-      t.teklifler.push({
-        id: uid('ttk'),
+      const data = {
         mod,
         firmaId: f.firmaId,
         fiyat: toplam,
@@ -135,14 +142,43 @@ export function TasimaTalepDetail() {
         notlar: f.not.trim(),
         ekMasraflar: ekMasraflar.length ? ekMasraflar : null,
         transitSuresi: transitVal ? Number(transitVal) : null,
-        createdAt: new Date().toISOString(),
-      });
+      };
+      if (editId) {
+        const q = t.teklifler.find((y) => y.id === editId);
+        if (q) Object.assign(q, data);
+      } else {
+        t.teklifler.push({ id: uid('ttk'), createdAt: new Date().toISOString(), ...data });
+      }
     });
     setForm(mod, { fiyat: '', not: '', ekLokal: '', ekDiger: '', transit: '' });
-    toast('Fiyat eklendi', 'ok');
+    setEditingId((prev) => ({ ...prev, [mod]: null }));
+    toast(editId ? 'Fiyat güncellendi' : 'Fiyat eklendi', 'ok');
   }
 
-  function removeTeklif(qid: string) {
+  function startEdit(mod: TasimaMod, q: TasimaTeklif) {
+    const ekLokal = q.ekMasraflar?.find((e) => e.ad === 'Lokal')?.tutar || 0;
+    const ekDiger = q.ekMasraflar?.find((e) => e.ad === 'Diğer')?.tutar || 0;
+    setForm(mod, {
+      firmaId: q.firmaId,
+      para: q.paraBirimi,
+      not: q.notlar || '',
+      konteynerTipi: q.konteynerTipi || KONTEYNER_TIPLERI[0],
+      navlun: q.navlunFiyat != null ? String(q.navlunFiyat) : '',
+      lokal: q.lokalFiyat != null ? String(q.lokalFiyat) : '',
+      fiyat: mod === 'deniz' ? '' : String(q.fiyat - ekLokal - ekDiger),
+      ekLokal: ekLokal ? String(ekLokal) : '',
+      ekDiger: ekDiger ? String(ekDiger) : '',
+      transit: q.transitSuresi != null ? String(q.transitSuresi) : '',
+    });
+    setEditingId((prev) => ({ ...prev, [mod]: q.id }));
+  }
+
+  function cancelEdit(mod: TasimaMod) {
+    setForm(mod, mkForm(forms[mod].para));
+    setEditingId((prev) => ({ ...prev, [mod]: null }));
+  }
+
+  function removeTeklif(mod: TasimaMod, qid: string) {
     if (!confirm('Bu fiyat silinsin mi?')) return;
     mutate((d) => {
       const t = d.tasimaTalepleri.find((y) => y.id === x!.id);
@@ -150,6 +186,7 @@ export function TasimaTalepDetail() {
       t.teklifler = t.teklifler.filter((q) => q.id !== qid);
       if (t.secilenTeklifId === qid) t.secilenTeklifId = null;
     });
+    if (editingId[mod] === qid) cancelEdit(mod);
   }
 
   function setSel(qid: string) {
@@ -500,8 +537,9 @@ export function TasimaTalepDetail() {
                     {qs.map((q) => {
                       const isSel = q.id === x.secilenTeklifId;
                       const isBest = q.id === best;
+                      const isEditing = editingId[key] === q.id;
                       return (
-                        <tr key={q.id} style={isSel ? { background: 'var(--gold-soft)' } : undefined}>
+                        <tr key={q.id} style={isEditing ? { background: 'var(--surface-2)' } : isSel ? { background: 'var(--gold-soft)' } : undefined}>
                           {editable ? (
                             <td style={{ textAlign: 'center' }}>
                               <input type="radio" name="tt_sel" checked={isSel} onChange={() => setSel(q.id)} />
@@ -566,11 +604,16 @@ export function TasimaTalepDetail() {
                             {q.transitSuresi != null ? q.transitSuresi + ' gün' : '—'}
                           </td>
                           <td>{q.notlar || ''}</td>
-                          <td style={{ textAlign: 'right' }}>
+                          <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
                             {editable ? (
-                              <button className="btn sm ghost" style={{ color: 'var(--red)' }} onClick={() => removeTeklif(q.id)}>
-                                ×
-                              </button>
+                              <>
+                                <button className="btn sm ghost" onClick={() => startEdit(key, q)}>
+                                  ✎
+                                </button>
+                                <button className="btn sm ghost" style={{ color: 'var(--red)' }} onClick={() => removeTeklif(key, q.id)}>
+                                  ×
+                                </button>
+                              </>
                             ) : null}
                           </td>
                         </tr>
@@ -592,12 +635,17 @@ export function TasimaTalepDetail() {
                     flexWrap: 'wrap',
                     alignItems: 'flex-end',
                     margin: 12,
-                    background: 'var(--surface-2)',
-                    border: '1px solid var(--line)',
+                    background: editingId[key] ? 'var(--gold-soft)' : 'var(--surface-2)',
+                    border: '1px solid ' + (editingId[key] ? 'var(--gold)' : 'var(--line)'),
                     borderRadius: 8,
                     padding: 10,
                   }}
                 >
+                  {editingId[key] && (
+                    <div style={{ flexBasis: '100%', fontSize: 11.5, fontWeight: 700, color: 'var(--amber)' }}>
+                      ✎ Bu fiyat düzenleniyor — kaydettiğinizde yenisi eklenmez, mevcut kayıt güncellenir.
+                    </div>
+                  )}
                   <div className="field" style={{ marginBottom: 0, minWidth: 170 }}>
                     <label style={{ fontSize: 11 }}>Firma (Navlun Firmaları)</label>
                     <select value={f.firmaId} onChange={(e) => setForm(key, { firmaId: e.target.value })}>
@@ -668,9 +716,20 @@ export function TasimaTalepDetail() {
                     <label style={{ fontSize: 11 }}>Not</label>
                     <input placeholder="opsiyonel" value={f.not} onChange={(e) => setForm(key, { not: e.target.value })} />
                   </div>
-                  <button className="btn sm primary" onClick={() => addTeklif(key)}>
-                    <Icon name="plus" size={13} sw={2.4} />
-                    Fiyat Ekle
+                  {editingId[key] && (
+                    <button className="btn sm ghost" onClick={() => cancelEdit(key)}>
+                      Vazgeç
+                    </button>
+                  )}
+                  <button className="btn sm primary" onClick={() => saveTeklif(key)}>
+                    {editingId[key] ? (
+                      'Değişikliği Kaydet'
+                    ) : (
+                      <>
+                        <Icon name="plus" size={13} sw={2.4} />
+                        Fiyat Ekle
+                      </>
+                    )}
                   </button>
                 </div>
               )}
