@@ -116,6 +116,14 @@ export function TalepDetail() {
     });
     toast('Talep onaydan geri çekildi — fiyat revizesi yapabilirsiniz', 'ok');
   }
+  function delTalep() {
+    if (!confirm('Bu nakliye talebi ve tüm teklifleri silinsin mi? Bu işlem geri alınamaz.')) return;
+    mutate((d) => {
+      d.talepler = d.talepler.filter((y) => y.id !== x!.id);
+    });
+    go('talepler');
+    toast('Talep silindi');
+  }
   function indirimSil() {
     if (x!.gerceklesen && !confirm('Gerçekleşen/indirimli fiyat kaldırılsın mı?')) return;
     mutate((d) => {
@@ -176,6 +184,9 @@ export function TalepDetail() {
             Rapor / Yazdır
           </button>
         )}
+        <button className="btn sm danger" onClick={delTalep}>
+          Sil
+        </button>
       </div>
 
       <div className="detail-grid">
