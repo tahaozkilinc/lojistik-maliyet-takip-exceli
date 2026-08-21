@@ -127,7 +127,7 @@ export function NavlunFirmalar() {
                   )}
                   {f.calisanlar && f.calisanlar.length ? (
                     <div className="fc-emp">
-                      {f.calisanlar.map((c, i) => (
+                      {f.calisanlar.slice(0, 2).map((c, i) => (
                         <div key={i} className="fc-emp-item">
                           <div className="ea">{initials(c.ad)}</div>
                           <div style={{ flex: 1, minWidth: 0 }}>
@@ -152,6 +152,11 @@ export function NavlunFirmalar() {
                           ) : null}
                         </div>
                       ))}
+                      {f.calisanlar.length > 2 && (
+                        <div style={{ fontSize: 11.5, color: 'var(--faint)', padding: '4px 0 0 2px' }}>
+                          +{f.calisanlar.length - 2} kişi daha — detay için karta tıklayın
+                        </div>
+                      )}
                     </div>
                   ) : (
                     <div className="fc-emp" style={{ color: 'var(--faint)', fontSize: 12.5 }}>
