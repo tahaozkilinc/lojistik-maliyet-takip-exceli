@@ -23,6 +23,7 @@ export function FirmaDetay() {
   const { db, ui, go, openModal, mutate, toast } = useStore();
   const f = db.firmalar.find((x) => x.id === ui.firmaId);
   const [urunFilter, setUrunFilter] = useState('all');
+  const [perfFilter, setPerfFilter] = useState<'all' | 'onaylandi'>('all');
 
   if (!f) {
     return (
@@ -91,7 +92,8 @@ export function FirmaDetay() {
     string,
     { yuk: string; tes: string; urun?: string; quotes: { fiyat: number; para: string; birim: string; tarih?: string; won: boolean }[]; won: number }
   > = {};
-  db.talepler.forEach((t) =>
+  db.talepler.forEach((t) => {
+    if (perfFilter === 'onaylandi' && t.durum !== 'onaylandi') return;
     t.teklifler.forEach((q) => {
       if (q.firmaId !== f.id) return;
       const key = t.yuklemeLokasyonId + '|' + t.teslimLokasyonId + '|' + (t.yukTipi || '');
@@ -99,8 +101,8 @@ export function FirmaDetay() {
       const p = (perf[key] = perf[key] || { yuk: t.yuklemeNoktasi, tes: t.teslimNoktasi, urun: t.yukTipi, quotes: [], won: 0 });
       p.quotes.push({ fiyat: q.fiyat, para: q.paraBirimi, birim: t.birim || 'ton', tarih: q.createdAt || t.createdAt, won });
       if (won) p.won++;
-    }),
-  );
+    });
+  });
   const perfArr = Object.values(perf).sort(
     (a, b) => b.quotes.length - a.quotes.length || (a.yuk || '').localeCompare(b.yuk || '', 'tr'),
   );
@@ -243,6 +245,18 @@ export function FirmaDetay() {
           <h2>Hat Bazlı Teklif Performansı</h2>
         </div>
         <div className="panel-body flush">
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', padding: '12px 16px 0' }}>
+            {(
+              [
+                ['all', 'Tümü'],
+                ['onaylandi', 'Sadece Onaylanan'],
+              ] as const
+            ).map(([key, label]) => (
+              <button key={key} className={'chip-filter ' + (perfFilter === key ? 'on' : '')} onClick={() => setPerfFilter(key)}>
+                {label}
+              </button>
+            ))}
+          </div>
           {perfArr.length ? (
             <table>
               <thead>
@@ -295,7 +309,11 @@ export function FirmaDetay() {
             </table>
           ) : (
             <div className="empty" style={{ padding: 24 }}>
-              <p>Bu firma henüz hiçbir talebe teklif vermemiş.</p>
+              <p>
+                {perfFilter === 'onaylandi'
+                  ? 'Bu firmanın onaylanmış bir talepte kazandığı teklif yok.'
+                  : 'Bu firma henüz hiçbir talebe teklif vermemiş.'}
+              </p>
             </div>
           )}
         </div>
