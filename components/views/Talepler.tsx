@@ -218,6 +218,7 @@ export function Talepler() {
                               {eff.indirimli && (
                                 <span style={{ marginLeft: 5, fontSize: 10, color: 'var(--green)', fontWeight: 700 }}>İNDİRİMLİ</span>
                               )}
+                              <div className="cell-sub">{firmName(db, eff.firmaId)}</div>
                             </>
                           ) : (
                             <span style={{ color: 'var(--faint)' }}>—</span>
