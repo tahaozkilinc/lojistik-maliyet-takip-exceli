@@ -41,7 +41,11 @@ export function MainMap() {
       }
       if (cancelled) return;
       LRef.current = L;
-      const map = L.map(el, { scrollWheelZoom: true }).setView([39.0, 35.2], 5);
+      // Başlangıç görünümü Adana bölgesine (ana fabrika bölgesi) odaklıdır — tüm
+      // Türkiye'yi gösteren geniş açı yerine yakın bir bölgesel görünümle açılır.
+      // minZoom, konumları sığdırma (fitBounds) uzak lokasyonlar yüzünden haritayı
+      // tekrar çok geniş açıya götürmesin diye bir taban belirler.
+      const map = L.map(el, { scrollWheelZoom: true, minZoom: 7 }).setView([37.0, 35.32], 9);
       mapRef.current = map;
       tileLayerRef.current = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
         maxZoom: 19,

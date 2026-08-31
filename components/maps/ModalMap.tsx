@@ -41,8 +41,10 @@ export function ModalMap({
       }
       if (cancelled) return;
       LRef.current = L;
-      const c = initial.current.lat != null && initial.current.lng != null ? { lat: initial.current.lat, lng: initial.current.lng } : { lat: 39.0, lng: 35.2 };
-      const map = L.map(el, { scrollWheelZoom: true }).setView([c.lat, c.lng], initial.current.lat != null ? 12 : 5);
+      // Koordinat henüz girilmemişse Adana bölgesine (ana fabrika bölgesi) yakın
+      // açılır — tüm Türkiye'yi gösteren geniş açı yerine.
+      const c = initial.current.lat != null && initial.current.lng != null ? { lat: initial.current.lat, lng: initial.current.lng } : { lat: 37.0, lng: 35.32 };
+      const map = L.map(el, { scrollWheelZoom: true }).setView([c.lat, c.lng], initial.current.lat != null ? 12 : 9);
       mapRef.current = map;
       L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '© OSM', crossOrigin: '' }).addTo(map);
       if (initial.current.lat != null && initial.current.lng != null) {
