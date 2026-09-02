@@ -1,6 +1,7 @@
 'use client';
 import React, { useEffect, useRef } from 'react';
 import { useStore } from '@/lib/store';
+import { escapeHtml } from '@/lib/format';
 
 // TradingView'in resmi (ücretsiz, anahtarsız) tek-sembol fiyat widget'ı.
 // Veri TradingView'in kendi sunucularından canlı çekilir (üçüncü parti embed);
@@ -15,11 +16,17 @@ export function TvQuote({ symbol, href, label }: { symbol: string; href: string;
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
+    // Güvenlik: href/label şu an her zaman sabit (hardcoded) değerlerle
+    // çağrılıyor, ama innerHTML'e gömülmeden önce yine de kaçışlanır
+    // (XSS) ve href yalnızca http(s) şemasına izin verir (javascript:
+    // gibi tehlikeli şemaları engeller) — ileride bu prop'lar dinamik bir
+    // kaynaktan (DB, URL parametresi) beslenirse güvenlik açığı oluşmasın.
+    const safeHref = /^https?:\/\//i.test(href) ? href : '#';
     el.innerHTML =
       '<div class="tradingview-widget-container__widget"></div>' +
       '<div class="tradingview-widget-copyright" style="font-size:11px">' +
-      `<a href="${href}" rel="noopener nofollow" target="_blank">` +
-      `<span class="blue-text">${label}</span></a>` +
+      `<a href="${escapeHtml(safeHref)}" rel="noopener nofollow" target="_blank">` +
+      `<span class="blue-text">${escapeHtml(label)}</span></a>` +
       '<span> · TradingView</span></div>';
     const script = document.createElement('script');
     script.type = 'text/javascript';
