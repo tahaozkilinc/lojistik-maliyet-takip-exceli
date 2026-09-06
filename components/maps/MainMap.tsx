@@ -25,6 +25,7 @@ export function MainMap() {
   const tileLayerRef = useRef<TileLayer | null>(null);
   const [mapReady, setMapReady] = useState(false);
   const [failed, setFailed] = useState(false);
+  const didInitialCenter = useRef(false);
 
   // Leaflet'i yükle ve tile layer'ı bir kez kur; bileşen unmount olduğunda temizle.
   useEffect(() => {
@@ -41,10 +42,10 @@ export function MainMap() {
       }
       if (cancelled) return;
       LRef.current = L;
-      // Başlangıç görünümü Adana bölgesine (ana fabrika bölgesi) odaklıdır — tüm
-      // Türkiye'yi gösteren geniş açı yerine yakın bir bölgesel görünümle açılır.
-      // minZoom, konumları sığdırma (fitBounds) uzak lokasyonlar yüzünden haritayı
-      // tekrar çok geniş açıya götürmesin diye bir taban belirler.
+      // Geçici bir başlangıç görünümü — asıl konumlama (fabrikanın gerçek
+      // koordinatı) aşağıdaki pin efekti ilk çalıştığında yapılır. minZoom,
+      // sonraki sığdırma (fitBounds) çağrılarının uzak/hatalı koordinatlı bir
+      // lokasyon yüzünden haritayı tekrar çok geniş açıya götürmesini engeller.
       const map = L.map(el, { scrollWheelZoom: true, minZoom: 7 }).setView([37.0, 35.32], 9);
       mapRef.current = map;
       tileLayerRef.current = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -147,7 +148,19 @@ export function MainMap() {
         );
         pts.push([l.lat as number, l.lng as number]);
       });
-    if (pts.length) map.fitBounds(pts, { padding: [50, 50], maxZoom: 12 });
+
+    if (!didInitialCenter.current) {
+      // İlk açılışta HER ZAMAN fabrikanın üzerinden başla — diğer
+      // lokasyonlardan biri çok uzakta (hatta hatalı) bir koordinata sahipse
+      // bile, sığdırma (fitBounds) yüzünden dünya ölçeğinde bir görünüme
+      // kaymasın. Sonraki filtre/arama değişikliklerinde normal sığdırma
+      // davranışına geçilir.
+      didInitialCenter.current = true;
+      const fab = db.lokasyonlar.find((l) => l.fabrika && hasCoord(l));
+      if (fab) map.setView([fab.lat as number, fab.lng as number], 11);
+    } else if (pts.length) {
+      map.fitBounds(pts, { padding: [50, 50], maxZoom: 12 });
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mapReady, db.lokasyonlar, db.talepler, db.limanTalepleri, db.firmalar, ui.haritaFilter, ui.haritaUrun, ui.search]);
 
