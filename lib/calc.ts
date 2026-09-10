@@ -293,6 +293,25 @@ export function indirimYuzde(db: DB, t: Talep): number | null {
   return ((o - y) / o) * 100;
 }
 
+/**
+ * Belirli bir tarih aralığında (iki uç dahil) onaylanmış talepleri döner —
+ * Fiyat Analizi'ndeki PDF Rapor sekmesi ile yazdırılan/PDF olarak kaydedilen
+ * rapor (PrintPriceAnalysis) AYNI listeyi göstersin diye tek yerden hesaplanır.
+ * Tarih karşılaştırması talebin yükleme tarihini (girilmemişse oluşturulma
+ * tarihini) baz alır; "onaylandı" durumu, gerçekleşen (kesinleşmiş) maliyeti
+ * ifade eder (bkz. bu oturumdaki "Sadece Onaylanan" filtreleri).
+ */
+export function priceAnalysisRows(db: DB, startDate: string, endDate: string): Talep[] {
+  const dateOf = (t: Talep) => t.yuklemeTarihi || (t.createdAt || '').slice(0, 10);
+  return db.talepler
+    .filter((t) => t.durum === 'onaylandi')
+    .filter((t) => {
+      const d = dateOf(t);
+      return !!d && (!startDate || d >= startDate) && (!endDate || d <= endDate);
+    })
+    .sort((a, b) => dateOf(a).localeCompare(dateOf(b)));
+}
+
 export interface LokasyonStats {
   sefer: number;
   fiyatli: number;

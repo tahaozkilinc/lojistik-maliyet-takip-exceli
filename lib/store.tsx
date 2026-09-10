@@ -70,6 +70,7 @@ export type PrintJob =
   | { type: 'single'; id: string }
   | { type: 'combined'; ids: string[] }
   | { type: 'tasima'; id: string }
+  | { type: 'priceAnalysis'; startDate: string; endDate: string }
   | null;
 
 export type ToastItem = { id: number; msg: string; type: '' | 'ok' | 'err' };

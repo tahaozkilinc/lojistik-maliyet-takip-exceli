@@ -4,6 +4,7 @@ import { useStore } from '@/lib/store';
 import { PrintReport } from './PrintReport';
 import { PrintCombined } from './PrintCombined';
 import { PrintTasimaReport } from './PrintTasimaReport';
+import { PrintPriceAnalysis } from './PrintPriceAnalysis';
 
 export function PrintHost() {
   const { printJob, setPrintJob } = useStore();
@@ -25,6 +26,9 @@ export function PrintHost() {
       {printJob?.type === 'single' ? <PrintReport id={printJob.id} /> : null}
       {printJob?.type === 'combined' ? <PrintCombined ids={printJob.ids} /> : null}
       {printJob?.type === 'tasima' ? <PrintTasimaReport id={printJob.id} /> : null}
+      {printJob?.type === 'priceAnalysis' ? (
+        <PrintPriceAnalysis startDate={printJob.startDate} endDate={printJob.endDate} />
+      ) : null}
     </div>
   );
 }

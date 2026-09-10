@@ -1,14 +1,34 @@
 'use client';
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useStore } from '@/lib/store';
-import { money, fmt, dt } from '@/lib/format';
-import { toTRY, firmName, lokasyonStats, findAnlasmalar, lokRouteKmInfo, efektifFiyat } from '@/lib/calc';
+import { money, fmt, fmtTon, dt } from '@/lib/format';
+import {
+  toTRY,
+  firmName,
+  lokasyonStats,
+  findAnlasmalar,
+  lokRouteKmInfo,
+  efektifFiyat,
+  efektifTotalTRY,
+  priceAnalysisRows,
+} from '@/lib/calc';
 import { StatusBadge } from '@/components/StatusBadge';
+import { ReportMap } from '@/components/maps/ReportMap';
+
+function ymd(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
 
 export function Analiz() {
-  const { db, openModal, go } = useStore();
+  const { db, openModal, go, setPrintJob } = useStore();
   const [yukSel, setYukSel] = useState('__all');
   const [tesSel, setTesSel] = useState('__all');
+  const [tab, setTab] = useState<'genel' | 'pdf'>('genel');
+  const [startDate, setStartDate] = useState(() => {
+    const d = new Date();
+    return ymd(new Date(d.getFullYear(), d.getMonth(), 1));
+  });
+  const [endDate, setEndDate] = useState(() => ymd(new Date()));
   const lokalar = [...db.lokasyonlar].sort((a, b) => a.ad.localeCompare(b.ad, 'tr'));
 
   // Kullanıcının seçtiği belirli güzergah (yükleme + teslim lokasyonu).
@@ -51,7 +71,35 @@ export function Analiz() {
     .filter((f) => f.teklif > 0)
     .sort((a, b) => b.teklif - a.teklif);
 
+  // PDF Rapor sekmesi — seçili tarih aralığındaki onaylanmış (gerçekleşen
+  // maliyeti kesinleşmiş) talepler. useMemo: db/tarih değişmediği sürece
+  // aynı referansı korur, böylece ReportMap ilgisiz render'larda haritayı
+  // gereksiz yere yeniden kurmaz.
+  const reportRows = useMemo(() => priceAnalysisRows(db, startDate, endDate), [db, startDate, endDate]);
+  const reportToplamTRY = reportRows.reduce((sum, t) => sum + efektifTotalTRY(db, t), 0);
+  const reportBirimFiyatlar = reportRows
+    .map((t) => {
+      const eff = efektifFiyat(db, t);
+      return eff ? toTRY(db, eff.birimFiyat, eff.paraBirimi) : null;
+    })
+    .filter((x): x is number => x != null);
+  const reportOrtalamaBirim = reportBirimFiyatlar.length
+    ? reportBirimFiyatlar.reduce((a, b) => a + b, 0) / reportBirimFiyatlar.length
+    : 0;
+  const reportLokasyonSayisi = new Set(reportRows.map((t) => t.yuklemeLokasyonId)).size;
+
   return (
+    <>
+      <div className="filter-bar">
+        <button className={'chip-filter ' + (tab === 'genel' ? 'on' : '')} onClick={() => setTab('genel')}>
+          Genel Analiz
+        </button>
+        <button className={'chip-filter ' + (tab === 'pdf' ? 'on' : '')} onClick={() => setTab('pdf')}>
+          PDF Rapor
+        </button>
+      </div>
+
+      {tab === 'genel' && (
     <>
       <div className="panel">
         <div className="panel-head">
@@ -328,6 +376,125 @@ export function Analiz() {
           </p>
         </div>
       </div>
+    </>
+      )}
+
+      {tab === 'pdf' && (
+        <>
+          <div className="panel">
+            <div className="panel-head">
+              <h2>Zaman Aralığı</h2>
+            </div>
+            <div className="panel-body">
+              <div className="grid-2">
+                <div className="field" style={{ marginBottom: 0 }}>
+                  <label>Başlangıç Tarihi</label>
+                  <input type="date" value={startDate} max={endDate} onChange={(e) => setStartDate(e.target.value)} />
+                </div>
+                <div className="field" style={{ marginBottom: 0 }}>
+                  <label>Bitiş Tarihi</label>
+                  <input type="date" value={endDate} min={startDate} onChange={(e) => setEndDate(e.target.value)} />
+                </div>
+              </div>
+              <div className="hint" style={{ marginTop: 10 }}>
+                Bu aralıkta yalnızca <b>onaylanmış</b> (gerçekleşen maliyeti kesinleşmiş) talepler rapora dahil edilir —
+                hangi lokasyondan hangi ürünü hangi firmadan ne kadara taşıdığımızı gösterir.
+              </div>
+            </div>
+          </div>
+
+          <div className="panel">
+            <div className="panel-head">
+              <h2>Rapor Sonuçları</h2>
+              <div className="spacer" />
+              <button
+                className="btn sm"
+                disabled={!reportRows.length}
+                onClick={() => setPrintJob({ type: 'priceAnalysis', startDate, endDate })}
+              >
+                Yazdır / PDF Kaydet
+              </button>
+            </div>
+            <div className="panel-body">
+              {reportRows.length ? (
+                <>
+                  <div className="stat-grid">
+                    <div className="stat s1">
+                      <div className="k">Kayıt Sayısı</div>
+                      <div className="v" style={{ fontSize: 21 }}>{reportRows.length}</div>
+                    </div>
+                    <div className="stat s4">
+                      <div className="k">Toplam Tutar</div>
+                      <div className="v" style={{ fontSize: 21, color: 'var(--gold)' }}>{money(reportToplamTRY, 'TRY')}</div>
+                    </div>
+                    <div className="stat s3">
+                      <div className="k">Ortalama Birim Fiyat</div>
+                      <div className="v" style={{ fontSize: 21 }}>
+                        {reportOrtalamaBirim ? money(reportOrtalamaBirim, 'TRY') : '—'}
+                      </div>
+                    </div>
+                    <div className="stat s2">
+                      <div className="k">Lokasyon Sayısı</div>
+                      <div className="v" style={{ fontSize: 21 }}>{reportLokasyonSayisi}</div>
+                    </div>
+                  </div>
+                  <table style={{ marginTop: 16 }}>
+                    <thead>
+                      <tr>
+                        <th>Tarih</th>
+                        <th>Yükleme Lokasyonu</th>
+                        <th>Varış Noktası</th>
+                        <th>Ürün</th>
+                        <th>Firma</th>
+                        <th style={{ textAlign: 'right' }}>Miktar</th>
+                        <th style={{ textAlign: 'right' }}>Birim Fiyat (TRY)</th>
+                        <th style={{ textAlign: 'right' }}>Toplam (TRY)</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {reportRows.map((t) => {
+                        const eff = efektifFiyat(db, t);
+                        const tot = efektifTotalTRY(db, t);
+                        return (
+                          <tr key={t.id} className="t-row-click" onClick={() => go('detail', t.id)}>
+                            <td>{dt(t.yuklemeTarihi || t.createdAt)}</td>
+                            <td className="cell-strong">{t.yuklemeNoktasi}</td>
+                            <td>{t.teslimNoktasi}</td>
+                            <td>{t.yukTipi || '—'}</td>
+                            <td>{eff ? firmName(db, eff.firmaId) : '—'}</td>
+                            <td style={{ textAlign: 'right' }}>{t.miktar ? fmtTon(t.miktar) + ' ' + (t.birim || '') : '—'}</td>
+                            <td style={{ textAlign: 'right' }}>
+                              {eff ? money(toTRY(db, eff.birimFiyat, eff.paraBirimi), 'TRY') : '—'}
+                            </td>
+                            <td style={{ textAlign: 'right' }} className="cell-strong">
+                              {tot > 0 ? money(tot, 'TRY') : '—'}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </>
+              ) : (
+                <div className="empty" style={{ padding: 34 }}>
+                  <p>Bu tarih aralığında onaylanmış talep yok.</p>
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div className="panel">
+            <div className="panel-head">
+              <h2>Harita Önizleme</h2>
+              <div className="spacer" />
+              <span className="tag">Yükleme lokasyonları</span>
+            </div>
+            <div className="panel-body">
+              <ReportMap rows={reportRows} />
+            </div>
+          </div>
+        </>
+      )}
     </>
   );
 }
