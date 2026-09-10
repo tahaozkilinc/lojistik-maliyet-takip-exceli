@@ -11,6 +11,7 @@ import {
   efektifFiyat,
   efektifTotalTRY,
   priceAnalysisRows,
+  teklifOzetleri,
 } from '@/lib/calc';
 import { StatusBadge } from '@/components/StatusBadge';
 import { ReportMap } from '@/components/maps/ReportMap';
@@ -455,13 +456,32 @@ export function Analiz() {
                       {reportRows.map((t) => {
                         const eff = efektifFiyat(db, t);
                         const tot = efektifTotalTRY(db, t);
+                        const teklifler = teklifOzetleri(db, t);
                         return (
                           <tr key={t.id} className="t-row-click" onClick={() => go('detail', t.id)}>
                             <td>{dt(t.yuklemeTarihi || t.createdAt)}</td>
                             <td className="cell-strong">{t.yuklemeNoktasi}</td>
                             <td>{t.teslimNoktasi}</td>
                             <td>{t.yukTipi || '—'}</td>
-                            <td>{eff ? firmName(db, eff.firmaId) : '—'}</td>
+                            <td>
+                              {eff ? (
+                                <>
+                                  <div className="cell-strong">{firmName(db, eff.firmaId)}</div>
+                                  {teklifler.length > 1 && (
+                                    <div style={{ fontSize: 11, color: 'var(--faint)', marginTop: 3, lineHeight: 1.6 }}>
+                                      {teklifler.map((q) => (
+                                        <div key={q.id}>
+                                          {q.secildi ? '★ ' : ''}
+                                          {firmName(db, q.firmaId)}: {money(q.fiyat, q.paraBirimi)}
+                                        </div>
+                                      ))}
+                                    </div>
+                                  )}
+                                </>
+                              ) : (
+                                '—'
+                              )}
+                            </td>
                             <td style={{ textAlign: 'right' }}>{t.miktar ? fmtTon(t.miktar) + ' ' + (t.birim || '') : '—'}</td>
                             <td style={{ textAlign: 'right' }}>
                               {eff ? money(toTRY(db, eff.birimFiyat, eff.paraBirimi), 'TRY') : '—'}

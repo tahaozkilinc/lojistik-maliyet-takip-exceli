@@ -312,6 +312,34 @@ export function priceAnalysisRows(db: DB, startDate: string, endDate: string): T
     .sort((a, b) => dateOf(a).localeCompare(dateOf(b)));
 }
 
+export interface TeklifOzet {
+  id: string;
+  firmaId: string;
+  fiyat: number;
+  paraBirimi: string;
+  /** Bu teklif seçilen (veya seçim yoksa en uygun/varsayılan) teklif mi. */
+  secildi: boolean;
+}
+
+/**
+ * Bir talebin aldığı TÜM teklifleri, hangisinin seçildiği bilgisiyle birlikte
+ * döner — PDF Rapor'da "hangi firmadan ne kadar fiyat aldık" listesi içindir.
+ * Seçili teklif en başa alınır, kalanı TRY karşılığına göre ucuzdan pahalıya
+ * sıralanır. secildi mantığı efektifFiyat()/bestQuoteId() ile aynı yedekleme
+ * kuralını izler (bkz. PrintCombined.tsx'teki aynı desen): açıkça seçilmiş bir
+ * teklif yoksa en uygun teklif "seçili" sayılır.
+ */
+export function teklifOzetleri(db: DB, t: Talep): TeklifOzet[] {
+  const sel = t.secilenTeklifId || bestQuoteId(db, t);
+  return [...t.teklifler]
+    .map((q) => ({ id: q.id, firmaId: q.firmaId, fiyat: q.fiyat, paraBirimi: q.paraBirimi, secildi: q.id === sel }))
+    .sort((a, b) => {
+      if (a.secildi) return -1;
+      if (b.secildi) return 1;
+      return toTRY(db, a.fiyat, a.paraBirimi) - toTRY(db, b.fiyat, b.paraBirimi);
+    });
+}
+
 export interface LokasyonStats {
   sefer: number;
   fiyatli: number;

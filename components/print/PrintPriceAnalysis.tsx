@@ -2,7 +2,7 @@
 import React from 'react';
 import { useStore } from '@/lib/store';
 import { money, fmtTon, dt } from '@/lib/format';
-import { firmName, toTRY, efektifFiyat, efektifTotalTRY, priceAnalysisRows } from '@/lib/calc';
+import { firmName, toTRY, efektifFiyat, efektifTotalTRY, priceAnalysisRows, teklifOzetleri } from '@/lib/calc';
 
 export function PrintPriceAnalysis({ startDate, endDate }: { startDate: string; endDate: string }) {
   const { db } = useStore();
@@ -53,6 +53,7 @@ export function PrintPriceAnalysis({ startDate, endDate }: { startDate: string; 
           {list.map((t, i) => {
             const eff = efektifFiyat(db, t);
             const tot = efektifTotalTRY(db, t);
+            const teklifler = teklifOzetleri(db, t);
             grand += tot;
             return (
               <tr key={t.id}>
@@ -61,7 +62,25 @@ export function PrintPriceAnalysis({ startDate, endDate }: { startDate: string; 
                 <td>{t.yuklemeNoktasi}</td>
                 <td>{t.teslimNoktasi}</td>
                 <td>{t.yukTipi || '—'}</td>
-                <td>{eff ? firmName(db, eff.firmaId) : '—'}</td>
+                <td>
+                  {eff ? (
+                    <>
+                      <div style={{ fontWeight: 700 }}>{firmName(db, eff.firmaId)}</div>
+                      {teklifler.length > 1 && (
+                        <div style={{ color: '#5f6f80', marginTop: 2, lineHeight: 1.5 }}>
+                          {teklifler.map((q) => (
+                            <div key={q.id}>
+                              {q.secildi ? '★ ' : ''}
+                              {firmName(db, q.firmaId)}: {money(q.fiyat, q.paraBirimi)}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </>
+                  ) : (
+                    '—'
+                  )}
+                </td>
                 <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>{t.miktar ? fmtTon(t.miktar) + ' ' + (t.birim || '') : '—'}</td>
                 <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
                   {eff ? money(toTRY(db, eff.birimFiyat, eff.paraBirimi), 'TRY') : '—'}
