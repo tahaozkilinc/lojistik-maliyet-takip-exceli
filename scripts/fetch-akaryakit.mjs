@@ -4,10 +4,11 @@
    GitHub Actions tarafından her sabah 08:30'da (TRT) çalıştırılır;
    sonuç public/akaryakit.json'a yazılır ve site yeniden yayınlanır.
    ============================================================ */
-import { writeFileSync } from 'node:fs';
+import { writeFileSync, readFileSync } from 'node:fs';
 
 const URL = 'https://www.petrolofisi.com.tr/akaryakit-fiyatlari';
 const OUT = 'public/akaryakit.json';
+const HISTORY_OUT = 'public/akaryakit-tarihce.json';
 const UA =
   'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36';
 
@@ -114,3 +115,23 @@ const out = {
 };
 writeFileSync(OUT, JSON.stringify(out, null, 2) + '\n');
 console.log('OK →', OUT, JSON.stringify(out));
+
+// Tarihçe: her günün fiyatını ayrı bir kayıt olarak biriktirir — Anlaşmalı
+// Fiyatlar grafiğinde akaryakıt fiyatını gün gün karşılaştırmak içindir.
+// akaryakit.json (yukarıda) yalnızca EN GÜNCEL anlık görüntüyü tutar ve
+// Dashboard'daki kartlar için değişmeden kullanılmaya devam eder.
+let tarihce = [];
+try {
+  const parsed = JSON.parse(readFileSync(HISTORY_OUT, 'utf8'));
+  if (Array.isArray(parsed)) tarihce = parsed;
+} catch {
+  tarihce = []; // dosya henüz yok veya bozuk — sıfırdan başla
+}
+const bugun = out.tarih.slice(0, 10);
+const gunlukKayit = { tarih: bugun, benzin, motorin };
+const mevcutIdx = tarihce.findIndex((k) => k && k.tarih === bugun);
+if (mevcutIdx >= 0) tarihce[mevcutIdx] = gunlukKayit;
+else tarihce.push(gunlukKayit);
+tarihce.sort((a, b) => a.tarih.localeCompare(b.tarih));
+writeFileSync(HISTORY_OUT, JSON.stringify(tarihce, null, 2) + '\n');
+console.log('OK →', HISTORY_OUT, tarihce.length, 'gün');

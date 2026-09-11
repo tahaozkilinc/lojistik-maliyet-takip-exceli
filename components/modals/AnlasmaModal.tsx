@@ -3,15 +3,42 @@ import React, { useEffect, useState } from 'react';
 import { useStore } from '@/lib/store';
 import { ModalShell, ModalHead } from '@/components/Modal';
 import { LokOptions } from './shared';
-import { defaultTeslimId, lokName } from '@/lib/calc';
+import { defaultTeslimId, lokName, toTRY } from '@/lib/calc';
 import { YUK_TIPLERI, PARA_KODLARI } from '@/lib/constants';
 import { money, uid, dt } from '@/lib/format';
+import { PriceTrendChart, type ChartSeries } from '@/components/charts/PriceTrendChart';
+
+interface AkaryakitGun {
+  tarih: string;
+  benzin: number;
+  motorin: number;
+}
 
 export function AnlasmaModal({ firmaId, anlId }: { firmaId: string; anlId?: string }) {
   const { db, mutate, closeModal, toast } = useStore();
   const f = db.firmalar.find((x) => x.id === firmaId);
   const a = f && anlId ? (f.anlasmalar || []).find((x) => x.id === anlId) : null;
   const bugun = new Date().toISOString().slice(0, 10);
+
+  // Akaryakıt fiyat tarihçesi — Anlaşmalı Fiyat/Petrol Ofisi Motorin
+  // karşılaştırma grafiği içindir. Sistemde her sabah otomatik güncellenir
+  // (bkz. scripts/fetch-akaryakit.mjs); dosya yoksa/erişilemezse grafik
+  // yalnızca anlaşmalı fiyat serisini gösterir.
+  const [akaryakitTarihce, setAkaryakitTarihce] = useState<AkaryakitGun[]>([]);
+  useEffect(() => {
+    let alive = true;
+    fetch('./akaryakit-tarihce.json', { cache: 'no-store' })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (alive && Array.isArray(d)) setAkaryakitTarihce(d);
+      })
+      .catch(() => {
+        /* dosya yoksa grafik yalnızca anlaşmalı fiyatı gösterir */
+      });
+    return () => {
+      alive = false;
+    };
+  }, []);
 
   const [urun, setUrun] = useState(a ? a.yukTipi || '' : '');
   // Revize ederken tarih her zaman bugüne varsayılır — kullanıcı fiyatı
@@ -36,6 +63,23 @@ export function AnlasmaModal({ firmaId, anlId }: { firmaId: string; anlId?: stri
   const gecmisSirali = (a?.gecmis || [])
     .map((g, idx) => ({ g, idx }))
     .sort((x, y) => (x.g.tarih || '').localeCompare(y.g.tarih || ''));
+
+  // Fiyat Dalgalanması grafiği için seriler. Anlaşmalı fiyat: geçmiş +
+  // mevcut değer, farklı para biriminde girilmiş olsalar bile eksende
+  // karışmasınlar diye TRY karşılığına çevrilir (gösterim her zaman ₺/ton).
+  const anlasmaPuanlari = a
+    ? [
+        ...(a.gecmis || [])
+          .filter((g) => g.tarih)
+          .map((g) => ({ tarih: g.tarih, value: toTRY(db, g.birimFiyat, g.paraBirimi) })),
+        ...(a.tarih ? [{ tarih: a.tarih, value: toTRY(db, a.birimFiyat, a.paraBirimi) }] : []),
+      ]
+    : [];
+  const motorinPuanlari = akaryakitTarihce.map((k) => ({ tarih: k.tarih, value: k.motorin }));
+  const grafikSeriler: ChartSeries[] = [
+    { label: 'Anlaşmalı Fiyat', color: 'var(--navy-3)', unit: '₺/ton', axis: 'left', points: anlasmaPuanlari, stepped: true },
+    { label: 'Petrol Ofisi Motorin (Adana)', color: 'var(--gold)', unit: '₺/lt', axis: 'right', points: motorinPuanlari, dashed: true },
+  ];
 
   function delGecmis(idx: number) {
     if (!confirm('Bu geçmiş fiyat kaydı silinsin mi? Bu işlem geri alınamaz.')) return;
@@ -172,6 +216,14 @@ export function AnlasmaModal({ firmaId, anlId }: { firmaId: string; anlId?: stri
             </select>
           </div>
         </div>
+        {a && gecmisSayi > 0 && anlasmaPuanlari.length > 0 && (
+          <div style={{ background: 'var(--surface-2)', border: '1px solid var(--line)', borderRadius: 8, padding: '11px 13px', marginBottom: 14 }}>
+            <div style={{ fontSize: 10.5, color: 'var(--faint)', textTransform: 'uppercase', letterSpacing: '.4px', fontWeight: 700, marginBottom: 8 }}>
+              Fiyat Dalgalanması — Anlaşmalı Fiyat vs. Motorin
+            </div>
+            <PriceTrendChart series={grafikSeriler} height={200} />
+          </div>
+        )}
         {a && gecmisSayi ? (
           <div style={{ fontSize: 12, color: 'var(--muted)', background: 'var(--surface-2)', border: '1px solid var(--line)', borderRadius: 8, padding: '9px 11px' }}>
             <div style={{ marginBottom: 8 }}>
