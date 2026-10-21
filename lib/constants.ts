@@ -21,7 +21,7 @@ export const PARA_KODLARI = ['TRY', 'USD', 'EUR'];
 
 export const BIRIMLER = ['ton', 'palet', 'araç', 'kg', 'm³', 'sefer'];
 export const ARAC = ["ADR'li", 'Tır', 'Diğer'];
-export const YUK_TIPLERI = ['Mısır', 'Mısır Özü', 'Ayçekirdeği', 'Soya'];
+export const YUK_TIPLERI = ['Mısır', 'Mısır Özü', 'Ayçekirdeği', 'Soya', 'Soya Küspesi', 'Soya Fasulyesi', 'Mısır Özü Küspesi', 'ATK', 'Gluten'];
 
 /** Incoterms 2020 teslim şekilleri. */
 export const INCOTERMS: { kod: string; ad: string }[] = [

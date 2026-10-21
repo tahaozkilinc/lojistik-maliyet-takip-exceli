@@ -378,6 +378,10 @@ export function FirmaDetay() {
         <div className="panel-head">
           <h2>Anlaşmalı Fiyatlar &amp; Geçmiş</h2>
           <div style={{ flex: 1 }} />
+          <button className="btn sm ghost" onClick={() => openModal({ type: 'topluAnlasma', firmaId: f.id })}>
+            <Icon name="upload" size={13} sw={2.4} />
+            Toplu İçe Aktar
+          </button>
           <button className="btn sm primary" onClick={() => openModal({ type: 'anlasma', firmaId: f.id })}>
             <Icon name="plus" size={13} sw={2.4} />
             Anlaşma Ekle
